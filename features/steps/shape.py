@@ -7,10 +7,10 @@ import hashlib
 from behave import given, then, when
 from helpers import cls_qname, test_file, test_pptx
 
-from power_pptx import Presentation
-from power_pptx.action import ActionSetting
-from power_pptx.enum.shapes import MSO_SHAPE, MSO_SHAPE_TYPE, PP_MEDIA_TYPE
-from power_pptx.util import Emu
+from pptx2 import Presentation
+from pptx2.action import ActionSetting
+from pptx2.enum.shapes import MSO_SHAPE, MSO_SHAPE_TYPE, PP_MEDIA_TYPE
+from pptx2.util import Emu
 
 # given ===================================================
 
@@ -574,7 +574,7 @@ def then_shape_line_is_a_LineFormat_object(context):
     shape = context.shape
     line_format = shape.line
     line_format_cls_name = cls_qname(line_format)
-    expected_cls_name = "power_pptx.dml.line.LineFormat"
+    expected_cls_name = "pptx2.dml.line.LineFormat"
     assert line_format_cls_name == expected_cls_name, "expected '%s', got '%s'" % (
         expected_cls_name,
         line_format_cls_name,

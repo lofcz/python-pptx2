@@ -2,7 +2,7 @@
 
 Ten end-to-end PowerPoint presentations of the kind you'd actually
 deliver inside a Fortune 500 company — built entirely with
-`power-pptx`. Each script is self-contained, lints before save, and
+`python-pptx2`. Each script is self-contained, lints before save, and
 produces a deck that holds up next to a hand-crafted one.
 
 | # | Script | Audience | Slides |

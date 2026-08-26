@@ -8,9 +8,9 @@ from __future__ import annotations
 
 from _util import SLIDE_W, blank, deck, save
 
-from power_pptx.enum.shapes import MSO_SHAPE
-from power_pptx.enum.text import MSO_AUTO_SIZE
-from power_pptx.util import Inches
+from pptx2.enum.shapes import MSO_SHAPE
+from pptx2.enum.text import MSO_AUTO_SIZE
+from pptx2.util import Inches
 
 LONG = ("Quarterly business review with an unusually long headline that should "
         "be shrunk to fit by the pre-flight font measurement pass instead of "

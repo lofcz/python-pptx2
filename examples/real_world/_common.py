@@ -12,14 +12,14 @@ from __future__ import annotations
 
 from typing import Iterable
 
-from power_pptx import Presentation
-from power_pptx.design.tokens import DesignTokens
-from power_pptx.dml.color import RGBColor
-from power_pptx.enum.shapes import MSO_SHAPE
-from power_pptx.enum.text import MSO_AUTO_SIZE, MSO_VERTICAL_ANCHOR, PP_ALIGN
-from power_pptx.exc import LintError
-from power_pptx.lint import LintSeverity
-from power_pptx.util import Inches, Pt
+from pptx2 import Presentation
+from pptx2.design.tokens import DesignTokens
+from pptx2.dml.color import RGBColor
+from pptx2.enum.shapes import MSO_SHAPE
+from pptx2.enum.text import MSO_AUTO_SIZE, MSO_VERTICAL_ANCHOR, PP_ALIGN
+from pptx2.exc import LintError
+from pptx2.lint import LintSeverity
+from pptx2.util import Inches, Pt
 
 SLIDE_W = Inches(13.333)
 SLIDE_H = Inches(7.5)

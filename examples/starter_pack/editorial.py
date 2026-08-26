@@ -6,8 +6,8 @@ the design needs to stay out of the way.
 
 from __future__ import annotations
 
-from power_pptx.design.tokens import DesignTokens
-from power_pptx.util import Pt
+from pptx2.design.tokens import DesignTokens
+from pptx2.util import Pt
 
 SPEC = {
     "palette": {

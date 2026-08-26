@@ -5,9 +5,9 @@ from __future__ import annotations
 from behave import given, then, when
 from helpers import test_pptx
 
-from power_pptx import Presentation
-from power_pptx.enum.text import MSO_ANCHOR  # noqa # pyright: ignore[reportUnusedImport]
-from power_pptx.util import Inches
+from pptx2 import Presentation
+from pptx2.enum.text import MSO_ANCHOR  # noqa # pyright: ignore[reportUnusedImport]
+from pptx2.util import Inches
 
 # given ===================================================
 

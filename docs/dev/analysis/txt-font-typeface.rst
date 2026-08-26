@@ -15,7 +15,7 @@ Minimum viable feature
 
 ::
 
-    >>> assert isinstance(font, power_pptx.text.Font)
+    >>> assert isinstance(font, pptx2.text.Font)
     >>> font.name
     None
     >>> font.name = 'Verdana'
@@ -38,7 +38,7 @@ Protocol
 
 ::
 
-    >>> assert isinstance(font, power_pptx.text.Font)
+    >>> assert isinstance(font, pptx2.text.Font)
     >>> font.name
     None
     >>> font.name = 'Verdana'

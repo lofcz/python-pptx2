@@ -12,10 +12,10 @@ from __future__ import annotations
 import io
 import zipfile
 
-from power_pptx import Presentation
-from power_pptx.enum.presentation import MSO_TRANSITION_TYPE
-from power_pptx.enum.shapes import MSO_SHAPE
-from power_pptx.util import Inches
+from pptx2 import Presentation
+from pptx2.enum.presentation import MSO_TRANSITION_TYPE
+from pptx2.enum.shapes import MSO_SHAPE
+from pptx2.util import Inches
 
 
 def _saved_slide_xml(prs, slide_index=0):
@@ -142,7 +142,7 @@ class DescribeMorphTransitionSerialization:
         assert list(iter_schema_violations(final.getvalue())) == []
 
     def it_heals_a_legacy_p14_morph_on_resave(self):
-        # Decks written by earlier power-pptx releases carry `p14:morph`
+        # Decks written by earlier python-pptx2 releases carry `p14:morph`
         # inside a Requires="p14" Choice; a load → save cycle must retag the
         # kind to p159 and fix the Requires token.
         import re
@@ -190,8 +190,8 @@ class DescribeChartAxisIds:
     def it_generates_unsigned_axis_ids(self, tmp_path):
         # axId / crossAx are xs:unsignedInt; the legacy templates used to emit
         # negative (signed) ids which fail schema validation.
-        from power_pptx.chart.data import CategoryChartData
-        from power_pptx.enum.chart import XL_CHART_TYPE
+        from pptx2.chart.data import CategoryChartData
+        from pptx2.enum.chart import XL_CHART_TYPE
         from lxml import etree
 
         prs = Presentation()

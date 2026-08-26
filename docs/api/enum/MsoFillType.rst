@@ -9,7 +9,7 @@ Alias: ``MSO_FILL``
 
 Example::
 
-    from power_pptx.enum.dml import MSO_FILL
+    from pptx2.enum.dml import MSO_FILL
 
     assert shape.fill.type == MSO_FILL.SOLID
 

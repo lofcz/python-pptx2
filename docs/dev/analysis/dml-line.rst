@@ -16,9 +16,9 @@ Protocol
 ::
 
     >>> shape.line
-    <power_pptx.dml.line.LineFormat instance at x123456789>
+    <pptx2.dml.line.LineFormat instance at x123456789>
     >>> shape.fore_color
-    <power_pptx.dml.line.LineFormat instance at x123456789>
+    <pptx2.dml.line.LineFormat instance at x123456789>
 
 
 Notes

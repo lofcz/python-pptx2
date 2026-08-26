@@ -10,24 +10,24 @@ from pathlib import Path
 
 from _util import SLIDE_H, SLIDE_W, blank, deck, save
 
-from power_pptx import BBox
-from power_pptx.chart.data import CategoryChartData
-from power_pptx.design.recipes import bullet_slide, kpi_slide, quote_slide, title_slide
-from power_pptx.design.tokens import DesignTokens
-from power_pptx.diagrams import (
+from pptx2 import BBox
+from pptx2.chart.data import CategoryChartData
+from pptx2.design.recipes import bullet_slide, kpi_slide, quote_slide, title_slide
+from pptx2.design.tokens import DesignTokens
+from pptx2.diagrams import (
     comparison_columns,
     cycle,
     decision_tree,
     horizontal_pipeline,
     hub_and_spoke,
 )
-from power_pptx.dml.color import RGBColor
-from power_pptx.enum.chart import XL_CHART_TYPE
-from power_pptx.enum.dml import BevelPreset, MSO_PATTERN_TYPE, PresetMaterial
-from power_pptx.enum.presentation import MSO_TRANSITION_TYPE
-from power_pptx.enum.shapes import MSO_SHAPE
-from power_pptx.enum.text import MSO_AUTO_SIZE
-from power_pptx.util import Inches, Pt
+from pptx2.dml.color import RGBColor
+from pptx2.enum.chart import XL_CHART_TYPE
+from pptx2.enum.dml import BevelPreset, MSO_PATTERN_TYPE, PresetMaterial
+from pptx2.enum.presentation import MSO_TRANSITION_TYPE
+from pptx2.enum.shapes import MSO_SHAPE
+from pptx2.enum.text import MSO_AUTO_SIZE
+from pptx2.util import Inches, Pt
 
 ASSETS = Path(__file__).parent / "_assets"
 

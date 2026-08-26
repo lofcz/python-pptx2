@@ -1,30 +1,30 @@
-"""Unit-test suite for `power_pptx.parts.presentation` module."""
+"""Unit-test suite for `pptx2.parts.presentation` module."""
 
 from __future__ import annotations
 
 import pytest
 
-from power_pptx.opc.constants import RELATIONSHIP_TYPE as RT
-from power_pptx.opc.package import Part
-from power_pptx.opc.packuri import PackURI
-from power_pptx.package import Package
-from power_pptx.parts.coreprops import CorePropertiesPart
-from power_pptx.parts.presentation import PresentationPart
-from power_pptx.parts.slide import NotesMasterPart, SlideMasterPart, SlidePart
-from power_pptx.presentation import Presentation
-from power_pptx.slide import NotesMaster, Slide, SlideLayout, SlideMaster
+from pptx2.opc.constants import RELATIONSHIP_TYPE as RT
+from pptx2.opc.package import Part
+from pptx2.opc.packuri import PackURI
+from pptx2.package import Package
+from pptx2.parts.coreprops import CorePropertiesPart
+from pptx2.parts.presentation import PresentationPart
+from pptx2.parts.slide import NotesMasterPart, SlideMasterPart, SlidePart
+from pptx2.presentation import Presentation
+from pptx2.slide import NotesMaster, Slide, SlideLayout, SlideMaster
 
 from ..unitutil.cxml import element
 from ..unitutil.mock import call, class_mock, instance_mock, method_mock, property_mock
 
 
 class DescribePresentationPart(object):
-    """Unit-test suite for `power_pptx.parts.presentation.PresentationPart` objects."""
+    """Unit-test suite for `pptx2.parts.presentation.PresentationPart` objects."""
 
     def it_provides_access_to_its_presentation(self, request):
         prs_ = instance_mock(request, Presentation)
         Presentation_ = class_mock(
-            request, "power_pptx.parts.presentation.Presentation", return_value=prs_
+            request, "pptx2.parts.presentation.Presentation", return_value=prs_
         )
         prs_elm = element("p:presentation")
         prs_part = PresentationPart(None, None, None, prs_elm)
@@ -63,7 +63,7 @@ class DescribePresentationPart(object):
 
         The notes master present case is just above.
         """
-        NotesMasterPart_ = class_mock(request, "power_pptx.parts.presentation.NotesMasterPart")
+        NotesMasterPart_ = class_mock(request, "pptx2.parts.presentation.NotesMasterPart")
         NotesMasterPart_.create_default.return_value = notes_master_part_
         part_related_by_.side_effect = KeyError
         prs_part = PresentationPart(None, None, package_, None)
@@ -128,7 +128,7 @@ class DescribePresentationPart(object):
         slide_layout_ = instance_mock(request, SlideLayout)
         partname = PackURI("/ppt/slides/slide9.xml")
         property_mock(request, PresentationPart, "_next_slide_partname", return_value=partname)
-        SlidePart_ = class_mock(request, "power_pptx.parts.presentation.SlidePart")
+        SlidePart_ = class_mock(request, "pptx2.parts.presentation.SlidePart")
         SlidePart_.new.return_value = slide_part_
         relate_to_.return_value = "rId42"
         slide_layout_part_ = slide_layout_.part

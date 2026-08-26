@@ -1,12 +1,12 @@
-"""Unit tests for :func:`power_pptx.audit.audit`."""
+"""Unit tests for :func:`pptx2.audit.audit`."""
 
 from __future__ import annotations
 
 import pytest
 
-from power_pptx import BBox, Presentation, audit
-from power_pptx.enum.shapes import MSO_SHAPE
-from power_pptx.util import Inches
+from pptx2 import BBox, Presentation, audit
+from pptx2.enum.shapes import MSO_SHAPE
+from pptx2.util import Inches
 
 
 @pytest.fixture

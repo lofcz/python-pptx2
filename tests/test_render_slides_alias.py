@@ -1,4 +1,4 @@
-"""Unit tests for ``power_pptx.render.render_slides`` argument validation.
+"""Unit tests for ``pptx2.render.render_slides`` argument validation.
 
 The end-to-end behaviour requires LibreOffice and is covered by
 ``tests/test_render.py``; this file only exercises the new
@@ -9,8 +9,8 @@ from __future__ import annotations
 
 import pytest
 
-from power_pptx import Presentation
-from power_pptx.render import render_slides
+from pptx2 import Presentation
+from pptx2.render import render_slides
 
 
 @pytest.fixture

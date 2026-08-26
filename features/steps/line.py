@@ -5,10 +5,10 @@ from __future__ import annotations
 from behave import given, then, when
 from helpers import test_pptx
 
-from power_pptx import Presentation
-from power_pptx.dml.color import ColorFormat
-from power_pptx.enum.dml import MSO_LINE
-from power_pptx.util import Length, Pt
+from pptx2 import Presentation
+from pptx2.dml.color import ColorFormat
+from pptx2.enum.dml import MSO_LINE
+from pptx2.util import Length, Pt
 
 # given ===================================================
 

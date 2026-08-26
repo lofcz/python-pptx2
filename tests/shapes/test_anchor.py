@@ -10,13 +10,13 @@ from __future__ import annotations
 
 import pytest
 
-from power_pptx import Presentation
-from power_pptx.enum.shapes import MSO_SHAPE
-from power_pptx.shapes.shapetree import (
+from pptx2 import Presentation
+from pptx2.enum.shapes import MSO_SHAPE
+from pptx2.shapes.shapetree import (
     _compute_anchor_left_top,
     _resolve_anchor,
 )
-from power_pptx.util import Emu, Inches
+from pptx2.util import Emu, Inches
 
 
 def _slide():

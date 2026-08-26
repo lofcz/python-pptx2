@@ -6,8 +6,8 @@ import io
 
 import pytest
 
-import power_pptx
-from power_pptx.section import Section, Sections
+import pptx2
+from pptx2.section import Section, Sections
 
 # -- deterministic GUIDs so emitted XML is stable across runs --
 GUID_A = "{11111111-1111-1111-1111-111111111111}"
@@ -16,7 +16,7 @@ GUID_B = "{22222222-2222-2222-2222-222222222222}"
 
 def _deck(n_slides: int = 4):
     """Return a fresh blank presentation with `n_slides` blank slides."""
-    prs = power_pptx.Presentation()
+    prs = pptx2.Presentation()
     layout = prs.slide_layouts[6]  # blank
     for _ in range(n_slides):
         prs.slides.add_slide(layout)
@@ -261,7 +261,7 @@ class DescribeSectionsPersistence:
         prs.sections.add("Intro", start_slide_index=0, id=GUID_A)
         prs.sections.add("Body", start_slide_index=2, id=GUID_B)
 
-        reopened = power_pptx.Presentation(io.BytesIO(_save_bytes(prs)))
+        reopened = pptx2.Presentation(io.BytesIO(_save_bytes(prs)))
         assert len(reopened.sections) == 2
         assert [s.name for s in reopened.sections] == ["Intro", "Body"]
         assert reopened.sections[0].id == GUID_A

@@ -8,7 +8,7 @@ chart, or radar chart.
 
 Example::
 
-    from power_pptx.enum.chart import XL_MARKER_STYLE
+    from pptx2.enum.chart import XL_MARKER_STYLE
 
     series.marker.style = XL_MARKER_STYLE.CIRCLE
 

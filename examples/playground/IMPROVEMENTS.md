@@ -312,7 +312,7 @@ Worse: the recipes laid out their shapes against the *original* 10"
 width, so resizing the slide afterwards leaves a wide unused right
 margin (visible in 05_from_spec_declarative.pptx slide 2's KPI cards).
 The honest fix is to ship a widescreen blank template inside
-`power_pptx` and document `template:` as the right knob — or add a
+`pptx2` and document `template:` as the right knob — or add a
 `slide_size: "16:9"` shorthand.
 
 ---

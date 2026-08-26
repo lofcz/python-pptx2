@@ -3,7 +3,7 @@
 Slide rendering
 ===============
 
-.. currentmodule:: power_pptx.render
+.. currentmodule:: pptx2.render
 
 
 .. autofunction:: render_slide_thumbnails

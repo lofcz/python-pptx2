@@ -9,9 +9,9 @@ from __future__ import annotations
 
 import pytest
 
-from power_pptx import Presentation
-from power_pptx.dml.color import RGBColor
-from power_pptx.util import Inches, Pt
+from pptx2 import Presentation
+from pptx2.dml.color import RGBColor
+from pptx2.util import Inches, Pt
 
 from .round_trip import assert_round_trip, round_trip_diff
 
@@ -139,7 +139,7 @@ class DescribeAnimationsRoundTrip:
     """Phase 5 animation extensions must survive a save→open→save cycle."""
 
     def it_round_trips_a_motion_path_animation(self):
-        from power_pptx.animation import MotionPath
+        from pptx2.animation import MotionPath
 
         prs = Presentation()
         slide = prs.slides.add_slide(prs.slide_layouts[6])
@@ -149,7 +149,7 @@ class DescribeAnimationsRoundTrip:
         assert_round_trip(prs)
 
     def it_round_trips_a_sequenced_animation_chain(self):
-        from power_pptx.animation import Emphasis, Entrance
+        from pptx2.animation import Emphasis, Entrance
 
         prs = Presentation()
         slide = prs.slides.add_slide(prs.slide_layouts[6])
@@ -163,7 +163,7 @@ class DescribeAnimationsRoundTrip:
         assert_round_trip(prs)
 
     def it_round_trips_a_by_paragraph_entrance(self):
-        from power_pptx.animation import Entrance
+        from pptx2.animation import Entrance
 
         prs = Presentation()
         slide = prs.slides.add_slide(prs.slide_layouts[6])
@@ -180,7 +180,7 @@ class DescribeThemeWriterRoundTrip:
     """Phase 7 writable theme: changes must persist across save/open/save."""
 
     def it_round_trips_an_overridden_accent_color(self):
-        from power_pptx.enum.dml import MSO_THEME_COLOR
+        from pptx2.enum.dml import MSO_THEME_COLOR
 
         prs = Presentation()
         prs.theme.colors[MSO_THEME_COLOR.ACCENT_1] = RGBColor(0xFF, 0x66, 0x00)
@@ -197,7 +197,7 @@ class DescribeErgonomicsRoundTrip:
     """The dogfooding-feedback APIs must survive save → open → save."""
 
     def it_round_trips_a_cleared_shadow(self):
-        from power_pptx.enum.shapes import MSO_SHAPE
+        from pptx2.enum.shapes import MSO_SHAPE
 
         prs = Presentation()
         slide = prs.slides.add_slide(prs.slide_layouts[6])
@@ -209,7 +209,7 @@ class DescribeErgonomicsRoundTrip:
         assert_round_trip(prs)
 
     def it_round_trips_a_point_valued_corner_radius(self):
-        from power_pptx.enum.shapes import MSO_SHAPE
+        from pptx2.enum.shapes import MSO_SHAPE
 
         prs = Presentation()
         slide = prs.slides.add_slide(prs.slide_layouts[6])

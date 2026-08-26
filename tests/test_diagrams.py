@@ -1,12 +1,12 @@
-"""Unit tests for :mod:`power_pptx.diagrams`."""
+"""Unit tests for :mod:`pptx2.diagrams`."""
 
 from __future__ import annotations
 
 import pytest
 
-from power_pptx import BBox, Presentation
-from power_pptx.util import Pt
-from power_pptx.diagrams import (
+from pptx2 import BBox, Presentation
+from pptx2.util import Pt
+from pptx2.diagrams import (
     comparison_columns,
     cycle,
     decision_tree,
@@ -143,7 +143,7 @@ class DescribeDecisionTree:
         # Regression: leaf (child) nodes used to hardcode a light fill,
         # producing invisible light-on-light text on dark decks.  They must
         # now inherit ``fill`` / ``text_color`` from the recipe.
-        from power_pptx._color import coerce_color
+        from pptx2._color import coerce_color
 
         result = decision_tree(
             slide, BBox.from_inches(0, 0, 11, 5),
@@ -159,7 +159,7 @@ class DescribeDecisionTree:
             assert run.font.color.rgb == coerce_color("#E6EDF3")
 
     def it_allows_distinct_leaf_styling(self, slide):
-        from power_pptx._color import coerce_color
+        from pptx2._color import coerce_color
 
         result = decision_tree(
             slide, BBox.from_inches(0, 0, 11, 5),

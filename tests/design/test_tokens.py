@@ -1,13 +1,13 @@
-"""Unit-test suite for :mod:`power_pptx.design.tokens`."""
+"""Unit-test suite for :mod:`pptx2.design.tokens`."""
 
 from __future__ import annotations
 
 import pytest
 
-from power_pptx import Presentation
-from power_pptx.design.tokens import DesignTokens, ShadowToken, TypographyToken
-from power_pptx.dml.color import RGBColor
-from power_pptx.util import Emu, Pt
+from pptx2 import Presentation
+from pptx2.design.tokens import DesignTokens, ShadowToken, TypographyToken
+from pptx2.dml.color import RGBColor
+from pptx2.util import Emu, Pt
 
 
 class DescribeTypographyToken:
@@ -180,8 +180,8 @@ class DescribeNestedDictOverrides:
     """`with_overrides` accepts nested dicts in addition to dotted keys."""
 
     def it_accepts_a_nested_dict(self):
-        from power_pptx.design.tokens import DesignTokens
-        from power_pptx.util import Pt
+        from pptx2.design.tokens import DesignTokens
+        from pptx2.util import Pt
 
         tokens = DesignTokens.from_dict({
             "palette": {"primary": "#000000"},
@@ -195,8 +195,8 @@ class DescribeNestedDictOverrides:
         assert result.typography["heading"].size == Pt(40)
 
     def it_accepts_dotted_keys(self):
-        from power_pptx.design.tokens import DesignTokens
-        from power_pptx.util import Pt
+        from pptx2.design.tokens import DesignTokens
+        from pptx2.util import Pt
 
         tokens = DesignTokens.from_dict({"palette": {"primary": "#000000"}})
         result = tokens.with_overrides({
@@ -207,8 +207,8 @@ class DescribeNestedDictOverrides:
         assert result.typography["heading"].size == Pt(20)
 
     def it_accepts_mixed_styles(self):
-        from power_pptx.design.tokens import DesignTokens
-        from power_pptx.util import Pt
+        from pptx2.design.tokens import DesignTokens
+        from pptx2.util import Pt
 
         tokens = DesignTokens.from_dict({"palette": {"primary": "#000000"}})
         result = tokens.with_overrides({

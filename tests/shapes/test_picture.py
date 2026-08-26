@@ -1,15 +1,15 @@
-"""Test suite for power_pptx.shapes.picture module."""
+"""Test suite for pptx2.shapes.picture module."""
 
 from __future__ import annotations
 
 import pytest
 
-from power_pptx.dml.line import LineFormat
-from power_pptx.enum.shapes import MSO_SHAPE, MSO_SHAPE_TYPE, PP_MEDIA_TYPE
-from power_pptx.parts.image import Image
-from power_pptx.parts.slide import SlidePart
-from power_pptx.shapes.picture import Movie, Picture, _BasePicture, _MediaFormat
-from power_pptx.util import Pt
+from pptx2.dml.line import LineFormat
+from pptx2.enum.shapes import MSO_SHAPE, MSO_SHAPE_TYPE, PP_MEDIA_TYPE
+from pptx2.parts.image import Image
+from pptx2.parts.slide import SlidePart
+from pptx2.shapes.picture import Movie, Picture, _BasePicture, _MediaFormat
+from pptx2.util import Pt
 
 from ..unitutil.cxml import element, xml
 from ..unitutil.mock import call, class_mock, instance_mock, property_mock
@@ -204,7 +204,7 @@ class DescribeMovie(object):
 
     @pytest.fixture
     def _MediaFormat_(self, request, media_format_):
-        return class_mock(request, "power_pptx.shapes.picture._MediaFormat", return_value=media_format_)
+        return class_mock(request, "pptx2.shapes.picture._MediaFormat", return_value=media_format_)
 
     @pytest.fixture
     def media_format_(self, request):
@@ -244,8 +244,8 @@ class DescribePicture(object):
         # brightness/contrast of 0.0 are the schema defaults, so their
         # attributes are dropped on write; once both are neutral the `a:lum`
         # itself must go too, not linger as a dead empty element.
-        from power_pptx.dml.picture import PictureEffects
-        from power_pptx.oxml.ns import qn
+        from pptx2.dml.picture import PictureEffects
+        from pptx2.oxml.ns import qn
 
         pic = element("p:pic/p:blipFill/a:blip{r:embed=rId1}")
         blip = pic.blipFill.blip

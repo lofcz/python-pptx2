@@ -1,6 +1,6 @@
 # pyright: reportPrivateUsage=false
 
-"""Unit-test suite for `power_pptx.shapes.autoshape` module."""
+"""Unit-test suite for `pptx2.shapes.autoshape` module."""
 
 from __future__ import annotations
 
@@ -8,16 +8,16 @@ from typing import TYPE_CHECKING, cast
 
 import pytest
 
-from power_pptx import Presentation
-from power_pptx.dml.fill import FillFormat
-from power_pptx.dml.line import LineFormat
-from power_pptx.enum.shapes import MSO_SHAPE, MSO_SHAPE_TYPE
-from power_pptx.oxml import parse_xml
-from power_pptx.oxml.ns import qn
-from power_pptx.oxml.shapes.autoshape import CT_PresetGeometry2D, CT_Shape
-from power_pptx.shapes.autoshape import Adjustment, AdjustmentCollection, AutoShapeType, Shape
-from power_pptx.text.text import TextFrame
-from power_pptx.util import Emu, Inches, Pt
+from pptx2 import Presentation
+from pptx2.dml.fill import FillFormat
+from pptx2.dml.line import LineFormat
+from pptx2.enum.shapes import MSO_SHAPE, MSO_SHAPE_TYPE
+from pptx2.oxml import parse_xml
+from pptx2.oxml.ns import qn
+from pptx2.oxml.shapes.autoshape import CT_PresetGeometry2D, CT_Shape
+from pptx2.shapes.autoshape import Adjustment, AdjustmentCollection, AutoShapeType, Shape
+from pptx2.text.text import TextFrame
+from pptx2.util import Emu, Inches, Pt
 
 from ..oxml.unitdata.shape import (
     a_cNvSpPr,
@@ -32,11 +32,11 @@ from ..unitutil.cxml import element, xml
 from ..unitutil.mock import class_mock, instance_mock, property_mock
 
 if TYPE_CHECKING:
-    from power_pptx.spec import AdjustmentValue
+    from pptx2.spec import AdjustmentValue
 
 
 class DescribeAdjustment(object):
-    """Unit-test suite for `power_pptx.shapes.autoshape.Adjustment`."""
+    """Unit-test suite for `pptx2.shapes.autoshape.Adjustment`."""
 
     @pytest.mark.parametrize(
         ("def_val", "actual", "expected_value"),
@@ -60,7 +60,7 @@ class DescribeAdjustment(object):
 
 
 class DescribeAdjustmentCollection(object):
-    """Unit-test suite for `power_pptx.shapes.autoshape.AdjustmentCollection`."""
+    """Unit-test suite for `pptx2.shapes.autoshape.AdjustmentCollection`."""
 
     @pytest.mark.parametrize(
         ("prst", "expected_values"),
@@ -248,7 +248,7 @@ class DescribeAdjustmentCollection(object):
 
 
 class DescribeAutoShapeType(object):
-    """Unit-test suite for `power_pptx.shapes.autoshape.AutoShapeType`"""
+    """Unit-test suite for `pptx2.shapes.autoshape.AutoShapeType`"""
 
     def it_knows_the_details_of_the_auto_shape_type_it_represents(self):
         autoshape_type = AutoShapeType(MSO_SHAPE.ROUNDED_RECTANGLE)
@@ -304,7 +304,7 @@ class DescribeAutoShapeType(object):
 
 
 class DescribeShape(object):
-    """Unit-test suite for `power_pptx.shapes.autoshape.Shape` object."""
+    """Unit-test suite for `pptx2.shapes.autoshape.Shape` object."""
 
     def it_initializes_adjustments_on_first_ref(self, init_adjs_fixture_):
         shape, adjs_, AdjustmentCollection_, sp_ = init_adjs_fixture_
@@ -418,7 +418,7 @@ class DescribeShape(object):
     def AdjustmentCollection_(self, request, adjustments_):
         return class_mock(
             request,
-            "power_pptx.shapes.autoshape.AdjustmentCollection",
+            "pptx2.shapes.autoshape.AdjustmentCollection",
             return_value=adjustments_,
         )
 
@@ -483,7 +483,7 @@ class DescribeShape(object):
 
     @pytest.fixture
     def TextFrame_(self, request, text_frame_):
-        return class_mock(request, "power_pptx.shapes.autoshape.TextFrame", return_value=text_frame_)
+        return class_mock(request, "pptx2.shapes.autoshape.TextFrame", return_value=text_frame_)
 
     @pytest.fixture
     def text_frame_(self, request):

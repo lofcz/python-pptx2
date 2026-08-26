@@ -20,7 +20,7 @@ Opening a presentation
 The simplest way to get started is to open a new presentation without
 specifying a file to open::
 
-    from power_pptx import Presentation
+    from pptx2 import Presentation
 
     prs = Presentation()
     prs.save('test.pptx')
@@ -110,9 +110,9 @@ A generated deck can be checked on its way out of the door.  Setting
     prs.save("out.pptx")     # LintError if a shape ran off the slide
 
 ``"off"`` is the default and does no lint work at all; ``"warn"`` logs
-each error-severity issue on the ``power_pptx.presentation`` logger and
+each error-severity issue on the ``pptx2.presentation`` logger and
 writes the file anyway; ``"raise"`` raises
-:class:`power_pptx.exc.LintError` and writes nothing, so a broken deck
+:class:`pptx2.exc.LintError` and writes nothing, so a broken deck
 never reaches disk.  Only error-severity issues trigger it.
 
 The setting lives on the in-memory presentation and is not stored in the

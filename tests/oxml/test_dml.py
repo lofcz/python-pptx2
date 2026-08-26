@@ -1,12 +1,12 @@
-"""Unit-test suite for `power_pptx.oxml.dml` module."""
+"""Unit-test suite for `pptx2.oxml.dml` module."""
 
 from __future__ import annotations
 
 import pytest
 
-from power_pptx.enum.dml import MSO_THEME_COLOR
-from power_pptx.oxml.dml.color import CT_Percentage, CT_SchemeColor, CT_SRgbColor
-from power_pptx.oxml.ns import qn
+from pptx2.enum.dml import MSO_THEME_COLOR
+from pptx2.oxml.dml.color import CT_Percentage, CT_SchemeColor, CT_SRgbColor
+from pptx2.oxml.ns import qn
 
 from .unitdata.dml import a_lumMod, a_lumOff, a_schemeClr, an_srgbClr
 

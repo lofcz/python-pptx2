@@ -7,13 +7,13 @@ from __future__ import annotations
 
 from _util import blank, deck, save
 
-from power_pptx.chart.data import CategoryChartData, XyChartData
-from power_pptx.chart.palettes import palette_names
-from power_pptx.chart.quick_layouts import QUICK_LAYOUTS
-from power_pptx.dml.color import RGBColor
-from power_pptx.enum.chart import XL_CHART_TYPE, XL_LEGEND_POSITION
-from power_pptx.enum.dml import MSO_PATTERN_TYPE
-from power_pptx.util import Inches
+from pptx2.chart.data import CategoryChartData, XyChartData
+from pptx2.chart.palettes import palette_names
+from pptx2.chart.quick_layouts import QUICK_LAYOUTS
+from pptx2.dml.color import RGBColor
+from pptx2.enum.chart import XL_CHART_TYPE, XL_LEGEND_POSITION
+from pptx2.enum.dml import MSO_PATTERN_TYPE
+from pptx2.util import Inches
 
 
 CATS = ["Q1", "Q2", "Q3", "Q4"]

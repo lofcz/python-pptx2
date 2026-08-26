@@ -7,7 +7,7 @@ Specifies where the data label is positioned.
 
 Example::
 
-    from power_pptx.enum.chart import XL_LABEL_POSITION
+    from pptx2.enum.chart import XL_LABEL_POSITION
 
     data_labels = chart.plots[0].data_labels
     data_labels.position = XL_LABEL_POSITION.OUTSIDE_END

@@ -6,9 +6,9 @@ from __future__ import annotations
 
 from _util import blank, deck, save
 
-from power_pptx.dml.color import RGBColor
-from power_pptx.enum.text import MSO_VERTICAL_ANCHOR
-from power_pptx.util import Inches, Pt
+from pptx2.dml.color import RGBColor
+from pptx2.enum.text import MSO_VERTICAL_ANCHOR
+from pptx2.util import Inches, Pt
 
 LIGHT = RGBColor(0xE5, 0xE7, 0xEB)
 DARK = RGBColor(0x1F, 0x29, 0x37)

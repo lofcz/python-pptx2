@@ -5,8 +5,8 @@ from __future__ import annotations
 from behave import given, then, when
 from helpers import test_pptx
 
-from power_pptx import Presentation
-from power_pptx.enum.dml import MSO_FILL, MSO_PATTERN  # noqa
+from pptx2 import Presentation
+from pptx2.enum.dml import MSO_FILL, MSO_PATTERN  # noqa
 
 # given ====================================================
 

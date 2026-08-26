@@ -1,13 +1,13 @@
-"""Unit-test suite for `power_pptx.parts.embeddedpackage` module."""
+"""Unit-test suite for `pptx2.parts.embeddedpackage` module."""
 
 from __future__ import annotations
 
 import pytest
 
-from power_pptx.enum.shapes import PROG_ID
-from power_pptx.opc.constants import CONTENT_TYPE as CT
-from power_pptx.opc.package import OpcPackage, PackURI
-from power_pptx.parts.embeddedpackage import (
+from pptx2.enum.shapes import PROG_ID
+from pptx2.opc.constants import CONTENT_TYPE as CT
+from pptx2.opc.package import OpcPackage, PackURI
+from pptx2.parts.embeddedpackage import (
     EmbeddedDocxPart,
     EmbeddedPackagePart,
     EmbeddedPptxPart,
@@ -18,7 +18,7 @@ from ..unitutil.mock import ANY, FixtureRequest, class_mock, initializer_mock, i
 
 
 class DescribeEmbeddedPackagePart(object):
-    """Unit-test suite for `power_pptx.parts.embeddedpackage.EmbeddedPackagePart` objects."""
+    """Unit-test suite for `pptx2.parts.embeddedpackage.EmbeddedPackagePart` objects."""
 
     @pytest.mark.parametrize(
         ("prog_id", "EmbeddedPartCls"),
@@ -35,7 +35,7 @@ class DescribeEmbeddedPackagePart(object):
         package_ = instance_mock(request, OpcPackage)
         embedded_object_part_ = instance_mock(request, EmbeddedPartCls)
         EmbeddedPartCls_ = class_mock(
-            request, "power_pptx.parts.embeddedpackage.%s" % EmbeddedPartCls.__name__
+            request, "pptx2.parts.embeddedpackage.%s" % EmbeddedPartCls.__name__
         )
         EmbeddedPartCls_.new.return_value = embedded_object_part_
 

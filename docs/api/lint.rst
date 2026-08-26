@@ -3,7 +3,7 @@
 Linter
 ======
 
-.. currentmodule:: power_pptx.lint
+.. currentmodule:: pptx2.lint
 
 
 .. autoclass:: SlideLintReport

@@ -1,6 +1,6 @@
 # pyright: reportPrivateUsage=false
 
-"""Unit-test suite for `power_pptx.chart.analytics` and the series analytics API.
+"""Unit-test suite for `pptx2.chart.analytics` and the series analytics API.
 
 Covers trendlines, error bars, and the secondary value axis, including a
 round-trip and a schema-validity check for a deck that exercises all three.
@@ -12,17 +12,17 @@ import io
 
 import pytest
 
-from power_pptx import Presentation
-from power_pptx.chart.analytics import ErrorBars, Trendline, Trendlines
-from power_pptx.chart.data import CategoryChartData, XyChartData
-from power_pptx.chart.series import BarSeries
-from power_pptx.enum.chart import (
+from pptx2 import Presentation
+from pptx2.chart.analytics import ErrorBars, Trendline, Trendlines
+from pptx2.chart.data import CategoryChartData, XyChartData
+from pptx2.chart.series import BarSeries
+from pptx2.enum.chart import (
     XL_CHART_TYPE,
     XL_ERROR_BAR_INCLUDE,
     XL_ERROR_BAR_TYPE,
     XL_TRENDLINE_TYPE,
 )
-from power_pptx.util import Inches
+from pptx2.util import Inches
 
 from ..unitutil.cxml import element
 
@@ -224,7 +224,7 @@ class DescribeSeriesAnalyticsWiring(object):
         assert isinstance(series.error_bars, ErrorBars)
 
     def it_omits_analytics_on_pie_and_radar_series(self):
-        from power_pptx.chart.series import PieSeries, RadarSeries
+        from pptx2.chart.series import PieSeries, RadarSeries
 
         for cls in (PieSeries, RadarSeries):
             series = cls(element("c:ser/(c:idx{val=0},c:order{val=0})"))
@@ -277,8 +277,8 @@ class DescribeSecondaryValueAxis(object):
         # Combo chart: two plots sharing the primary axes. Moving the FIRST
         # plot to secondary must repoint that plot, not the front-most one
         # (PR #39 review).
-        from power_pptx.oxml import parse_xml
-        from power_pptx.oxml.ns import nsdecls
+        from pptx2.oxml import parse_xml
+        from pptx2.oxml.ns import nsdecls
 
         xml = (
             f"<c:plotArea {nsdecls('c')}>"

@@ -21,7 +21,7 @@ Module-level entry points
 
 ::
 
-    from power_pptx.render import (
+    from pptx2.render import (
         render_slide_thumbnails,
         render_slide_thumbnail,
     )
@@ -47,8 +47,8 @@ Errors
 
 Two exceptions surface failure modes:
 
-* :class:`power_pptx.render.ThumbnailRendererUnavailable` — ``soffice`` is not
+* :class:`pptx2.render.ThumbnailRendererUnavailable` — ``soffice`` is not
   on ``$PATH``.  The error message includes an install hint.
-* :class:`power_pptx.render.ThumbnailRendererError` — conversion failed (the
+* :class:`pptx2.render.ThumbnailRendererError` — conversion failed (the
   underlying ``soffice`` invocation produced no PNG, exited non-zero,
   or timed out).

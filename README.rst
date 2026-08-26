@@ -1,54 +1,46 @@
-power-pptx
-==========
+python-pptx2
+=============
 
 |PyPI| |PyPI - Python Versions| |CI| |License| |Documentation|
 
-.. |PyPI| image:: https://img.shields.io/pypi/v/power-pptx.svg
-   :target: https://pypi.org/project/power-pptx/
+.. |PyPI| image:: https://img.shields.io/pypi/v/python-pptx2.svg
+   :target: https://pypi.org/project/python-pptx2/
    :alt: PyPI
 
-.. |PyPI - Python Versions| image:: https://img.shields.io/pypi/pyversions/power-pptx.svg
-   :target: https://pypi.org/project/power-pptx/
+.. |PyPI - Python Versions| image:: https://img.shields.io/pypi/pyversions/python-pptx2.svg
+   :target: https://pypi.org/project/python-pptx2/
    :alt: Python 3.9 – 3.13
 
-.. |CI| image:: https://github.com/CodeHalwell/power-pptx/actions/workflows/ci.yml/badge.svg
-   :target: https://github.com/CodeHalwell/power-pptx/actions/workflows/ci.yml
+.. |CI| image:: https://github.com/lofcz/python-pptx2/actions/workflows/ci.yml/badge.svg
+   :target: https://github.com/lofcz/python-pptx2/actions/workflows/ci.yml
    :alt: CI status
 
 .. |License| image:: https://img.shields.io/badge/license-MIT-blue.svg
-   :target: https://github.com/CodeHalwell/power-pptx/blob/master/LICENSE
+   :target: https://github.com/lofcz/python-pptx2/blob/master/LICENSE
    :alt: MIT License
 
-.. |Documentation| image:: https://img.shields.io/badge/docs-codehalwell.github.io%2Fpower--pptx-blue.svg
-   :target: https://codehalwell.github.io/power-pptx/
+.. |Documentation| image:: https://img.shields.io/badge/docs-github.com%2Flofcz%2Fpython--pptx2-blue.svg
+   :target: https://github.com/lofcz/python-pptx2
    :alt: Documentation
 
 **PowerPoint decks from Python, that actually fit.**
 
-*power-pptx* is the actively-maintained fork of the excellent
-`python-pptx`_ library by `Steve Canny`_, picking up where the upstream's
-1.0.2 release left off. It is a Python library for creating, reading,
-and updating PowerPoint (.pptx) files.
+*python-pptx2* is a fork of `power-pptx`_ (Daniel Halwell) and, through
+it, of `python-pptx`_ by `Steve Canny`_. It is a Python library for
+creating, reading, and updating PowerPoint (.pptx) files, plus native
+LaTeX equations.
 
 +----------------+----------------------------------------------------------+
-| **Package**    | ``power-pptx`` on PyPI (imports as ``power_pptx``)       |
+| **Package**    | ``python-pptx2`` on PyPI (imports as ``pptx2``)          |
 +----------------+----------------------------------------------------------+
 | **Python**     | 3.9 – 3.13                                               |
 +----------------+----------------------------------------------------------+
 | **License**    | MIT                                                      |
 +----------------+----------------------------------------------------------+
-| **Docs**       | https://codehalwell.github.io/power-pptx/                |
-+----------------+----------------------------------------------------------+
-| **Guides**     | `Getting started`_ · `Advanced usage`_ ·                 |
-|                | `Coding agents`_ · `API reference`_                      |
-+----------------+----------------------------------------------------------+
-| **Source**     | https://github.com/CodeHalwell/power-pptx                |
+| **Source**     | https://github.com/lofcz/python-pptx2                    |
 +----------------+----------------------------------------------------------+
 
-.. _`Getting started`: https://codehalwell.github.io/power-pptx/getting-started/
-.. _`Advanced usage`: https://codehalwell.github.io/power-pptx/advanced/space-aware-authoring/
-.. _`Coding agents`: https://codehalwell.github.io/power-pptx/agents/
-.. _`API reference`: https://codehalwell.github.io/power-pptx/api/
+.. _`power-pptx`: https://github.com/CodeHalwell/power-pptx
 
 A typical use is generating a PowerPoint presentation from dynamic
 content such as a database query, an analytics output, an LLM payload,
@@ -68,7 +60,7 @@ together catch ~all real-world layout issues:
 3. ``slide.lint()`` catches what slipped through; ``auto_fix()`` (or
    the one-call ``slide.tidy()``) nudges off-slide shapes back inside.
 
-Reach for power-pptx whenever the deck is generated dynamically and
+Reach for python-pptx2 whenever the deck is generated dynamically and
 has to look right without manual cleanup.
 
 Installation
@@ -76,24 +68,25 @@ Installation
 
 Install from PyPI::
 
-    pip install power-pptx
+    pip install python-pptx2
 
 Then in Python::
 
-    from power_pptx import Presentation
+    from pptx2 import Presentation
 
-The 2.0 release renamed the importable package from ``pptx`` to
-``power_pptx`` so that ``power-pptx`` and the upstream ``python-pptx``
-distribution can be installed side-by-side without colliding on the
-top-level ``pptx`` module. To migrate code from ``power-pptx`` 1.x or
-``python-pptx`` 1.0.2, replace ``pptx`` with ``power_pptx`` in your
-imports.
+``python-pptx2`` imports as ``pptx2`` so it can sit beside upstream
+``python-pptx`` (``pptx``) and the parent fork ``power-pptx``
+(``power_pptx``). To migrate from those packages, replace
+``from pptx import`` / ``from power_pptx import`` with
+``from pptx2 import``.
 
 Optional dependencies:
 
 * ``cairosvg`` — install only if you want ``add_svg_picture(...)`` to
   auto-rasterise the PNG fallback.
 * ``pyyaml`` — install only if you want ``DesignTokens.from_yaml``.
+* ``python-pptx2[math]`` (``latex2mathml`` + ``mathml2omml``) — required
+  for ``slide.shapes.add_equation(...)`` / ``paragraph.add_math(...)``.
 * ``soffice`` (LibreOffice) on PATH — required for
   ``Presentation.render_thumbnails()``.
 * ``pdftoppm`` (Poppler) or ``pypdfium2`` — required for the
@@ -102,27 +95,27 @@ Optional dependencies:
 Claude Code skill
 -----------------
 
-power-pptx ships a Claude Code skill alongside the library — pip-install
+python-pptx2 ships a Claude Code skill alongside the library — pip-install
 the package and the skill files are already on disk inside it.  Install
 the skill into your local Claude Code skills directory with::
 
-    python -m power_pptx.skill install
+    python -m pptx2.skill install
 
 This copies ``SKILL.md`` and the ``references/`` directory into
-``~/.claude/skills/power-pptx/``.  Claude Code (and any compatible
+``~/.claude/skills/python-pptx2/``.  Claude Code (and any compatible
 Claude Agent SDK harness) will pick it up automatically the next time
 it starts.
 
 Other useful commands::
 
     # Print the skill source path inside the installed package
-    python -m power_pptx.skill path
+    python -m pptx2.skill path
 
     # Install into a custom directory
-    python -m power_pptx.skill install --target /path/to/skills/power-pptx
+    python -m pptx2.skill install --target /path/to/skills/python-pptx2
 
     # Refuse to overwrite an existing install
-    python -m power_pptx.skill install --no-overwrite
+    python -m pptx2.skill install --no-overwrite
 
 The skill documents the headline space-aware-authoring workflow, the
 ``BBox`` value object, the one-call ``add_text`` / ``add_arrow``
@@ -141,9 +134,9 @@ Quick start
 
 A minimal end-to-end deck-generation pattern::
 
-    from power_pptx import Presentation, BBox, audit
-    from power_pptx.diagrams import horizontal_pipeline
-    from power_pptx.util import Inches
+    from pptx2 import Presentation, BBox, audit
+    from pptx2.diagrams import horizontal_pipeline
+    from pptx2.util import Inches
 
     prs = Presentation()
     slide = prs.slides.add_slide(prs.slide_layouts[5])
@@ -201,7 +194,7 @@ regression test.
 
 * **Diagram recipes** — ``horizontal_pipeline``, ``vertical_pipeline``,
   ``hub_and_spoke``, ``cycle``, ``decision_tree``,
-  ``comparison_columns`` from ``power_pptx.diagrams`` cover ~80% of
+  ``comparison_columns`` from ``pptx2.diagrams`` cover ~80% of
   architecture-deck patterns.  Each takes a slide, a ``BBox``, and a
   content spec.
 
@@ -213,7 +206,7 @@ regression test.
   ``slide.find_empty_region(...)`` returns an unused area for
   greenfield placement.
 
-* **Whole-deck audit** — ``power_pptx.audit(prs)`` returns an
+* **Whole-deck audit** — ``pptx2.audit(prs)`` returns an
   ``AuditReport`` with lint issues, broken pictures, empty slides,
   uncommon-font warnings, and oversized-picture warnings.  Markdown
   output for chat replies.
@@ -229,7 +222,7 @@ regression test.
   context manager; per-slide and deck-wide transitions including
   Morph and the other ``p14:`` extension transitions.
 
-* **JSON authoring** — ``power_pptx.compose.from_spec(...)`` builds a
+* **JSON authoring** — ``pptx2.compose.from_spec(...)`` builds a
   deck from a JSON-shaped spec; ``import_slide`` and
   ``apply_template`` cover cross-presentation operations.
 
@@ -263,7 +256,7 @@ regression test.
   ``slide.smart_art[i].set_text([...])``.
 
 * **Slide thumbnails** — ``Presentation.render_thumbnails()`` or
-  ``power_pptx.render.render_slides(prs, slides=[0, 1, 2],
+  ``pptx2.render.render_slides(prs, slides=[0, 1, 2],
   name_template="slide-{:02d}.png")`` shells out to LibreOffice for
   PNG previews.
 
@@ -292,7 +285,7 @@ writes.
 Documentation
 -------------
 
-**Project site:** https://codehalwell.github.io/power-pptx/ — the
+**Project site:** https://github.com/lofcz/python-pptx2 — the
 Astro/React documentation site (source in ``site/``) with the
 `Getting started`_ guide, `Advanced usage`_ walkthroughs, a guide to
 `Coding agents`_ (the bundled Claude Code skill), and the full
@@ -302,7 +295,7 @@ The Sphinx documentation lives under ``docs/`` and covers both the
 inherited 1.0.2 API and every feature added by the fork.  Browse
 `examples with screenshots`_ to get a quick idea what you can do.
 
-The bundled Claude Code skill (``python -m power_pptx.skill install``)
+The bundled Claude Code skill (``python -m pptx2.skill install``)
 is the most up-to-date entry point for using the post-fork APIs.
 
 .. _`python-pptx`:

@@ -1,19 +1,19 @@
 # pyright: reportPrivateUsage=false
 
-"""Unit-test suite for `power_pptx.table` module."""
+"""Unit-test suite for `pptx2.table` module."""
 
 from __future__ import annotations
 
 import pytest
 
-from power_pptx.dml.color import RGBColor
-from power_pptx.dml.fill import FillFormat
-from power_pptx.dml.line import LineFormat
-from power_pptx.enum.text import MSO_ANCHOR
-from power_pptx.oxml.ns import qn
-from power_pptx.oxml.table import CT_Table, CT_TableCell, TcRange
-from power_pptx.shapes.graphfrm import GraphicFrame
-from power_pptx.table import (
+from pptx2.dml.color import RGBColor
+from pptx2.dml.fill import FillFormat
+from pptx2.dml.line import LineFormat
+from pptx2.enum.text import MSO_ANCHOR
+from pptx2.oxml.ns import qn
+from pptx2.oxml.table import CT_Table, CT_TableCell, TcRange
+from pptx2.shapes.graphfrm import GraphicFrame
+from pptx2.table import (
     Table,
     _BorderEdge,
     _Borders,
@@ -25,15 +25,15 @@ from power_pptx.table import (
     _Row,
     _RowCollection,
 )
-from power_pptx.text.text import TextFrame
-from power_pptx.util import Inches, Length, Pt
+from pptx2.text.text import TextFrame
+from pptx2.util import Inches, Length, Pt
 
 from .unitutil.cxml import element, xml
 from .unitutil.mock import call, class_mock, instance_mock, property_mock
 
 
 class DescribeTable(object):
-    """Unit-test suite for `power_pptx.table.Table` objects."""
+    """Unit-test suite for `pptx2.table.Table` objects."""
 
     def it_provides_access_to_its_cells(self, tbl_, tc_, _Cell_, cell_):
         row_idx, col_idx = 4, 2
@@ -50,7 +50,7 @@ class DescribeTable(object):
     def it_provides_access_to_its_columns(self, request):
         columns_ = instance_mock(request, _ColumnCollection)
         _ColumnCollection_ = class_mock(
-            request, "power_pptx.table._ColumnCollection", return_value=columns_
+            request, "pptx2.table._ColumnCollection", return_value=columns_
         )
         tbl = element("a:tbl")
         table = Table(tbl, None)
@@ -75,7 +75,7 @@ class DescribeTable(object):
 
     def it_provides_access_to_its_rows(self, request):
         rows_ = instance_mock(request, _RowCollection)
-        _RowCollection_ = class_mock(request, "power_pptx.table._RowCollection", return_value=rows_)
+        _RowCollection_ = class_mock(request, "pptx2.table._RowCollection", return_value=rows_)
         tbl = element("a:tbl")
         table = Table(tbl, None)
 
@@ -98,8 +98,8 @@ class DescribeTable(object):
         # See IMPROVEMENTS item 4 — ``horz_banding = False`` is not enough
         # to stop a built-in style from banding rows; the canonical fix is
         # to drop the ``<a:tableStyleId>`` entirely.
-        from power_pptx.oxml import parse_xml
-        from power_pptx.oxml.ns import nsdecls, qn
+        from pptx2.oxml import parse_xml
+        from pptx2.oxml.ns import nsdecls, qn
 
         tbl_xml = (
             "<a:tbl %s>\n"
@@ -158,7 +158,7 @@ class DescribeTable(object):
 
     @pytest.fixture
     def _Cell_(self, request):
-        return class_mock(request, "power_pptx.table._Cell")
+        return class_mock(request, "pptx2.table._Cell")
 
     @pytest.fixture
     def cell_(self, request):
@@ -244,7 +244,7 @@ class DescribeTableBooleanProperties(object):
 
 
 class Describe_Cell(object):
-    """Unit-test suite for `power_pptx.table._Cell` object."""
+    """Unit-test suite for `pptx2.table._Cell` object."""
 
     def it_is_equal_to_other_instance_having_same_tc(self):
         tc = element("a:tc")
@@ -604,7 +604,7 @@ class Describe_Cell(object):
 
     @pytest.fixture
     def TcRange_(self, request):
-        return class_mock(request, "power_pptx.table.TcRange")
+        return class_mock(request, "pptx2.table.TcRange")
 
     @pytest.fixture
     def tc_range_(self, request):
@@ -677,7 +677,7 @@ class Describe_CellCollection(object):
 
     @pytest.fixture
     def _Cell_(self, request):
-        return class_mock(request, "power_pptx.table._Cell")
+        return class_mock(request, "pptx2.table._Cell")
 
     @pytest.fixture
     def cell_(self, request):
@@ -843,7 +843,7 @@ class Describe_Row(object):
 
     @pytest.fixture
     def _CellCollection_(self, request, cells_):
-        return class_mock(request, "power_pptx.table._CellCollection", return_value=cells_)
+        return class_mock(request, "pptx2.table._CellCollection", return_value=cells_)
 
     @pytest.fixture
     def cells_(self, request):
@@ -908,7 +908,7 @@ class Describe_RowCollection(object):
 
 
 class Describe_Borders(object):
-    """Unit-test suite for `power_pptx.table._Borders` object."""
+    """Unit-test suite for `pptx2.table._Borders` object."""
 
     @pytest.mark.parametrize(
         ("attr", "expected_edge"),
@@ -1013,7 +1013,7 @@ class Describe_Borders(object):
         # Regression: the convenience helpers pre-wrapped color as
         # ``RGBColor(*color)``, which splat a hex string into six positional
         # args and raised. Hex strings must work like everywhere else.
-        from power_pptx.oxml.ns import qn
+        from pptx2.oxml.ns import qn
 
         tc = element("a:tc")
         borders = _Borders(tc)
@@ -1027,7 +1027,7 @@ class Describe_Borders(object):
 
     def it_accepts_a_hex_string_for_color_on_a_row_or_column(self):
         # Same regression for the row/column group helpers (_LineGroup).
-        from power_pptx.oxml.ns import qn
+        from pptx2.oxml.ns import qn
 
         tcs = [element("a:tc"), element("a:tc")]
         group = _LineGroup(tcs)
@@ -1066,7 +1066,7 @@ class Describe_Borders(object):
 
 
 class Describe_BorderEdge(object):
-    """Unit-test suite for `power_pptx.table._BorderEdge` object."""
+    """Unit-test suite for `pptx2.table._BorderEdge` object."""
 
     def it_returns_None_for_ln_when_no_tcPr(self):
         tc = element("a:tc")
@@ -1103,7 +1103,7 @@ class DescribeCellTextDirectionIntegration(object):
     """Round-trip and schema-validity checks for the new cell properties."""
 
     def _build_deck(self):
-        from power_pptx.api import Presentation
+        from pptx2.api import Presentation
 
         prs = Presentation()
         slide = prs.slides.add_slide(prs.slide_layouts[6])
@@ -1144,7 +1144,7 @@ class DescribeTableStyleGallery(object):
     """Unit-test suite for ``Table.style`` (the built-in table-style gallery)."""
 
     def _new_table(self, rows=2, cols=2):
-        from power_pptx import Presentation
+        from pptx2 import Presentation
 
         prs = Presentation()
         slide = prs.slides.add_slide(prs.slide_layouts[6])
@@ -1152,7 +1152,7 @@ class DescribeTableStyleGallery(object):
         return prs, gf.table
 
     def it_sets_the_style_by_friendly_name(self):
-        from power_pptx.table_styles import TABLE_STYLES
+        from pptx2.table_styles import TABLE_STYLES
 
         _, table = self._new_table()
 
@@ -1226,7 +1226,7 @@ class DescribeTableStyleGallery(object):
         assert table.style == "Medium Style 2 - Accent 1"
 
     def it_exposes_a_discoverable_name_to_guid_mapping(self):
-        from power_pptx.table_styles import TABLE_STYLES
+        from pptx2.table_styles import TABLE_STYLES
 
         assert TABLE_STYLES["Table Grid"] == "{5940675A-B579-460E-94D1-54222C63F5DA}"
         assert TABLE_STYLES["No Style, No Grid"] == "{2D5ABB26-0587-4C30-8999-92F81FD0307C}"
@@ -1243,7 +1243,7 @@ class DescribeTableStyleGallery(object):
         # style; PowerPoint silently applies no styling (or the wrong one)
         # for a GUID outside the published built-in set.  Spot-check the
         # families that were wrong, against Microsoft's hh273476 list.
-        from power_pptx.table_styles import TABLE_STYLES, name_for_guid
+        from pptx2.table_styles import TABLE_STYLES, name_for_guid
 
         assert TABLE_STYLES["Medium Style 2"] == "{073A0DAA-6AF3-43AB-8588-CEC1D06C72B9}"
         assert TABLE_STYLES["Medium Style 3"] == "{8EC20E35-A176-4012-BC5E-935CFFF8708E}"

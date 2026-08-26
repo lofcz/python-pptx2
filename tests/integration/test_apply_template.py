@@ -7,8 +7,8 @@ import zipfile
 
 import pytest
 
-from power_pptx import Presentation
-from power_pptx.util import Inches
+from pptx2 import Presentation
+from pptx2.util import Inches
 
 
 # ---------------------------------------------------------------------------

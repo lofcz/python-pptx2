@@ -2,10 +2,10 @@
 
 Importing this module also makes the suite runnable straight from a fresh
 source checkout (no install): it puts the repo's ``src/`` directory on
-``sys.path`` *before* importing ``power_pptx``. Every deck script imports
+``sys.path`` *before* importing ``pptx2``. Every deck script imports
 ``_util`` first, so this covers the standalone form
 (``python examples/stress_test/01_effects_torture.py``) too. A checkout's local
-source therefore takes precedence over any installed ``power-pptx`` — intended,
+source therefore takes precedence over any installed ``python-pptx2`` — intended,
 since the suite tests the tree it ships with.
 """
 
@@ -20,8 +20,8 @@ _SRC = HERE.parents[1] / "src"
 if _SRC.is_dir() and str(_SRC) not in sys.path:
     sys.path.insert(0, str(_SRC))
 
-from power_pptx import Presentation  # noqa: E402
-from power_pptx.util import Inches  # noqa: E402
+from pptx2 import Presentation  # noqa: E402
+from pptx2.util import Inches  # noqa: E402
 
 SLIDE_W = Inches(13.333)
 SLIDE_H = Inches(7.5)

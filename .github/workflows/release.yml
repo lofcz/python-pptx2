@@ -1,0 +1,192 @@
+name: release
+
+# PyPI Trusted Publishing matches the *entrypoint* workflow filename.
+# The pending publisher is bound to ``release.yml`` — do not rename this
+# file, and do not ``workflow_call`` the upload from another workflow.
+#
+# One file on purpose: tagging with ``GITHUB_TOKEN`` cannot start a
+# second workflow, so tag + build + upload all happen in this run.
+#
+#     master push with a new __version__  →  tag + GitHub release + PyPI
+#     master push with no version bump    →  no-op
+#     human-pushed vX.Y.Z tag             →  PyPI only
+#     workflow_dispatch                   →  tag if missing, then PyPI
+
+on:
+  push:
+    branches:
+      - master
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  plan:
+    name: Decide whether to tag and publish
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.decide.outputs.version }}
+      tag: ${{ steps.decide.outputs.tag }}
+      should_tag: ${{ steps.decide.outputs.should_tag }}
+      should_publish: ${{ steps.decide.outputs.should_publish }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Read version and compare to tags
+        id: decide
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          REF_TYPE: ${{ github.ref_type }}
+        run: |
+          set -euo pipefail
+          version=$(python -c "import re; print(re.search(r'__version__\s*=\s*[\"\']([^\"\']+)[\"\']', open('src/pptx2/__init__.py').read()).group(1))")
+          tag="v$version"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+
+          if git rev-parse -q --verify "refs/tags/$tag^{commit}" >/dev/null; then
+            tagged=true
+          else
+            tagged=false
+          fi
+
+          if [ "$REF_TYPE" = "tag" ]; then
+            echo "should_tag=false" >> "$GITHUB_OUTPUT"
+            echo "should_publish=true" >> "$GITHUB_OUTPUT"
+            echo "Tag push $GITHUB_REF — publishing."
+          elif [ "$tagged" = "false" ]; then
+            echo "should_tag=true" >> "$GITHUB_OUTPUT"
+            echo "should_publish=true" >> "$GITHUB_OUTPUT"
+            echo "No $tag tag — will create it and publish."
+          elif [ "$EVENT_NAME" = "workflow_dispatch" ]; then
+            echo "should_tag=false" >> "$GITHUB_OUTPUT"
+            echo "should_publish=true" >> "$GITHUB_OUTPUT"
+            echo "$tag already exists — publishing on manual dispatch."
+          else
+            echo "should_tag=false" >> "$GITHUB_OUTPUT"
+            echo "should_publish=false" >> "$GITHUB_OUTPUT"
+            echo "$tag already exists — no version bump. Skipping."
+          fi
+
+  tag:
+    name: Tag and create GitHub release
+    needs: plan
+    if: needs.plan.outputs.should_tag == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Extract release notes from HISTORY.rst
+        run: |
+          python <<'PYEOF' > release-notes.md
+          import re
+
+          version = "${{ needs.plan.outputs.version }}"
+          try:
+              content = open("HISTORY.rst", encoding="utf-8").read()
+          except FileNotFoundError:
+              print(f"Release {version}")
+              raise SystemExit(0)
+
+          pattern = re.compile(
+              r"^"
+              + re.escape(version)
+              + r"\s*\([^)]+\)\s*\n\++\s*\n(.*?)(?=^\S+\s*\([^)]+\)\s*\n\++|\Z)",
+              re.DOTALL | re.MULTILINE,
+          )
+          match = pattern.search(content)
+          if match is None:
+              print(f"Release {version}")
+          else:
+              body = match.group(1).strip()
+              print(body if body else f"Release {version}")
+          PYEOF
+
+      - name: Configure git identity
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Create and push annotated tag
+        run: |
+          git tag -a "${{ needs.plan.outputs.tag }}" \
+            -m "Release ${{ needs.plan.outputs.version }}"
+          git push origin "${{ needs.plan.outputs.tag }}"
+
+      - name: Create GitHub release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release create "${{ needs.plan.outputs.tag }}" \
+            --title  "${{ needs.plan.outputs.version }}" \
+            --notes-file release-notes.md \
+            --target "${{ github.sha }}"
+
+  build:
+    name: Build distribution
+    needs: [plan, tag]
+    if: >-
+      always()
+      && needs.plan.result == 'success'
+      && needs.plan.outputs.should_publish == 'true'
+      && (needs.tag.result == 'success' || needs.tag.result == 'skipped')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Set up Python
+        run: uv python install 3.12
+
+      - name: Build sdist and wheel
+        run: uv build
+
+      - name: Check distribution metadata
+        run: uv tool run --from twine twine check dist/*
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+  publish-pypi:
+    name: Publish to PyPI
+    needs: [plan, build]
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/p/python-pptx2
+    permissions:
+      id-token: write
+    steps:
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+
+      - name: Publish to PyPI
+        run: |
+          uv publish --trusted-publishing always \
+            --check-url https://pypi.org/simple/python-pptx2/

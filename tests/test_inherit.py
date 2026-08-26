@@ -1,14 +1,14 @@
-"""Unit-test suite for `power_pptx.inherit`."""
+"""Unit-test suite for `pptx2.inherit`."""
 
 from __future__ import annotations
 
 import pytest
 
-from power_pptx import Presentation
-from power_pptx.dml.color import RGBColor
-from power_pptx.enum.dml import MSO_THEME_COLOR
-from power_pptx.inherit import _apply_brightness, resolve_color
-from power_pptx.util import Inches
+from pptx2 import Presentation
+from pptx2.dml.color import RGBColor
+from pptx2.enum.dml import MSO_THEME_COLOR
+from pptx2.inherit import _apply_brightness, resolve_color
+from pptx2.util import Inches
 
 
 def _make_run():

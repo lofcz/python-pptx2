@@ -7,7 +7,7 @@ Specifies the color specification scheme
 
 Example::
 
-    from power_pptx.enum.dml import MSO_COLOR_TYPE
+    from pptx2.enum.dml import MSO_COLOR_TYPE
 
     assert shape.fill.fore_color.type == MSO_COLOR_TYPE.SCHEME
 

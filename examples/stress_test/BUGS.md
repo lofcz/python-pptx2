@@ -46,16 +46,16 @@ accepts; the fork had converted those to unsigned positive to satisfy the XSD
 `unsignedInt` type, overshooting past `2**31`.)
 
 ```python
-from power_pptx import Presentation
-from power_pptx.chart.data import CategoryChartData
-from power_pptx.enum.chart import XL_CHART_TYPE
+from pptx2 import Presentation
+from pptx2.chart.data import CategoryChartData
+from pptx2.enum.chart import XL_CHART_TYPE
 prs = Presentation(); s = prs.slides.add_slide(prs.slide_layouts[6])
 d = CategoryChartData(); d.categories = ["A","B","C"]; d.add_series("S",(1,2,3))
 s.shapes.add_chart(XL_CHART_TYPE.COLUMN_CLUSTERED, 0, 0, 5000000, 4000000, d)
 prs.save("one_chart.pptx")   # opened fine in python-pptx/LibreOffice; PowerPoint repaired it
 ```
 
-**Root cause / fix:** the hardcoded ids in `src/power_pptx/chart/xmlwriter.py`
+**Root cause / fix:** the hardcoded ids in `src/pptx2/chart/xmlwriter.py`
 (and the matching snippet fixtures) are now all in the valid signed-int32
 range `1 .. 2**31-1`. The `schema-validation` harness gained an explicit
 axis-id range check (`tests/schema/oxml_schema_validator.py`) — which the XSD
@@ -83,15 +83,15 @@ does for p14 *kinds* like Morph). Because the bare attribute is invalid,
 (FADE, PUSH, …) too — not just p14 kinds.
 
 ```python
-from power_pptx import Presentation
-from power_pptx.enum.presentation import MSO_TRANSITION_TYPE
+from pptx2 import Presentation
+from pptx2.enum.presentation import MSO_TRANSITION_TYPE
 prs = Presentation(); s = prs.slides.add_slide(prs.slide_layouts[6])
 s.transition.kind = MSO_TRANSITION_TYPE.FADE
 s.transition.duration = 800          # <-- produces invalid p14:dur
 # schema error: attribute '{…/2010/main}dur' is not allowed
 ```
 
-**Root cause:** `src/power_pptx/oxml/slide.py` — the duration setter writes the
+**Root cause:** `src/pptx2/oxml/slide.py` — the duration setter writes the
 `p14:dur` attribute without promoting the transition into the AlternateContent
 wrapper used for p14 kinds (see the wrapping helpers around lines 393–440).
 
@@ -106,16 +106,16 @@ series. `CT_RadarSer` does not allow `smooth` (only `…/val` then `extLst`), so
 the part is invalid. `LINE` charts are clean.
 
 ```python
-from power_pptx import Presentation
-from power_pptx.chart.data import CategoryChartData
-from power_pptx.enum.chart import XL_CHART_TYPE
+from pptx2 import Presentation
+from pptx2.chart.data import CategoryChartData
+from pptx2.enum.chart import XL_CHART_TYPE
 prs = Presentation(); s = prs.slides.add_slide(prs.slide_layouts[6])
 d = CategoryChartData(); d.categories = ["A","B","C"]; d.add_series("S",(1,2,3))
 s.shapes.add_chart(XL_CHART_TYPE.RADAR, 0, 0, 5000000, 4000000, d)
 # schema error: Element 'c:smooth': This element is not expected. Expected is (c:extLst)
 ```
 
-**Root cause:** `src/power_pptx/oxml/chart/series.py:150`
+**Root cause:** `src/pptx2/oxml/chart/series.py:150`
 (`smooth = ZeroOrOne("c:smooth", …)`) is on the shared series class, and the
 radar plot builder emits it. `smooth` should be suppressed for radar series.
 
@@ -134,7 +134,7 @@ three_d.preset_material = PresetMaterial.SOFT_METAL   # writes prstMaterial="sof
 # schema error: value 'softMetal' is not an element of the set {…, 'softmetal'}
 ```
 
-**Root cause:** `src/power_pptx/enum/dml.py:645`
+**Root cause:** `src/pptx2/enum/dml.py:645`
 `SOFT_METAL = (14, "softMetal", …)` — the XML value should be `"softmetal"`.
 
 ---
@@ -151,10 +151,10 @@ pic.effects.recolor = "washout"
 # schema error: Element 'a:biLevel': The attribute 'thresh' is required but missing.
 ```
 
-**Root cause:** `src/power_pptx/dml/picture.py:144` sets
+**Root cause:** `src/pptx2/dml/picture.py:144` sets
 `get_or_add_biLevel().thresh = 0.5`, but `thresh` is declared as
 `OptionalAttribute("thresh", ST_PositiveFixedPercentage, default=0.5)` in
-`src/power_pptx/oxml/dml/fill.py:262`. Because the assigned value (`0.5`) equals
+`src/pptx2/oxml/dml/fill.py:262`. Because the assigned value (`0.5`) equals
 the declared default, the serializer omits the attribute — and `thresh` is a
 **required** attribute on `CT_BiLevelEffect`. Declaring it as a
 `RequiredAttribute` (or writing it unconditionally) fixes it.
@@ -166,7 +166,7 @@ the declared default, the serializer omits the attribute — and `thresh` is a
 - **Round-trip (the release gate):** clean for every deck, including charts,
   3D, p14 morph/vortex/conveyor transitions, duotone pictures, SVG embedding,
   diagrams, tables with merged cells, and `import_slide` / `apply_template`.
-- **Reopen:** every saved deck re-opens in power-pptx.
+- **Reopen:** every saved deck re-opens in python-pptx2.
 - **Linter:** correctly flagged every planted overflow (now auto-fixed to
   `TEXT_TO_FIT_SHAPE`) and every off-slide shape (clamped back on-slide).
 - **`apply_palette` on pie/doughnut:** emits a helpful warning and auto-routes

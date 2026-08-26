@@ -10,7 +10,7 @@ text, surface, semantic positive/negative, and matched typography.
 
 from __future__ import annotations
 
-from power_pptx.design.tokens import DesignTokens
+from pptx2.design.tokens import DesignTokens
 
 
 def _make(palette: dict, heading_font: str = "Inter", body_font: str = "Inter") -> DesignTokens:

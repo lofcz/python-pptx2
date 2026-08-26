@@ -3,7 +3,7 @@
 Composition: from_spec, import_slide, apply_template
 =====================================================
 
-The :mod:`power_pptx.compose` package collects entry points for higher-level
+The :mod:`pptx2.compose` package collects entry points for higher-level
 authoring and cross-presentation operations.
 
 JSON authoring
@@ -13,7 +13,7 @@ JSON authoring
 otherwise).  The spec dict is validated for known keys and value
 shapes before construction (no JSON Schema is involved)::
 
-    from power_pptx.compose import from_spec
+    from pptx2.compose import from_spec
 
     prs = from_spec({
         "theme": {"palette": "modern_blue", "fonts": "inter"},
@@ -75,7 +75,7 @@ Entry keys:
      - Meaning
    * - ``left`` / ``top`` / ``width`` / ``height``
      - **Required.**  Plain numbers are inches (matching ``slide_size``);
-       pass a :class:`~power_pptx.util.Length` such as ``Inches(1.5)`` to
+       pass a :class:`~pptx2.util.Length` such as ``Inches(1.5)`` to
        opt out.
    * - ``name``
      - The shape's name, which doubles as the handle
@@ -126,8 +126,8 @@ Cross-presentation operations
 
 ::
 
-    from power_pptx import Presentation
-    from power_pptx.compose import import_slide, apply_template
+    from pptx2 import Presentation
+    from pptx2.compose import import_slide, apply_template
 
     src = Presentation("source.pptx")
     dst = Presentation("destination.pptx")

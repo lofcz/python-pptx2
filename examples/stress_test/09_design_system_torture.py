@@ -6,16 +6,16 @@ from __future__ import annotations
 
 from _util import blank, deck, save
 
-from power_pptx.design.layout import Grid, Stack
-from power_pptx.design.recipes import (
+from pptx2.design.layout import Grid, Stack
+from pptx2.design.recipes import (
     bullet_slide,
     kpi_slide,
     quote_slide,
     title_slide,
 )
-from power_pptx.design.tokens import DesignTokens
-from power_pptx.enum.shapes import MSO_SHAPE
-from power_pptx.util import Pt
+from pptx2.design.tokens import DesignTokens
+from pptx2.enum.shapes import MSO_SHAPE
+from pptx2.util import Pt
 
 TOKENS = DesignTokens.from_dict({
     "palette": {

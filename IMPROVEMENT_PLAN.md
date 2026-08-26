@@ -1,6 +1,6 @@
 # Improvement plan
 
-This is a candid, prioritized punch list for `power-pptx`, written
+This is a candid, prioritized punch list for `python-pptx2`, written
 from the perspective of someone who has just used the library — and
 the bundled Claude skill — to generate ten Fortune-500-style decks
 end-to-end. Items are grouped by severity so you can triage.
@@ -13,7 +13,7 @@ of API asymmetries** that turn into recurring footguns for both
 humans and LLM-driven authoring.
 
 Anywhere in this document where I write "the skill," I mean
-`.claude/skills/power-pptx/` — the bundled Anthropic Skill that
+`.claude/skills/python-pptx2/` — the bundled Anthropic Skill that
 guides Claude when generating decks.
 
 ---
@@ -42,7 +42,7 @@ this). The example decks in `examples/real_world/` have had all
 1. **Get a known-good reference.** Author the simplest possible
    auto-playing fade sequence in PowerPoint by hand (one slide,
    two shapes, both fade in on slide entry). Save it.
-2. **Diff the timing XML** against `power-pptx`'s output for the
+2. **Diff the timing XML** against `python-pptx2`'s output for the
    equivalent effect. The structural delta is the bug.
 3. Likely candidates worth checking:
    - Missing `<p:bldLst>` sibling to `<p:tnLst>` under
@@ -58,7 +58,7 @@ this). The example decks in `examples/real_world/` have had all
    is in, freeze the timing XML for a canonical 3-effect fade
    sequence as a test fixture. Any future change that diverges
    from the fixture either updates it intentionally or fails CI.
-5. **Until fixed**: mark `power_pptx.animation` as experimental
+5. **Until fixed**: mark `pptx2.animation` as experimental
    in its module docstring, in `references/animations.md`, and
    on the public docs page. Currently a user has no signal that
    the output won't play.
@@ -125,7 +125,7 @@ Right now:
 Every example deck I wrote needed a `hex_rgb` shim that handled
 both. This is a category of bug, not a one-off.
 
-**Action**: introduce `power_pptx._color._coerce(value) ->
+**Action**: introduce `pptx2._color._coerce(value) ->
 RGBColor` that accepts hex (with or without `#`), `RGBColor`,
 3-tuple. Route every public color-accepting setter through it,
 so `shape.fill.fore_color.rgb = "#06D6FE"` works the same as
@@ -225,12 +225,12 @@ example-deck authors in the source code, not the docs.
 
 ### 14. Update the bundled skill
 
-The skill (`.claude/skills/power-pptx/`) is the most
+The skill (`.claude/skills/python-pptx2/`) is the most
 direct lever for improving AI-driven authoring. Specific
 edits:
 
 - **`SKILL.md`** — add a `## House rules` entry: "Do not
-  generate `power_pptx.animation` calls until the playback
+  generate `pptx2.animation` calls until the playback
   bug is resolved. Use slide transitions instead — those
   round-trip and play correctly."
 - **`references/animations.md`** — top of file: a

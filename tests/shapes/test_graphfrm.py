@@ -1,17 +1,17 @@
-"""Unit-test suite for power_pptx.shapes.graphfrm module."""
+"""Unit-test suite for pptx2.shapes.graphfrm module."""
 
 from __future__ import annotations
 
 import pytest
 
-from power_pptx.chart.chart import Chart
-from power_pptx.enum.shapes import MSO_SHAPE_TYPE
-from power_pptx.parts.chart import ChartPart
-from power_pptx.parts.embeddedpackage import EmbeddedPackagePart
-from power_pptx.parts.slide import SlidePart
-from power_pptx.shapes.graphfrm import GraphicFrame, _OleFormat
-from power_pptx.shapes.shapetree import SlideShapes
-from power_pptx.spec import (
+from pptx2.chart.chart import Chart
+from pptx2.enum.shapes import MSO_SHAPE_TYPE
+from pptx2.parts.chart import ChartPart
+from pptx2.parts.embeddedpackage import EmbeddedPackagePart
+from pptx2.parts.slide import SlidePart
+from pptx2.shapes.graphfrm import GraphicFrame, _OleFormat
+from pptx2.shapes.shapetree import SlideShapes
+from pptx2.spec import (
     GRAPHIC_DATA_URI_CHART,
     GRAPHIC_DATA_URI_OLEOBJ,
     GRAPHIC_DATA_URI_TABLE,
@@ -22,7 +22,7 @@ from ..unitutil.mock import class_mock, instance_mock, property_mock
 
 
 class DescribeGraphicFrame(object):
-    """Unit-test suite for `power_pptx.shapes.graphfrm.GraphicFrame` object."""
+    """Unit-test suite for `pptx2.shapes.graphfrm.GraphicFrame` object."""
 
     def it_provides_access_to_the_chart_it_contains(
         self, request, has_chart_prop_, chart_part_, chart_
@@ -80,7 +80,7 @@ class DescribeGraphicFrame(object):
     def it_provides_access_to_the_OleFormat_object(self, request):
         ole_format_ = instance_mock(request, _OleFormat)
         _OleFormat_ = class_mock(
-            request, "power_pptx.shapes.graphfrm._OleFormat", return_value=ole_format_
+            request, "pptx2.shapes.graphfrm._OleFormat", return_value=ole_format_
         )
         graphicFrame = element(
             "p:graphicFrame/a:graphic/a:graphicData{uri=http://schemas.openxmlformats"
@@ -152,7 +152,7 @@ class DescribeGraphicFrame(object):
 
 
 class Describe_OleFormat(object):
-    """Unit-test suite for `power_pptx.shapes.graphfrm._OleFormat` object."""
+    """Unit-test suite for `pptx2.shapes.graphfrm._OleFormat` object."""
 
     def it_provides_access_to_the_OLE_object_blob(self, request):
         ole_obj_part_ = instance_mock(request, EmbeddedPackagePart, blob=b"0123456789")

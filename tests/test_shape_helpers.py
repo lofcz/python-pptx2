@@ -6,10 +6,10 @@ from __future__ import annotations
 
 import pytest
 
-from power_pptx import BBox, Presentation
-from power_pptx.enum.dml import MSO_LINE_END_TYPE
-from power_pptx.enum.shapes import MSO_CONNECTOR_TYPE, MSO_SHAPE
-from power_pptx.util import Inches, Pt
+from pptx2 import BBox, Presentation
+from pptx2.enum.dml import MSO_LINE_END_TYPE
+from pptx2.enum.shapes import MSO_CONNECTOR_TYPE, MSO_SHAPE
+from pptx2.util import Inches, Pt
 
 
 @pytest.fixture
@@ -77,7 +77,7 @@ class DescribeAddText:
         assert tx.text_frame.text == "positional"
 
     def it_applies_alignment_short_names(self, slide):
-        from power_pptx.enum.text import PP_PARAGRAPH_ALIGNMENT
+        from pptx2.enum.text import PP_PARAGRAPH_ALIGNMENT
 
         tx = slide.shapes.add_text(BBox.from_inches(0, 0, 4, 1), text="x", align="center")
         assert tx.text_frame.paragraphs[0].alignment == PP_PARAGRAPH_ALIGNMENT.CENTER

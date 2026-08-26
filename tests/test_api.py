@@ -1,4 +1,4 @@
-"""Unit-test suite for `power_pptx.api` module."""
+"""Unit-test suite for `pptx2.api` module."""
 
 from __future__ import annotations
 
@@ -6,10 +6,10 @@ import os
 
 import pytest
 
-import power_pptx
-from power_pptx.api import Presentation
-from power_pptx.opc.constants import CONTENT_TYPE as CT
-from power_pptx.parts.presentation import PresentationPart
+import pptx2
+from pptx2.api import Presentation
+from pptx2.opc.constants import CONTENT_TYPE as CT
+from pptx2.parts.presentation import PresentationPart
 
 from .unitutil.mock import class_mock, instance_mock
 
@@ -30,6 +30,7 @@ class DescribePackageSurface:
             "add_svg_figure",
             "add_html_figure",
             "FigureBackendUnavailable",
+            "MathBackendUnavailable",
             "add_kpi_card",
             "add_progress_bar",
             "add_gauge",
@@ -45,11 +46,11 @@ class DescribePackageSurface:
         ],
     )
     def it_exposes_each_documented_name_at_package_root(self, name):
-        assert hasattr(power_pptx, name), (
-            f"power_pptx.{name} is documented as a top-level export but "
+        assert hasattr(pptx2, name), (
+            f"pptx2.{name} is documented as a top-level export but "
             "is not importable from the package root."
         )
-        assert name in power_pptx.__all__
+        assert name in pptx2.__all__
 
 
 class DescribePresentation(object):
@@ -64,7 +65,7 @@ class DescribePresentation(object):
     @pytest.fixture
     def call_fixture(self, Package_, prs_, prs_part_):
         path = os.path.abspath(
-            os.path.join(os.path.split(power_pptx.__file__)[0], "templates", "default.pptx")
+            os.path.join(os.path.split(pptx2.__file__)[0], "templates", "default.pptx")
         )
         Package_.open.return_value.main_document_part = prs_part_
         prs_part_.content_type = CT.PML_PRESENTATION_MAIN
@@ -75,7 +76,7 @@ class DescribePresentation(object):
 
     @pytest.fixture
     def Package_(self, request):
-        return class_mock(request, "power_pptx.api.Package")
+        return class_mock(request, "pptx2.api.Package")
 
     @pytest.fixture
     def prs_(self, request):

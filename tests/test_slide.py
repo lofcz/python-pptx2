@@ -1,20 +1,20 @@
 # pyright: reportPrivateUsage=false
 
-"""Unit-test suite for `power_pptx.slide` module."""
+"""Unit-test suite for `pptx2.slide` module."""
 
 from __future__ import annotations
 
 import pytest
 
-from power_pptx.dml.fill import FillFormat
-from power_pptx.enum.shapes import PP_PLACEHOLDER
-from power_pptx.package import Package
-from power_pptx.parts.presentation import PresentationPart
-from power_pptx.parts.slide import SlideLayoutPart, SlideMasterPart, SlidePart
-from power_pptx.presentation import Presentation
-from power_pptx.shapes.base import BaseShape
-from power_pptx.shapes.placeholder import LayoutPlaceholder, NotesSlidePlaceholder
-from power_pptx.shapes.shapetree import (
+from pptx2.dml.fill import FillFormat
+from pptx2.enum.shapes import PP_PLACEHOLDER
+from pptx2.package import Package
+from pptx2.parts.presentation import PresentationPart
+from pptx2.parts.slide import SlideLayoutPart, SlideMasterPart, SlidePart
+from pptx2.presentation import Presentation
+from pptx2.shapes.base import BaseShape
+from pptx2.shapes.placeholder import LayoutPlaceholder, NotesSlidePlaceholder
+from pptx2.shapes.shapetree import (
     LayoutPlaceholders,
     LayoutShapes,
     MasterPlaceholders,
@@ -24,8 +24,8 @@ from power_pptx.shapes.shapetree import (
     SlidePlaceholders,
     SlideShapes,
 )
-from power_pptx.enum.presentation import MSO_TRANSITION_TYPE
-from power_pptx.slide import (
+from pptx2.enum.presentation import MSO_TRANSITION_TYPE
+from pptx2.slide import (
     NotesMaster,
     NotesSlide,
     Slide,
@@ -39,14 +39,14 @@ from power_pptx.slide import (
     _BaseMaster,
     _BaseSlide,
 )
-from power_pptx.text.text import TextFrame
+from pptx2.text.text import TextFrame
 
 from .unitutil.cxml import element, xml
 from .unitutil.mock import call, class_mock, instance_mock, method_mock, property_mock
 
 
 class Describe_BaseSlide(object):
-    """Unit-test suite for `power_pptx.slide._BaseSlide` objects."""
+    """Unit-test suite for `pptx2.slide._BaseSlide` objects."""
 
     def it_knows_its_name(self, name_get_fixture):
         base_slide, expected_value = name_get_fixture
@@ -101,7 +101,7 @@ class Describe_BaseSlide(object):
 
     @pytest.fixture
     def _Background_(self, request):
-        return class_mock(request, "power_pptx.slide._Background")
+        return class_mock(request, "pptx2.slide._Background")
 
     @pytest.fixture
     def background_(self, request):
@@ -109,7 +109,7 @@ class Describe_BaseSlide(object):
 
 
 class Describe_BaseMaster(object):
-    """Unit-test suite for `power_pptx.slide._BaseMaster` objects."""
+    """Unit-test suite for `pptx2.slide._BaseMaster` objects."""
 
     def it_is_a_BaseSlide_subclass(self, subclass_fixture):
         base_master = subclass_fixture
@@ -151,11 +151,11 @@ class Describe_BaseMaster(object):
 
     @pytest.fixture
     def MasterPlaceholders_(self, request, placeholders_):
-        return class_mock(request, "power_pptx.slide.MasterPlaceholders", return_value=placeholders_)
+        return class_mock(request, "pptx2.slide.MasterPlaceholders", return_value=placeholders_)
 
     @pytest.fixture
     def MasterShapes_(self, request, shapes_):
-        return class_mock(request, "power_pptx.slide.MasterShapes", return_value=shapes_)
+        return class_mock(request, "pptx2.slide.MasterShapes", return_value=shapes_)
 
     @pytest.fixture
     def placeholders_(self, request):
@@ -167,7 +167,7 @@ class Describe_BaseMaster(object):
 
 
 class DescribeNotesSlide(object):
-    """Unit-test suite for `power_pptx.slide.NotesSlide` objects."""
+    """Unit-test suite for `pptx2.slide.NotesSlide` objects."""
 
     def it_can_clone_the_notes_master_placeholders(self, request, notes_master_, shapes_):
         placeholders = notes_master_.placeholders = (
@@ -269,11 +269,11 @@ class DescribeNotesSlide(object):
 
     @pytest.fixture
     def NotesSlidePlaceholders_(self, request, placeholders_):
-        return class_mock(request, "power_pptx.slide.NotesSlidePlaceholders", return_value=placeholders_)
+        return class_mock(request, "pptx2.slide.NotesSlidePlaceholders", return_value=placeholders_)
 
     @pytest.fixture
     def NotesSlideShapes_(self, request, shapes_):
-        return class_mock(request, "power_pptx.slide.NotesSlideShapes", return_value=shapes_)
+        return class_mock(request, "pptx2.slide.NotesSlideShapes", return_value=shapes_)
 
     @pytest.fixture
     def placeholder_(self, request):
@@ -297,7 +297,7 @@ class DescribeNotesSlide(object):
 
 
 class DescribeSlide(object):
-    """Unit-test suite for `power_pptx.slide.Slide` objects."""
+    """Unit-test suite for `pptx2.slide.Slide` objects."""
 
     def it_is_a_BaseSlide_subclass(self, subclass_fixture):
         slide = subclass_fixture
@@ -433,11 +433,11 @@ class DescribeSlide(object):
 
     @pytest.fixture
     def SlidePlaceholders_(self, request, placeholders_):
-        return class_mock(request, "power_pptx.slide.SlidePlaceholders", return_value=placeholders_)
+        return class_mock(request, "pptx2.slide.SlidePlaceholders", return_value=placeholders_)
 
     @pytest.fixture
     def SlideShapes_(self, request, shapes_):
-        return class_mock(request, "power_pptx.slide.SlideShapes", return_value=shapes_)
+        return class_mock(request, "pptx2.slide.SlideShapes", return_value=shapes_)
 
     @pytest.fixture
     def shapes_(self, request):
@@ -453,7 +453,7 @@ class DescribeSlide(object):
 
 
 class DescribeSlideTransition(object):
-    """Unit-test suite for `power_pptx.slide.SlideTransition` objects."""
+    """Unit-test suite for `pptx2.slide.SlideTransition` objects."""
 
     def it_returns_None_when_no_transition_is_set(self):
         sld = element("p:sld/p:cSld")
@@ -650,7 +650,7 @@ class DescribeSlideTransition(object):
 
 
 class DescribeSlides(object):
-    """Unit-test suite for `power_pptx.slide.Slides` objects."""
+    """Unit-test suite for `pptx2.slide.Slides` objects."""
 
     def it_supports_indexed_access(self, getitem_fixture):
         slides, prs_part_, rId, slide_ = getitem_fixture
@@ -798,7 +798,7 @@ class DescribeSlides(object):
 
 def _three_slide_prs():
     """Return a fresh |Presentation| with three blank slides added."""
-    from power_pptx.api import Presentation as PresentationFactory
+    from pptx2.api import Presentation as PresentationFactory
 
     prs = PresentationFactory()
     layout = prs.slide_layouts[6]
@@ -927,7 +927,7 @@ class DescribeSlideReorderAndNotes(object):
 
 
 class DescribeSlideLayout(object):
-    """Unit-test suite for `power_pptx.slide.SlideLayout` objects."""
+    """Unit-test suite for `pptx2.slide.SlideLayout` objects."""
 
     def it_is_a_BaseSlide_subclass(self):
         slide_layout = SlideLayout(None, None)
@@ -1020,11 +1020,11 @@ class DescribeSlideLayout(object):
 
     @pytest.fixture
     def LayoutPlaceholders_(self, request, placeholders_):
-        return class_mock(request, "power_pptx.slide.LayoutPlaceholders", return_value=placeholders_)
+        return class_mock(request, "pptx2.slide.LayoutPlaceholders", return_value=placeholders_)
 
     @pytest.fixture
     def LayoutShapes_(self, request, shapes_):
-        return class_mock(request, "power_pptx.slide.LayoutShapes", return_value=shapes_)
+        return class_mock(request, "pptx2.slide.LayoutShapes", return_value=shapes_)
 
     @pytest.fixture
     def package_(self, request):
@@ -1080,7 +1080,7 @@ class DescribeSlideLayout(object):
 
 
 class DescribeSlideLayouts(object):
-    """Unit-test suite for `power_pptx.slide.SlideLayouts` objects."""
+    """Unit-test suite for `pptx2.slide.SlideLayouts` objects."""
 
     def it_supports_len(self, len_fixture):
         slide_layouts, expected_value = len_fixture
@@ -1235,7 +1235,7 @@ class DescribeSlideLayouts(object):
 
 
 class DescribeSlideMaster(object):
-    """Unit-test suite for `power_pptx.slide.SlideMaster` objects."""
+    """Unit-test suite for `pptx2.slide.SlideMaster` objects."""
 
     def it_is_a_BaseMaster_subclass(self, subclass_fixture):
         slide_master = subclass_fixture
@@ -1264,7 +1264,7 @@ class DescribeSlideMaster(object):
 
     @pytest.fixture
     def SlideLayouts_(self, request, slide_layouts_):
-        return class_mock(request, "power_pptx.slide.SlideLayouts", return_value=slide_layouts_)
+        return class_mock(request, "pptx2.slide.SlideLayouts", return_value=slide_layouts_)
 
     @pytest.fixture
     def slide_layouts_(self, request):
@@ -1272,7 +1272,7 @@ class DescribeSlideMaster(object):
 
 
 class DescribeSlideMasters(object):
-    """Unit-test suite for `power_pptx.slide.SlideMasters` objects."""
+    """Unit-test suite for `pptx2.slide.SlideMasters` objects."""
 
     def it_knows_how_many_masters_it_contains(self, len_fixture):
         slide_masters, expected_value = len_fixture
@@ -1348,7 +1348,7 @@ class DescribeSlideMasters(object):
 
 
 class Describe_Background(object):
-    """Unit-test suite for `power_pptx.slide._Background` objects."""
+    """Unit-test suite for `pptx2.slide._Background` objects."""
 
     @pytest.mark.parametrize(
         "cSld_xml, expected_cxml",

@@ -32,7 +32,7 @@ Color values: hex strings, RGBColor, or 3-tuples
 Every public color-accepting setter accepts the same "color-like"
 inputs:
 
-* :class:`~power_pptx.dml.color.RGBColor`,
+* :class:`~pptx2.dml.color.RGBColor`,
 * a 6-digit hex string with or without ``"#"`` (``"#06D6FE"`` or
   ``"06D6FE"``), or
 * a 3-tuple of ``int`` in ``[0, 255]``.
@@ -44,16 +44,16 @@ So this works uniformly::
     shape.fill.fore_color.rgb = RGBColor(6, 214, 254)
 
 Older code may have built ``hex_rgb`` shims.  Those are no longer
-needed; reach for :func:`power_pptx._color.coerce_color` if you
+needed; reach for :func:`pptx2._color.coerce_color` if you
 need the same coercion in your own helpers.
 
 ``RGBColor.from_string`` is deprecated; use ``from_hex``
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-:meth:`RGBColor.from_string <power_pptx.dml.color.RGBColor.from_string>`
+:meth:`RGBColor.from_string <pptx2.dml.color.RGBColor.from_string>`
 emits a :class:`DeprecationWarning` and will be removed in a future
 major release.  :meth:`RGBColor.from_hex
-<power_pptx.dml.color.RGBColor.from_hex>` accepts the leading ``"#"``
+<pptx2.dml.color.RGBColor.from_hex>` accepts the leading ``"#"``
 naturally and is the supported path::
 
     RGBColor.from_hex("#3C2F80")   # works
@@ -83,7 +83,7 @@ every slide regardless.
 ------------------------------------------------------
 
 The ``legend_position`` key in a quick-layout spec accepts both the
-:class:`~power_pptx.enum.chart.XL_LEGEND_POSITION` enum *and* its
+:class:`~pptx2.enum.chart.XL_LEGEND_POSITION` enum *and* its
 lowercase string name::
 
     apply_quick_layout(
@@ -98,11 +98,11 @@ supported names.
 ``auto_fix()`` now handles TextOverflow
 ---------------------------------------
 
-When the linter detects :class:`~power_pptx.lint.TextOverflow`, calling
-:meth:`SlideLintReport.auto_fix() <power_pptx.lint.SlideLintReport.auto_fix>`
+When the linter detects :class:`~pptx2.lint.TextOverflow`, calling
+:meth:`SlideLintReport.auto_fix() <pptx2.lint.SlideLintReport.auto_fix>`
 flips the offending text frame's ``auto_size`` to
 :attr:`MSO_AUTO_SIZE.TEXT_TO_FIT_SHAPE
-<power_pptx.enum.text.MSO_AUTO_SIZE.TEXT_TO_FIT_SHAPE>` so PowerPoint
+<pptx2.enum.text.MSO_AUTO_SIZE.TEXT_TO_FIT_SHAPE>` so PowerPoint
 shrinks the runs at render time.  Frames with an explicit auto-size
 (``SHAPE_TO_FIT_TEXT`` or ``TEXT_TO_FIT_SHAPE``) are skipped — the
 fixer respects designer choice.
@@ -126,8 +126,8 @@ The recipe-anchors API (``slide.title_shape`` / ``body_zone`` /
 ``chart.element`` does not give you the parent shape
 ----------------------------------------------------
 
-:attr:`chart.shape <power_pptx.chart.chart.Chart.shape>` (added in
-2.6) returns the :class:`~power_pptx.shapes.graphfrm.GraphicFrame` that
+:attr:`chart.shape <pptx2.chart.chart.Chart.shape>` (added in
+2.6) returns the :class:`~pptx2.shapes.graphfrm.GraphicFrame` that
 contains the chart, when the chart was reached via
 ``slide.shapes.add_chart(...).chart`` or ``slide.shapes[i].chart``.
 
@@ -147,7 +147,7 @@ Setting per-run ``font.name``, ``font.size``, ``font.color.rgb`` on
 every paragraph in a card is the single most tedious thing about
 generating styled content.  Use
 :meth:`TextFrame.set_paragraph_defaults
-<power_pptx.text.text.TextFrame.set_paragraph_defaults>` instead::
+<pptx2.text.text.TextFrame.set_paragraph_defaults>` instead::
 
     tf.text = "first line\nsecond line"
     tf.set_paragraph_defaults(
@@ -179,7 +179,7 @@ mitigations now ship:
    larger shape, drawn on top" — the canonical layered-design pattern
    no longer fires a collision.
 2. **Batch tagging** via :meth:`Slide.lint_group_overlaps
-   <power_pptx.slide.Slide.lint_group_overlaps>`::
+   <pptx2.slide.Slide.lint_group_overlaps>`::
 
        slide.lint_group_overlaps(card, accent_bar, label, value)
 
@@ -225,7 +225,7 @@ deprecated ``shadow.inherit = False``, which only writes an empty
 rendered card still has one.
 
 **Workaround**: call :meth:`ShadowFormat.clear
-<power_pptx.dml.effect.ShadowFormat.clear>`.  It drops the explicit
+<pptx2.dml.effect.ShadowFormat.clear>`.  It drops the explicit
 shadow elements *and* re-points the effect reference at the theme's
 empty slot, leaving other effects (glow, soft edges, blur, reflection)
 intact::
@@ -239,7 +239,7 @@ Corner radius is a fraction, not a length
 side, so ``0.045`` is a different physical radius on every
 differently-sized card — which is why hand-tuned values never quite
 match across a deck.  Use :attr:`Shape.corner_radius
-<power_pptx.shapes.autoshape.Shape.corner_radius>`, which converts to
+<pptx2.shapes.autoshape.Shape.corner_radius>`, which converts to
 and from a real length::
 
     card.corner_radius = Pt(6)
@@ -247,7 +247,7 @@ and from a real length::
 ``fit_text`` needs the font to be installed
 -------------------------------------------
 
-:meth:`TextFrame.fit_text <power_pptx.text.text.TextFrame.fit_text>`
+:meth:`TextFrame.fit_text <pptx2.text.text.TextFrame.fit_text>`
 measures with real font metrics read from the machine running the
 build.  When the requested family isn't installed — the normal case for
 a brand display face inside a container or CI runner — measurement
@@ -255,7 +255,7 @@ falls back to Pillow's bundled default font, and the "text will not
 overflow" guarantee degrades to a best guess.
 
 Naming a family that isn't installed now emits a
-:class:`~power_pptx.exc.FontMetricsWarning`.  Omitting ``font_family``
+:class:`~pptx2.exc.FontMetricsWarning`.  Omitting ``font_family``
 does not — no particular face was requested — while passing
 ``"Calibri"`` explicitly does.  Three ways to keep the guarantee, best
 first::
@@ -268,11 +268,11 @@ first::
     tf.fit_text("Inter", max_size=24, strict=True)
 
     # 3. degrade deliberately to a family you know is present
-    from power_pptx.text.fonts import font_is_installed
+    from pptx2.text.fonts import font_is_installed
     family = "Inter" if font_is_installed("Inter") else "DejaVu Sans"
     tf.fit_text(family, max_size=24)
 
-:func:`power_pptx.text.fonts.installed_font_families` lists what the
+:func:`pptx2.text.fonts.installed_font_families` lists what the
 build machine can actually measure.  ``slide.lint()`` is unaffected —
 its overflow check uses a font-agnostic character-width heuristic — so
 the lint pass remains worth running when the metrics are approximate.

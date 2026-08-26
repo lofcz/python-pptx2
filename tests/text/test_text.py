@@ -1,6 +1,6 @@
 # pyright: reportPrivateUsage=false
 
-"""Unit-test suite for `power_pptx.text.text` module."""
+"""Unit-test suite for `pptx2.text.text` module."""
 
 from __future__ import annotations
 
@@ -9,20 +9,20 @@ from typing import TYPE_CHECKING, cast
 
 import pytest
 
-from power_pptx import Presentation
-from power_pptx.dml.color import ColorFormat
-from power_pptx.dml.effect import GlowFormat, ShadowFormat
-from power_pptx.dml.fill import FillFormat
-from power_pptx.dml.line import LineFormat
-from power_pptx.enum.lang import MSO_LANGUAGE_ID
-from power_pptx.enum.text import MSO_ANCHOR, MSO_AUTO_SIZE, MSO_UNDERLINE, PP_ALIGN
-from power_pptx.exc import FontMetricsWarning
-from power_pptx.opc.constants import RELATIONSHIP_TYPE as RT
-from power_pptx.opc.package import XmlPart
-from power_pptx.oxml.ns import qn
-from power_pptx.shapes.autoshape import Shape
-from power_pptx.text.text import Font, TextFrame, _Hyperlink, _Paragraph, _Run
-from power_pptx.util import Inches, Pt
+from pptx2 import Presentation
+from pptx2.dml.color import ColorFormat
+from pptx2.dml.effect import GlowFormat, ShadowFormat
+from pptx2.dml.fill import FillFormat
+from pptx2.dml.line import LineFormat
+from pptx2.enum.lang import MSO_LANGUAGE_ID
+from pptx2.enum.text import MSO_ANCHOR, MSO_AUTO_SIZE, MSO_UNDERLINE, PP_ALIGN
+from pptx2.exc import FontMetricsWarning
+from pptx2.opc.constants import RELATIONSHIP_TYPE as RT
+from pptx2.opc.package import XmlPart
+from pptx2.oxml.ns import qn
+from pptx2.shapes.autoshape import Shape
+from pptx2.text.text import Font, TextFrame, _Hyperlink, _Paragraph, _Run
+from pptx2.util import Inches, Pt
 
 from ..oxml.unitdata.text import a_p, a_t, an_hlinkClick, an_r, an_rPr
 from ..unitutil.cxml import element, xml
@@ -36,11 +36,11 @@ from ..unitutil.mock import (
 )
 
 if TYPE_CHECKING:
-    from power_pptx.oxml.text import CT_TextBody, CT_TextParagraph
+    from pptx2.oxml.text import CT_TextBody, CT_TextParagraph
 
 
 class DescribeTextFrame(object):
-    """Unit-test suite for `power_pptx.text.text.TextFrame` object."""
+    """Unit-test suite for `pptx2.text.text.TextFrame` object."""
 
     def it_can_add_a_paragraph_to_itself(self, add_paragraph_fixture):
         text_frame, expected_xml = add_paragraph_fixture
@@ -502,7 +502,7 @@ class DescribeTextFrame(object):
 
     @pytest.fixture
     def find_font_file_(self, request):
-        return function_mock(request, "power_pptx.text.text.find_font_file")
+        return function_mock(request, "pptx2.text.text.find_font_file")
 
     @pytest.fixture
     def paragraphs_prop_(self, request):
@@ -510,7 +510,7 @@ class DescribeTextFrame(object):
 
     @pytest.fixture
     def TextFitter_(self, request):
-        return class_mock(request, "power_pptx.text.text.TextFitter")
+        return class_mock(request, "pptx2.text.text.TextFitter")
 
     @pytest.fixture
     def text_frame_with_parent_(self, request):
@@ -524,7 +524,7 @@ class DescribeTextFrame(object):
 
 
 class DescribeFont(object):
-    """Unit-test suite for `power_pptx.text.text.Font` object."""
+    """Unit-test suite for `pptx2.text.text.Font` object."""
 
     def it_knows_its_bold_setting(self, bold_get_fixture):
         font, expected_value = bold_get_fixture
@@ -909,7 +909,7 @@ class DescribeFont(object):
 
 
 class Describe_Hyperlink(object):
-    """Unit-test suite for `power_pptx.text.text._Hyperlink` object."""
+    """Unit-test suite for `pptx2.text.text._Hyperlink` object."""
 
     def it_knows_the_target_url_of_the_hyperlink(self, hlink_with_url_):
         hlink, rId, url = hlink_with_url_
@@ -1070,7 +1070,7 @@ class Describe_Hyperlink(object):
 
 
 class Describe_Paragraph(object):
-    """Unit test suite for power_pptx.text.text._Paragraph object."""
+    """Unit test suite for pptx2.text.text._Paragraph object."""
 
     def it_can_add_a_line_break(self, line_break_fixture):
         paragraph, expected_xml = line_break_fixture
@@ -1522,7 +1522,7 @@ class Describe_Paragraph(object):
 
     @pytest.fixture
     def Font_(self, request):
-        return class_mock(request, "power_pptx.text.text.Font")
+        return class_mock(request, "pptx2.text.text.Font")
 
     @pytest.fixture
     def p_bldr(self):
@@ -1539,7 +1539,7 @@ class Describe_Paragraph(object):
 
 
 class Describe_Run(object):
-    """Unit-test suite for `power_pptx.text.text._Run` object."""
+    """Unit-test suite for `pptx2.text.text._Run` object."""
 
     def it_provides_access_to_its_font(self, font_fixture):
         run, rPr, Font_, font_ = font_fixture
@@ -1598,7 +1598,7 @@ class Describe_Run(object):
 
     @pytest.fixture
     def Font_(self, request, font_):
-        return class_mock(request, "power_pptx.text.text.Font", return_value=font_)
+        return class_mock(request, "pptx2.text.text.Font", return_value=font_)
 
     @pytest.fixture
     def font_(self, request):
@@ -1606,7 +1606,7 @@ class Describe_Run(object):
 
     @pytest.fixture
     def _Hyperlink_(self, request, hlink_):
-        return class_mock(request, "power_pptx.text.text._Hyperlink", return_value=hlink_)
+        return class_mock(request, "pptx2.text.text._Hyperlink", return_value=hlink_)
 
     @pytest.fixture
     def hlink_(self, request):
@@ -1615,7 +1615,7 @@ class Describe_Run(object):
 
 def _build_font_effects_deck():
     """Return a `Presentation` with a textbox run carrying outline/shadow/glow."""
-    from power_pptx import Presentation
+    from pptx2 import Presentation
 
     prs = Presentation()
     slide = prs.slides.add_slide(prs.slide_layouts[6])
@@ -1634,7 +1634,7 @@ def _build_font_effects_deck():
 
 def _build_text_layout_deck():
     """Return a `Presentation` exercising rtl, start_at, columns, and tab stops."""
-    from power_pptx import Presentation
+    from pptx2 import Presentation
 
     prs = Presentation()
     slide = prs.slides.add_slide(prs.slide_layouts[6])
@@ -1716,13 +1716,13 @@ class DescribeFitTextFontMetrics(object):
         assert text_frame_.paragraphs[0].runs[0].font.size == Pt(size)
 
     def it_warns_when_the_named_family_is_not_installed(self, text_frame_, request):
-        function_mock(request, "power_pptx.text.text.find_font_file", return_value=None)
+        function_mock(request, "pptx2.text.text.find_font_file", return_value=None)
 
         with pytest.warns(FontMetricsWarning, match="'Instrument Serif' is not installed"):
             text_frame_.fit_text("Instrument Serif", max_size=40)
 
     def but_it_stays_quiet_when_no_family_was_asked_for(self, text_frame_, request):
-        function_mock(request, "power_pptx.text.text.find_font_file", return_value=None)
+        function_mock(request, "pptx2.text.text.find_font_file", return_value=None)
 
         with warnings.catch_warnings():
             warnings.simplefilter("error")
@@ -1732,7 +1732,7 @@ class DescribeFitTextFontMetrics(object):
         # An omitted argument and an explicit "Calibri" are different requests:
         # the second one names a face, so a fallback breaks a promise made to
         # that caller and has to be audible.
-        function_mock(request, "power_pptx.text.text.find_font_file", return_value=None)
+        function_mock(request, "pptx2.text.text.find_font_file", return_value=None)
 
         with pytest.warns(FontMetricsWarning, match="'Calibri' is not installed"):
             text_frame_.fit_text("Calibri", max_size=40)
@@ -1741,9 +1741,9 @@ class DescribeFitTextFontMetrics(object):
         # Measurement is mocked out so this holds on a container with no fonts
         # installed at all — the point under test is that an explicit
         # `font_file` short-circuits the lookup, not how it measures.
-        find_font_file_ = function_mock(request, "power_pptx.text.text.find_font_file")
+        find_font_file_ = function_mock(request, "pptx2.text.text.find_font_file")
         function_mock(
-            request, "power_pptx.text.text.TextFitter.best_fit_font_size", return_value=12
+            request, "pptx2.text.text.TextFitter.best_fit_font_size", return_value=12
         )
 
         with warnings.catch_warnings():
@@ -1754,13 +1754,13 @@ class DescribeFitTextFontMetrics(object):
         find_font_file_.assert_not_called()
 
     def it_raises_under_strict_when_metrics_are_unavailable(self, text_frame_, request):
-        function_mock(request, "power_pptx.text.text.find_font_file", return_value=None)
+        function_mock(request, "pptx2.text.text.find_font_file", return_value=None)
 
         with pytest.raises(ValueError, match="fit_text.strict=True."):
             text_frame_.fit_text("Inter", max_size=40, strict=True)
 
     def and_strict_covers_the_default_family_too(self, text_frame_, request):
-        function_mock(request, "power_pptx.text.text.find_font_file", return_value=None)
+        function_mock(request, "pptx2.text.text.find_font_file", return_value=None)
 
         with pytest.raises(ValueError, match="not installed"):
             text_frame_.fit_text(max_size=40, strict=True)

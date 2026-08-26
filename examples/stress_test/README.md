@@ -32,7 +32,7 @@ many issues as possible):
 3. **round-trip** — save → reopen → save leaves every XML part byte-identical
    after c14n canonicalisation (the project's release gate, mirrors
    `tests/integration/round_trip.py`).
-4. **reopen** — the saved `.pptx` re-opens in power-pptx.
+4. **reopen** — the saved `.pptx` re-opens in python-pptx2.
 5. **schema** — every part validates against the bundled ISO-29500 XSDs via
    `tests/schema/oxml_schema_validator`. This is the check that catches the
    "opens in python-pptx / LibreOffice but Microsoft PowerPoint repairs it"

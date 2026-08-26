@@ -1,4 +1,4 @@
-"""Integration tests for the ``power_pptx.compose`` package.
+"""Integration tests for the ``pptx2.compose`` package.
 
 These guard the public surface that Phase 7 promises:
 ``from_spec`` / ``import_slide`` / ``apply_template`` are all importable
@@ -8,22 +8,22 @@ by their own dedicated test suites; this file just locks in re-exports.
 
 from __future__ import annotations
 
-import power_pptx.compose as compose
+import pptx2.compose as compose
 
 
 class Describe_compose_package:
     def it_reexports_from_spec(self):
-        from power_pptx.compose.from_spec import from_spec
+        from pptx2.compose.from_spec import from_spec
 
         assert compose.from_spec is from_spec
 
     def it_reexports_import_slide(self):
-        from power_pptx._slide_importer import import_slide
+        from pptx2._slide_importer import import_slide
 
         assert compose.import_slide is import_slide
 
     def it_reexports_apply_template(self):
-        from power_pptx._template_applier import apply_template
+        from pptx2._template_applier import apply_template
 
         assert compose.apply_template is apply_template
 

@@ -5,17 +5,17 @@ this repository.
 
 ## What this project is
 
-**power-pptx** is the actively-maintained fork of
-[`python-pptx`](https://github.com/scanny/python-pptx) by Steve Canny, picking
-up where upstream's 1.0.2 release left off. It is a pure-Python library for
-creating, reading, and updating PowerPoint 2007+ (`.pptx`) files without
-needing Microsoft PowerPoint installed.
+**python-pptx2** is a fork of
+[`power-pptx`](https://github.com/CodeHalwell/power-pptx) and, through it, of
+[`python-pptx`](https://github.com/scanny/python-pptx) by Steve Canny. It is a
+pure-Python library for creating, reading, and updating PowerPoint 2007+
+(`.pptx`) files without needing Microsoft PowerPoint installed.
 
-- Distributed on PyPI as **`power-pptx`** but imported as **`import power_pptx`**
-  (the 2.0 release renamed the top-level package from `pptx` to `power_pptx` so
-  it can be installed side-by-side with upstream `python-pptx`). When migrating
-  code, replace `pptx` with `power_pptx` in imports.
-- Current version is defined in `src/power_pptx/__init__.py` (`__version__`).
+- Distributed on PyPI as **`python-pptx2`** and imported as **`import pptx2`**,
+  so it can sit beside upstream `python-pptx` (`pptx`) and the parent
+  `power-pptx` (`power_pptx`). When migrating, replace those imports with
+  `pptx2`.
+- Current version is defined in `src/pptx2/__init__.py` (`__version__`).
 - Python 3.9–3.13 supported. Runtime deps: `Pillow`, `XlsxWriter`, `lxml`,
   `typing_extensions`.
 
@@ -38,23 +38,23 @@ This repo ships its own **Claude skill** which is the canonical, up-to-date
 guide for *using* the library's public API. When a task involves generating,
 mutating, theming, linting, or rendering decks, consult it before writing code:
 
-- `src/power_pptx/skill/SKILL.md` — cheat sheet, common operations,
+- `src/pptx2/skill/SKILL.md` — cheat sheet, common operations,
   anti-patterns, and pitfalls.
-- `src/power_pptx/skill/references/*.md` — deep dives per topic
+- `src/pptx2/skill/references/*.md` — deep dives per topic
   (`space-aware-authoring.md`, `geometry-and-arrows.md`, `charts.md`,
   `design.md`, `theme.md`, `animations.md`, `transitions.md`, `effects.md`,
   `tables.md`, `compose.md`, `render.md`, `lint.md`, `smart-art.md`,
   `three-d.md`, `end-to-end-deck.md`, `basics.md`, `picture-effects.md`).
 
-A mirrored copy lives under `.claude/skills/power-pptx/` so the skill is active
+A mirrored copy lives under `.claude/skills/python-pptx2/` so the skill is active
 in this repo's Claude Code sessions. **These two copies must be kept in sync** —
 the one under `src/` is what gets packaged and shipped to downstream installs
-(`python -m power_pptx.skill install` copies it into `~/.claude/skills/`).
+(`python -m pptx2.skill install` copies it into `~/.claude/skills/`).
 
 ## Repository layout
 
 ```
-src/power_pptx/        # the library (importable package)
+src/pptx2/        # the library (importable package)
   __init__.py          # public exports + __version__ + content-type → Part map
   api.py               # Presentation() factory entry point
   presentation.py      # Presentation object
@@ -104,7 +104,7 @@ pip install -r requirements-test.txt
 ### Tests — three layers
 
 ```bash
-pytest --cov=power_pptx tests        # unit tests, organized by source module
+pytest --cov=pptx2 tests        # unit tests, organized by source module
 pytest tests/integration -v          # round-trip harness (save → open → save byte-clean)
 pytest tests/schema -v               # validate generated decks against ISO 29500 XSDs
 behave --stop                        # Gherkin acceptance tests under features/
@@ -124,7 +124,7 @@ behave --stop                        # Gherkin acceptance tests under features/
 ```bash
 ruff check src tests                 # lint (line-length 100; rules in pyproject.toml)
 ruff format src tests                # format
-pyright                              # strict type-checking on src/power_pptx + tests
+pyright                              # strict type-checking on src/pptx2 + tests
 ```
 
 `docs/`, `lab/`, `spec/`, and `ref/` are excluded from ruff. `lab/` is
@@ -147,13 +147,14 @@ A PR must keep all of these green:
    all ten real-world decks end-to-end (proves the public surface didn't regress).
 4. **schema-validation** — `pytest tests/schema` against bundled OOXML XSDs.
 
-Other workflows: `publish.yml` (PyPI), `release-on-version-bump.yml`,
+Other workflows: `release.yml` (tag + GitHub release + PyPI via OIDC;
+the trusted-publisher workflow filename is `release.yml`),
 `qodana_code_quality.yml`.
 
 ## Conventions
 
 - **Line length 100** (ruff + black config).
-- **`known-first-party = ["power_pptx"]`** for isort import ordering.
+- **`known-first-party = ["pptx2"]`** for isort import ordering.
 - **No raw EMU integers in API usage** — use `BBox.from_inches(...)`,
   `Inches(...)`, `Pt(...)`. Float arithmetic on lengths is coerced at the
   setter, so expressions like `(Inches(N) - gutter) / 2` are fine.
@@ -172,8 +173,8 @@ Other workflows: `publish.yml` (PyPI), `release-on-version-bump.yml`,
   round-trip test if XML changes, and a schema test if new XML is emitted.
 - Update `HISTORY.rst` (unreleased section) for any user-visible change.
 - If you change the library's public usage surface, update **both** the skill
-  copy under `src/power_pptx/skill/` and the mirror under `.claude/skills/`.
-- The version is the `__version__` string in `src/power_pptx/__init__.py`
+  copy under `src/pptx2/skill/` and the mirror under `.claude/skills/`.
+- The version is the `__version__` string in `src/pptx2/__init__.py`
   (setuptools reads it dynamically); a version bump can trigger the release
   workflow.
 

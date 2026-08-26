@@ -15,6 +15,6 @@ file itself.
 The |Image| object is encountered as the :attr:`~Picture.image` property of
 |Picture|.
 
-.. autoclass:: power_pptx.parts.image.Image()
+.. autoclass:: pptx2.parts.image.Image()
    :members:
    :exclude-members: from_blob, from_file

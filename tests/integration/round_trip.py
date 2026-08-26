@@ -1,4 +1,4 @@
-"""Round-trip diff harness for power-pptx.
+"""Round-trip diff harness for python-pptx2.
 
 Save a deck, reopen it, save it again, and assert that no XML part has changed
 between the two saves. Per the project roadmap, this is the gate every later
@@ -17,8 +17,8 @@ from zipfile import ZipFile
 
 from lxml import etree
 
-from power_pptx import Presentation
-from power_pptx.presentation import Presentation as PresentationT
+from pptx2 import Presentation
+from pptx2.presentation import Presentation as PresentationT
 
 
 def _parts(pptx_bytes: bytes) -> dict[str, bytes]:

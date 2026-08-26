@@ -11,11 +11,11 @@ from __future__ import annotations
 
 import pytest
 
-from power_pptx import Presentation
-from power_pptx.chart.data import CategoryChartData
-from power_pptx.enum.chart import XL_CHART_TYPE
-from power_pptx.oxml.ns import qn
-from power_pptx.util import Inches, Pt
+from pptx2 import Presentation
+from pptx2.chart.data import CategoryChartData
+from pptx2.enum.chart import XL_CHART_TYPE
+from pptx2.oxml.ns import qn
+from pptx2.util import Inches, Pt
 
 
 def _make_chart(*, categories, series_count, chart_type=XL_CHART_TYPE.COLUMN_CLUSTERED):

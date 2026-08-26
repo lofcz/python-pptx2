@@ -1,11 +1,11 @@
-"""Unit tests for :mod:`power_pptx.design.components`."""
+"""Unit tests for :mod:`pptx2.design.components`."""
 
 from __future__ import annotations
 
 import pytest
 
-from power_pptx import Presentation
-from power_pptx.design.components import (
+from pptx2 import Presentation
+from pptx2.design.components import (
     ArticleCard,
     Gauge,
     KpiCard,
@@ -19,9 +19,9 @@ from power_pptx.design.components import (
     add_stat_strip,
     add_status_pill,
 )
-from power_pptx.design.tokens import DesignTokens
-from power_pptx.dml.color import RGBColor
-from power_pptx.util import Inches
+from pptx2.design.tokens import DesignTokens
+from pptx2.dml.color import RGBColor
+from pptx2.util import Inches
 
 
 @pytest.fixture

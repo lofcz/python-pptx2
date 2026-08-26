@@ -12,8 +12,8 @@ import io
 
 import pytest
 
-from power_pptx import Presentation
-from power_pptx.util import Inches, Pt
+from pptx2 import Presentation
+from pptx2.util import Inches, Pt
 
 from .oxml_schema_validator import (
     assert_schema_valid,
@@ -49,9 +49,9 @@ def _deck_blank() -> bytes:
 
 
 def _deck_effects_and_3d() -> bytes:
-    from power_pptx.dml.color import RGBColor
-    from power_pptx.enum.dml import BevelPreset, PresetMaterial
-    from power_pptx.enum.shapes import MSO_SHAPE
+    from pptx2.dml.color import RGBColor
+    from pptx2.enum.dml import BevelPreset, PresetMaterial
+    from pptx2.enum.shapes import MSO_SHAPE
 
     prs = Presentation()
     s = _blank_slide(prs)
@@ -70,7 +70,7 @@ def _deck_effects_and_3d() -> bytes:
 
 
 def _deck_gradient() -> bytes:
-    from power_pptx.enum.shapes import MSO_SHAPE
+    from pptx2.enum.shapes import MSO_SHAPE
 
     prs = Presentation()
     s = _blank_slide(prs)
@@ -91,8 +91,8 @@ def _deck_table() -> bytes:
 
 
 def _deck_chart() -> bytes:
-    from power_pptx.chart.data import CategoryChartData
-    from power_pptx.enum.chart import XL_CHART_TYPE
+    from pptx2.chart.data import CategoryChartData
+    from pptx2.enum.chart import XL_CHART_TYPE
 
     prs = Presentation()
     s = _blank_slide(prs)
@@ -110,7 +110,7 @@ def _deck_chart() -> bytes:
 
 
 def _deck_animations() -> bytes:
-    from power_pptx.enum.shapes import MSO_SHAPE
+    from pptx2.enum.shapes import MSO_SHAPE
 
     prs = Presentation()
     s = _blank_slide(prs)
@@ -122,8 +122,8 @@ def _deck_animations() -> bytes:
 
 
 def _deck_morph_transition() -> bytes:
-    from power_pptx.enum.presentation import MSO_TRANSITION_TYPE
-    from power_pptx.enum.shapes import MSO_SHAPE
+    from pptx2.enum.presentation import MSO_TRANSITION_TYPE
+    from pptx2.enum.shapes import MSO_SHAPE
 
     prs = Presentation()
     s = _blank_slide(prs)
@@ -136,7 +136,7 @@ def _deck_morph_transition() -> bytes:
 
 
 def _deck_recipes() -> bytes:
-    from power_pptx.design.recipes import bullet_slide, kpi_slide, title_slide
+    from pptx2.design.recipes import bullet_slide, kpi_slide, title_slide
 
     prs = Presentation()
     title_slide(prs, title="Q4 Review", subtitle="April 2026")
@@ -153,8 +153,8 @@ def _deck_chart_types() -> bytes:
     # Regression: every chart type must emit axis ids in PowerPoint's signed
     # int32 range (1..2**31-1). The hardcoded template ids previously exceeded
     # 2**31, which passes XSD (unsignedInt) but makes PowerPoint repair the file.
-    from power_pptx.chart.data import BubbleChartData, CategoryChartData, XyChartData
-    from power_pptx.enum.chart import XL_CHART_TYPE
+    from pptx2.chart.data import BubbleChartData, CategoryChartData, XyChartData
+    from pptx2.enum.chart import XL_CHART_TYPE
 
     prs = Presentation()
     s = _blank_slide(prs)
@@ -184,8 +184,8 @@ def _deck_chart_types() -> bytes:
 
 def _deck_radar_chart() -> bytes:
     # Regression: radar series must not emit <c:smooth> (invalid in CT_RadarSer).
-    from power_pptx.chart.data import CategoryChartData
-    from power_pptx.enum.chart import XL_CHART_TYPE
+    from pptx2.chart.data import CategoryChartData
+    from pptx2.enum.chart import XL_CHART_TYPE
 
     prs = Presentation()
     s = _blank_slide(prs)
@@ -200,9 +200,9 @@ def _deck_radar_chart() -> bytes:
 
 def _deck_soft_metal_material() -> bytes:
     # Regression: PresetMaterial.SOFT_METAL must emit the schema's "softmetal".
-    from power_pptx.dml.color import RGBColor
-    from power_pptx.enum.dml import PresetMaterial
-    from power_pptx.enum.shapes import MSO_SHAPE
+    from pptx2.dml.color import RGBColor
+    from pptx2.enum.dml import PresetMaterial
+    from pptx2.enum.shapes import MSO_SHAPE
 
     prs = Presentation()
     s = _blank_slide(prs)
@@ -218,9 +218,9 @@ def _deck_3d_none_presets() -> bytes:
     # Regression: BevelPreset.NONE / PresetMaterial.NONE must not emit the token
     # "none" (invalid per ST_BevelPresetType / ST_PresetMaterialType, which makes
     # PowerPoint repair the file). NONE removes the bevel / clears the material.
-    from power_pptx.dml.color import RGBColor
-    from power_pptx.enum.dml import BevelPreset, PresetMaterial
-    from power_pptx.enum.shapes import MSO_SHAPE
+    from pptx2.dml.color import RGBColor
+    from pptx2.enum.dml import BevelPreset, PresetMaterial
+    from pptx2.enum.shapes import MSO_SHAPE
 
     prs = Presentation()
     s = _blank_slide(prs)
@@ -259,7 +259,7 @@ def _deck_embedded_font() -> bytes:
     # append made PowerPoint report the deck as needing repair.
     import os
 
-    from power_pptx.theme import embed_font
+    from pptx2.theme import embed_font
 
     ttf = os.path.join(
         os.path.dirname(__file__), "..", "test_files", "calibriz.ttf"
@@ -316,7 +316,7 @@ def _deck_picture_washout() -> bytes:
 def _deck_transition_duration() -> bytes:
     # Regression: a duration writes p14:dur, which is only schema-valid inside an
     # mc:AlternateContent wrapper — even for a classic (non-p14) transition kind.
-    from power_pptx.enum.presentation import MSO_TRANSITION_TYPE
+    from pptx2.enum.presentation import MSO_TRANSITION_TYPE
 
     prs = Presentation()
     s = _blank_slide(prs)
@@ -347,7 +347,7 @@ def _deck_animation_removal() -> bytes:
     # purge_orphans()) left an empty <p:childTnLst>, which is schema-invalid
     # and a repair trigger. Slide 1 ends with zero animations; slide 2 keeps
     # one after a partial removal.
-    from power_pptx.enum.shapes import MSO_SHAPE
+    from pptx2.enum.shapes import MSO_SHAPE
 
     prs = Presentation()
     s1 = _blank_slide(prs)
@@ -366,8 +366,8 @@ def _deck_animation_removal() -> bytes:
 def _deck_label_collision_strategy() -> bytes:
     # Regression: collision_strategy created <c:gapWidth> by bare append,
     # landing it after <c:axId> — out of sequence in CT_BarChart.
-    from power_pptx.chart.data import CategoryChartData
-    from power_pptx.enum.chart import XL_CHART_TYPE
+    from pptx2.chart.data import CategoryChartData
+    from pptx2.enum.chart import XL_CHART_TYPE
 
     prs = Presentation()
     s = _blank_slide(prs)
@@ -384,8 +384,8 @@ def _deck_label_collision_strategy() -> bytes:
 
 
 def _deck_diagrams() -> bytes:
-    from power_pptx.diagrams import cycle, decision_tree, horizontal_pipeline
-    from power_pptx.geometry import BBox
+    from pptx2.diagrams import cycle, decision_tree, horizontal_pipeline
+    from pptx2.geometry import BBox
 
     prs = Presentation()
     s = _blank_slide(prs)
@@ -403,8 +403,8 @@ def _deck_diagrams() -> bytes:
 def _deck_group_fill() -> bytes:
     # A group with a solid fill exercises EG_FillProperties on `p:grpSpPr`,
     # which the schema permits but `a:ln` (line) on a group does not.
-    from power_pptx.dml.color import RGBColor
-    from power_pptx.enum.shapes import MSO_SHAPE
+    from pptx2.dml.color import RGBColor
+    from pptx2.enum.shapes import MSO_SHAPE
 
     prs = Presentation()
     s = _blank_slide(prs)
@@ -443,7 +443,7 @@ def _deck_run_properties() -> bytes:
 
 def _deck_ergonomics() -> bytes:
     """Shadow suppression, point-valued corner radius, and cell formatting."""
-    from power_pptx.enum.shapes import MSO_SHAPE
+    from pptx2.enum.shapes import MSO_SHAPE
 
     prs = Presentation()
     s = _blank_slide(prs)
@@ -463,8 +463,8 @@ def _deck_ergonomics() -> bytes:
     # A shape whose effects are an <a:effectDag>: clearing must prune the
     # shadow nodes rather than add a sibling <a:effectLst>, which would put two
     # arms of the EG_EffectProperties choice in one <a:spPr>.
-    from power_pptx.oxml import parse_xml
-    from power_pptx.oxml.ns import nsdecls
+    from pptx2.oxml import parse_xml
+    from pptx2.oxml.ns import nsdecls
 
     dagged = s.shapes.add_shape(
         MSO_SHAPE.ROUNDED_RECTANGLE, Inches(1), Inches(3.4), Inches(3), Inches(1.2)
@@ -501,7 +501,7 @@ def _deck_lint_relationship_model() -> bytes:
     custom-namespaced attribute there is what triggers PowerPoint's
     "repaired and removed" prompt.
     """
-    from power_pptx.enum.shapes import MSO_SHAPE
+    from pptx2.enum.shapes import MSO_SHAPE
 
     prs = Presentation()
     s = _blank_slide(prs)
@@ -617,8 +617,8 @@ class DescribeGeneratedDeckSchemaValidity:
         # regress into always-passing.
         from lxml import etree
 
-        from power_pptx.enum.shapes import MSO_SHAPE
-        from power_pptx.oxml.ns import qn
+        from pptx2.enum.shapes import MSO_SHAPE
+        from pptx2.oxml.ns import qn
 
         prs = Presentation()
         s = _blank_slide(prs)
@@ -634,8 +634,8 @@ class DescribeGeneratedDeckSchemaValidity:
         # confirm the validator flags it.
         import io as _io
 
-        from power_pptx.chart.data import CategoryChartData
-        from power_pptx.enum.chart import XL_CHART_TYPE
+        from pptx2.chart.data import CategoryChartData
+        from pptx2.enum.chart import XL_CHART_TYPE
 
         prs = Presentation()
         s = _blank_slide(prs)
@@ -676,7 +676,7 @@ class DescribeGeneratedDeckSchemaValidity:
         # Self-test for the duplicate-shape-id rule: force two shapes on one
         # slide to share a cNvPr id (valid per XSD unsignedInt, but a PowerPoint
         # repair trigger) and confirm the validator flags it.
-        from power_pptx.enum.shapes import MSO_SHAPE
+        from pptx2.enum.shapes import MSO_SHAPE
 
         prs = Presentation()
         s = _blank_slide(prs)

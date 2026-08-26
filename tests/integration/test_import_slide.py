@@ -6,8 +6,8 @@ import io
 
 import pytest
 
-from power_pptx import Presentation
-from power_pptx.util import Inches
+from pptx2 import Presentation
+from pptx2.util import Inches
 
 
 # ---------------------------------------------------------------------------
@@ -118,8 +118,8 @@ class Describe_import_slide_dedupe:
         # destination master and hand the slide the wrong branding.
         from copy import deepcopy
 
-        from power_pptx._slide_importer import _master_fingerprint
-        from power_pptx.opc.constants import RELATIONSHIP_TYPE as RT
+        from pptx2._slide_importer import _master_fingerprint
+        from pptx2.opc.constants import RELATIONSHIP_TYPE as RT
 
         png_b = bytes.fromhex(
             "89504e470d0a1a0a0000000d494844520000000100000001080600"
@@ -212,7 +212,7 @@ class Describe_import_slide_dedupe:
         # p:sldLayoutIdLst rIds while its new rels put the theme on rId1 —
         # so the first "layout" entry resolved to the theme part, every
         # other one was off by one, and the last layout was unlisted.
-        from power_pptx.opc.constants import RELATIONSHIP_TYPE as RT
+        from pptx2.opc.constants import RELATIONSHIP_TYPE as RT
 
         src = Presentation()
         src.slides.add_slide(src.slide_layouts[0])
@@ -255,7 +255,7 @@ class Describe_import_slide_dedupe:
 
         from copy import deepcopy
 
-        from power_pptx.opc.constants import RELATIONSHIP_TYPE as RT
+        from pptx2.opc.constants import RELATIONSHIP_TYPE as RT
 
         # Build a source deck whose layout carries a picture.
         src = Presentation()
@@ -364,7 +364,7 @@ class Describe_import_slide_notes:
         # slide registered in p:sldIdLst.
         import zipfile
 
-        from power_pptx.opc.constants import RELATIONSHIP_TYPE as RT
+        from pptx2.opc.constants import RELATIONSHIP_TYPE as RT
 
         src = Presentation()
         slide = src.slides.add_slide(src.slide_layouts[6])
@@ -389,7 +389,7 @@ class Describe_import_slide_notes:
         # ECMA-376 requires the notesSlide→notesMaster relationship;
         # PowerPoint always writes it, and its absence risks repair when
         # entering notes view or printing notes pages.
-        from power_pptx.opc.constants import RELATIONSHIP_TYPE as RT
+        from pptx2.opc.constants import RELATIONSHIP_TYPE as RT
 
         src = Presentation()
         slide = src.slides.add_slide(src.slide_layouts[6])

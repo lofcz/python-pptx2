@@ -16,7 +16,7 @@ Placeholder access::
 
   >>> table_placeholder = slide.placeholders[10]  # keyed by idx, not offset
   >>> table_placeholder
-  <power_pptx.shapes.placeholder.TablePlaceholder object at 0x100830510>
+  <pptx2.shapes.placeholder.TablePlaceholder object at 0x100830510>
   >>> table_placeholder.shape_type
   MSO_SHAPE_TYPE.PLACEHOLDER (14)
 
@@ -24,7 +24,7 @@ TablePlaceholder.insert_table()::
 
   >>> ph_graphic_frame = table_placeholder.insert_table(rows=2, cols=2)
   >>> ph_graphic_frame
-  <power_pptx.shapes.placeholder.PlaceholderGraphicFrame object at 0x10083087a>
+  <pptx2.shapes.placeholder.PlaceholderGraphicFrame object at 0x10083087a>
   >>> ph_graphic_frame.shape_type
   MSO_SHAPE_TYPE.PLACEHOLDER (14)
   >>> ph_graphic_frame.has_table

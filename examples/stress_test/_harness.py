@@ -11,7 +11,7 @@ single run surfaces as many library bugs as possible:
                      linter — both are worth surfacing).
 3. **round-trip**  — save → reopen → save leaves every XML part byte-identical
                      after c14n canonicalisation (the project's release gate).
-4. **reopen**      — the saved ``.pptx`` re-opens cleanly in power-pptx.
+4. **reopen**      — the saved ``.pptx`` re-opens cleanly in python-pptx2.
 5. **schema**      — every part validates against the bundled ISO-29500 XSDs
                      (``tests/schema/oxml_schema_validator``). This is the check
                      that catches the "opens in python-pptx / LibreOffice but
@@ -42,9 +42,9 @@ from lxml import etree
 
 # Make the suite runnable straight from a fresh source checkout (no install):
 # put the sibling helpers (HERE), the repo root (for `tests.schema...`), and the
-# src/ layout (for `import power_pptx`) on the path *before* importing the
+# src/ layout (for `import pptx2`) on the path *before* importing the
 # package. These are prepended, so a local checkout takes precedence over any
-# installed power-pptx — intended, since the suite tests the tree it ships with.
+# installed python-pptx2 — intended, since the suite tests the tree it ships with.
 HERE = Path(__file__).parent
 OUT = HERE / "_out"
 REPO_ROOT = HERE.parents[1]
@@ -52,8 +52,8 @@ for _p in (str(HERE), str(REPO_ROOT), str(REPO_ROOT / "src")):
     if _p not in sys.path:
         sys.path.insert(0, _p)
 
-from power_pptx import Presentation  # noqa: E402
-from power_pptx.lint import LintSeverity  # noqa: E402
+from pptx2 import Presentation  # noqa: E402
+from pptx2.lint import LintSeverity  # noqa: E402
 
 # The ISO-29500 XSD validator ships with the test suite. It's the harness that
 # catches the "opens fine but PowerPoint repairs it" bug class, so we fold it in.

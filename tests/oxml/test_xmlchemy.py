@@ -1,4 +1,4 @@
-"""Unit-test suite for the `power_pptx.oxml.xmlchemy` module.
+"""Unit-test suite for the `pptx2.oxml.xmlchemy` module.
 
 Focused on the metaclass and element and attribute definition classes. A major part of the fixture
 is provided by the metaclass-built test classes at the end of the file.
@@ -8,11 +8,11 @@ from __future__ import annotations
 
 import pytest
 
-from power_pptx.exc import InvalidXmlError
-from power_pptx.oxml import register_element_cls
-from power_pptx.oxml.ns import qn
-from power_pptx.oxml.simpletypes import BaseIntType
-from power_pptx.oxml.xmlchemy import (
+from pptx2.exc import InvalidXmlError
+from pptx2.oxml import register_element_cls
+from pptx2.oxml.ns import qn
+from pptx2.oxml.simpletypes import BaseIntType
+from pptx2.oxml.xmlchemy import (
     BaseOxmlElement,
     Choice,
     OneAndOnlyOne,

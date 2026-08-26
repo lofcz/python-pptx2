@@ -1,15 +1,15 @@
-"""Unit-test suite for `power_pptx.oxml.shapes.picture` module."""
+"""Unit-test suite for `pptx2.oxml.shapes.picture` module."""
 
 from __future__ import annotations
 
 import pytest
 
-from power_pptx.oxml.ns import nsdecls
-from power_pptx.oxml.shapes.picture import CT_Picture
+from pptx2.oxml.ns import nsdecls
+from pptx2.oxml.shapes.picture import CT_Picture
 
 
 class DescribeCT_Picture(object):
-    """Unit-test suite for `power_pptx.oxml.shapes.picture.CT_Picture` objects."""
+    """Unit-test suite for `pptx2.oxml.shapes.picture.CT_Picture` objects."""
 
     @pytest.mark.parametrize(
         "desc, xml_desc",

@@ -1,4 +1,4 @@
-"""Unit tests for shape alt text and :func:`power_pptx.accessibility`."""
+"""Unit tests for shape alt text and :func:`pptx2.accessibility`."""
 
 from __future__ import annotations
 
@@ -7,15 +7,15 @@ import os
 
 import pytest
 
-from power_pptx import Presentation
-from power_pptx.accessibility import (
+from pptx2 import Presentation
+from pptx2.accessibility import (
     AccessibilityReport,
     AccessibilitySeverity,
     audit_accessibility,
 )
-from power_pptx.dml.color import RGBColor
-from power_pptx.enum.shapes import MSO_SHAPE
-from power_pptx.util import Inches
+from pptx2.dml.color import RGBColor
+from pptx2.enum.shapes import MSO_SHAPE
+from pptx2.util import Inches
 
 _HERE = os.path.dirname(__file__)
 _IMAGE = os.path.join(_HERE, "test_files", "python-powered.png")

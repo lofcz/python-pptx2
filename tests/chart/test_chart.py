@@ -1,21 +1,21 @@
 # pyright: reportPrivateUsage=false
 
-"""Unit-test suite for `power_pptx.chart.chart` module."""
+"""Unit-test suite for `pptx2.chart.chart` module."""
 
 from __future__ import annotations
 
 import pytest
 
-from power_pptx.chart.axis import CategoryAxis, DateAxis, ValueAxis
-from power_pptx.chart.chart import Chart, ChartTitle, Legend, _Plots
-from power_pptx.chart.data import ChartData
-from power_pptx.chart.plot import _BasePlot
-from power_pptx.chart.series import SeriesCollection
-from power_pptx.chart.xmlwriter import _BaseSeriesXmlRewriter
-from power_pptx.dml.chtfmt import ChartFormat
-from power_pptx.enum.chart import XL_CHART_TYPE
-from power_pptx.parts.chart import ChartWorkbook
-from power_pptx.text.text import Font
+from pptx2.chart.axis import CategoryAxis, DateAxis, ValueAxis
+from pptx2.chart.chart import Chart, ChartTitle, Legend, _Plots
+from pptx2.chart.data import ChartData
+from pptx2.chart.plot import _BasePlot
+from pptx2.chart.series import SeriesCollection
+from pptx2.chart.xmlwriter import _BaseSeriesXmlRewriter
+from pptx2.dml.chtfmt import ChartFormat
+from pptx2.enum.chart import XL_CHART_TYPE
+from pptx2.parts.chart import ChartWorkbook
+from pptx2.text.text import Font
 
 from ..unitutil.cxml import element, xml
 from ..unitutil.mock import (
@@ -33,9 +33,9 @@ def _make_chart_with_series(series_names, chart_type=None):
     Default is COLUMN_CLUSTERED to preserve existing tests; pass
     ``chart_type=`` to construct any other type for type-dispatch tests.
     """
-    from power_pptx import Presentation
-    from power_pptx.chart.data import CategoryChartData
-    from power_pptx.util import Inches
+    from pptx2 import Presentation
+    from pptx2.chart.data import CategoryChartData
+    from pptx2.util import Inches
 
     prs = Presentation()
     slide = prs.slides.add_slide(prs.slide_layouts[5])
@@ -55,7 +55,7 @@ def _make_chart_with_series(series_names, chart_type=None):
 
 
 class DescribeChart(object):
-    """Unit-test suite for `power_pptx.chart.chart.Chart` objects."""
+    """Unit-test suite for `pptx2.chart.chart.Chart` objects."""
 
     def it_provides_access_to_its_font(self, font_fixture, Font_, font_):
         chartSpace, expected_xml = font_fixture
@@ -160,7 +160,7 @@ class DescribeChart(object):
         chart.apply_palette("modern")
 
         # First three colors of the "modern" palette
-        from power_pptx.chart.palettes import CHART_PALETTES
+        from pptx2.chart.palettes import CHART_PALETTES
 
         expected = CHART_PALETTES["modern"][:3]
         actual = [str(s.format.fill.fore_color.rgb) for s in chart.series]
@@ -175,7 +175,7 @@ class DescribeChart(object):
         assert actual == ["FF0000", "00FF00", "FF0000"]
 
     def it_accepts_mixed_color_likes_in_a_palette(self):
-        from power_pptx.dml.color import RGBColor
+        from pptx2.dml.color import RGBColor
 
         chart = _make_chart_with_series(("S1", "S2", "S3"))
 
@@ -209,7 +209,7 @@ class DescribeChart(object):
         # location on the chart so a dark deck doesn't have to thread the
         # same colour through chart.font, legend.font, title runs, and each
         # plot's data_labels.font by hand.
-        from power_pptx.dml.color import RGBColor
+        from pptx2.dml.color import RGBColor
 
         chart = _make_chart_with_series(("S1",))
         chart.has_title = True
@@ -230,7 +230,7 @@ class DescribeChart(object):
         assert all(rgb == RGBColor(0xFF, 0xAA, 0x00) for rgb in title_run_rgbs)
 
     def it_accepts_text_color_as_rgb_tuple_or_RGBColor(self):
-        from power_pptx.dml.color import RGBColor
+        from pptx2.dml.color import RGBColor
 
         chart = _make_chart_with_series(("S1",))
         chart.text_color = (10, 20, 30)
@@ -253,9 +253,9 @@ class DescribeChart(object):
         # Regression: CT_ScatterChart lacked a `dLbls` accessor, so the
         # data-labels sweep in the text_color setter (and apply_dark_theme)
         # crashed with AttributeError on any scatter chart.
-        from power_pptx import Presentation
-        from power_pptx.chart.data import XyChartData
-        from power_pptx.util import Inches
+        from pptx2 import Presentation
+        from pptx2.chart.data import XyChartData
+        from pptx2.util import Inches
 
         prs = Presentation()
         slide = prs.slides.add_slide(prs.slide_layouts[6])
@@ -364,7 +364,7 @@ class DescribeChart(object):
         assert line_actual == ["FF0000", "00FF00"]
 
     def it_pins_axis_line_and_gridline_colours_via_line_color(self):
-        from power_pptx.dml.color import RGBColor
+        from pptx2.dml.color import RGBColor
 
         chart = _make_chart_with_series(("S1",))
         # has_major_gridlines defaults vary by chart type; force on so the
@@ -433,7 +433,7 @@ class DescribeChart(object):
         # helper that flips reverse_order on BAR_* types must not match
         # it. (We test the helper's predicate directly; the chart writer
         # for BAR_OF_PIE is not implemented in the library.)
-        from power_pptx.shapes.shapetree import _HORIZONTAL_BAR_CHART_NAMES
+        from pptx2.shapes.shapetree import _HORIZONTAL_BAR_CHART_NAMES
 
         assert "BAR_OF_PIE" not in _HORIZONTAL_BAR_CHART_NAMES
         # And every BAR_*-named horizontal chart we *do* support is in.
@@ -441,7 +441,7 @@ class DescribeChart(object):
         assert "THREE_D_BAR_STACKED" in _HORIZONTAL_BAR_CHART_NAMES
 
     def it_applies_a_dark_theme_in_one_call(self):
-        from power_pptx.dml.color import RGBColor
+        from pptx2.dml.color import RGBColor
 
         chart = _make_chart_with_series(("S1",))
         chart.value_axis.has_major_gridlines = True
@@ -458,7 +458,7 @@ class DescribeChart(object):
     def it_supports_gradient_fills_per_series_via_ChartFormat(self):
         """Per-series gradient fills are exposed through `ChartFormat.fill`,
         which is a regular `FillFormat` and so honors all gradient kinds."""
-        from power_pptx.enum.dml import MSO_FILL_TYPE
+        from pptx2.enum.dml import MSO_FILL_TYPE
 
         chart = _make_chart_with_series(("S1",))
         fill = chart.series[0].format.fill
@@ -470,7 +470,7 @@ class DescribeChart(object):
         assert len(fill.gradient_stops) == 2
 
     def it_supports_pattern_fills_per_series_via_ChartFormat(self):
-        from power_pptx.enum.dml import MSO_FILL_TYPE, MSO_PATTERN_TYPE
+        from pptx2.enum.dml import MSO_FILL_TYPE, MSO_PATTERN_TYPE
 
         chart = _make_chart_with_series(("S1",))
         fill = chart.series[0].format.fill
@@ -690,7 +690,7 @@ class DescribeChart(object):
 
     @pytest.fixture
     def CategoryAxis_(self, request, category_axis_):
-        return class_mock(request, "power_pptx.chart.chart.CategoryAxis", return_value=category_axis_)
+        return class_mock(request, "pptx2.chart.chart.CategoryAxis", return_value=category_axis_)
 
     @pytest.fixture
     def category_axis_(self, request):
@@ -702,7 +702,7 @@ class DescribeChart(object):
 
     @pytest.fixture
     def ChartTitle_(self, request, chart_title_):
-        return class_mock(request, "power_pptx.chart.chart.ChartTitle", return_value=chart_title_)
+        return class_mock(request, "pptx2.chart.chart.ChartTitle", return_value=chart_title_)
 
     @pytest.fixture
     def chart_title_(self, request):
@@ -710,7 +710,7 @@ class DescribeChart(object):
 
     @pytest.fixture
     def DateAxis_(self, request, date_axis_):
-        return class_mock(request, "power_pptx.chart.chart.DateAxis", return_value=date_axis_)
+        return class_mock(request, "pptx2.chart.chart.DateAxis", return_value=date_axis_)
 
     @pytest.fixture
     def date_axis_(self, request):
@@ -718,7 +718,7 @@ class DescribeChart(object):
 
     @pytest.fixture
     def Font_(self, request):
-        return class_mock(request, "power_pptx.chart.chart.Font")
+        return class_mock(request, "pptx2.chart.chart.Font")
 
     @pytest.fixture
     def font_(self, request):
@@ -726,7 +726,7 @@ class DescribeChart(object):
 
     @pytest.fixture
     def Legend_(self, request, legend_):
-        return class_mock(request, "power_pptx.chart.chart.Legend", return_value=legend_)
+        return class_mock(request, "pptx2.chart.chart.Legend", return_value=legend_)
 
     @pytest.fixture
     def legend_(self, request):
@@ -734,11 +734,11 @@ class DescribeChart(object):
 
     @pytest.fixture
     def PlotTypeInspector_(self, request):
-        return class_mock(request, "power_pptx.chart.chart.PlotTypeInspector")
+        return class_mock(request, "pptx2.chart.chart.PlotTypeInspector")
 
     @pytest.fixture
     def _Plots_(self, request, plots_):
-        return class_mock(request, "power_pptx.chart.chart._Plots", return_value=plots_)
+        return class_mock(request, "pptx2.chart.chart._Plots", return_value=plots_)
 
     @pytest.fixture
     def plot_(self, request):
@@ -752,7 +752,7 @@ class DescribeChart(object):
     def SeriesCollection_(self, request, series_collection_):
         return class_mock(
             request,
-            "power_pptx.chart.chart.SeriesCollection",
+            "pptx2.chart.chart.SeriesCollection",
             return_value=series_collection_,
         )
 
@@ -760,7 +760,7 @@ class DescribeChart(object):
     def SeriesXmlRewriterFactory_(self, request, series_rewriter_):
         return function_mock(
             request,
-            "power_pptx.chart.chart.SeriesXmlRewriterFactory",
+            "pptx2.chart.chart.SeriesXmlRewriterFactory",
             return_value=series_rewriter_,
             autospec=True,
         )
@@ -775,7 +775,7 @@ class DescribeChart(object):
 
     @pytest.fixture
     def ValueAxis_(self, request, value_axis_):
-        return class_mock(request, "power_pptx.chart.chart.ValueAxis", return_value=value_axis_)
+        return class_mock(request, "pptx2.chart.chart.ValueAxis", return_value=value_axis_)
 
     @pytest.fixture
     def value_axis_(self, request):
@@ -791,7 +791,7 @@ class DescribeChart(object):
 
 
 class DescribeChartTitle(object):
-    """Unit-test suite for `power_pptx.chart.chart.ChartTitle` objects."""
+    """Unit-test suite for `pptx2.chart.chart.ChartTitle` objects."""
 
     def it_provides_access_to_its_format(self, format_fixture):
         chart_title, ChartFormat_, format_ = format_fixture
@@ -875,7 +875,7 @@ class DescribeChartTitle(object):
 
     @pytest.fixture
     def ChartFormat_(self, request, format_):
-        return class_mock(request, "power_pptx.chart.chart.ChartFormat", return_value=format_)
+        return class_mock(request, "pptx2.chart.chart.ChartFormat", return_value=format_)
 
     @pytest.fixture
     def format_(self, request):
@@ -883,11 +883,11 @@ class DescribeChartTitle(object):
 
     @pytest.fixture
     def TextFrame_(self, request):
-        return class_mock(request, "power_pptx.chart.chart.TextFrame")
+        return class_mock(request, "pptx2.chart.chart.TextFrame")
 
 
 class Describe_Plots(object):
-    """Unit-test suite for `power_pptx.chart.chart._Plots` objects."""
+    """Unit-test suite for `pptx2.chart.chart._Plots` objects."""
 
     def it_supports_indexed_access(self, getitem_fixture):
         plots, idx, PlotFactory_, plot_elm, chart_, plot_ = getitem_fixture
@@ -934,7 +934,7 @@ class Describe_Plots(object):
 
     @pytest.fixture
     def PlotFactory_(self, request, plot_):
-        return function_mock(request, "power_pptx.chart.chart.PlotFactory", return_value=plot_)
+        return function_mock(request, "pptx2.chart.chart.PlotFactory", return_value=plot_)
 
     @pytest.fixture
     def plot_(self, request):

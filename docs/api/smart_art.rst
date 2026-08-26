@@ -6,7 +6,7 @@ SmartArt
 |pp| supports text substitution inside an existing template's SmartArt.
 Full SmartArt creation is intentionally out of scope — see ``ROADMAP.md``.
 
-.. currentmodule:: power_pptx.smart_art
+.. currentmodule:: pptx2.smart_art
 
 
 .. autoclass:: SmartArtCollection

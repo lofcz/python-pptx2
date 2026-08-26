@@ -9,7 +9,7 @@ shape on every slide — reads must never mutate the XML, so any read-mutation
 bug shows up as a round-trip diff in the harness.
 
 This is a deliberate bug probe. It is NOT a recommended authoring pattern —
-in particular it generates ``power_pptx.animation`` calls, which the skill's
+in particular it generates ``pptx2.animation`` calls, which the skill's
 house rules tell normal decks to avoid (playback is broken in PowerPoint).
 """
 
@@ -20,20 +20,20 @@ from pathlib import Path
 
 from _util import SLIDE_H, SLIDE_W, blank, deck, save
 
-from power_pptx import BBox
-from power_pptx.animation import MotionPath, PP_ANIM_TRIGGER as TR
-from power_pptx.chart.data import BubbleChartData, CategoryChartData, XyChartData
-from power_pptx.compose import from_spec
-from power_pptx.design.layout import Grid, Stack
-from power_pptx.design.recipes import (
+from pptx2 import BBox
+from pptx2.animation import MotionPath, PP_ANIM_TRIGGER as TR
+from pptx2.chart.data import BubbleChartData, CategoryChartData, XyChartData
+from pptx2.compose import from_spec
+from pptx2.design.layout import Grid, Stack
+from pptx2.design.recipes import (
     bullet_slide,
     image_hero_slide,
     kpi_slide,
     quote_slide,
     title_slide,
 )
-from power_pptx.design.tokens import DesignTokens
-from power_pptx.diagrams import (
+from pptx2.design.tokens import DesignTokens
+from pptx2.diagrams import (
     comparison_columns,
     cycle,
     decision_tree,
@@ -41,9 +41,9 @@ from power_pptx.diagrams import (
     hub_and_spoke,
     vertical_pipeline,
 )
-from power_pptx.dml.color import RGBColor
-from power_pptx.enum.chart import XL_CHART_TYPE, XL_LABEL_POSITION, XL_LEGEND_POSITION
-from power_pptx.enum.dml import (
+from pptx2.dml.color import RGBColor
+from pptx2.enum.chart import XL_CHART_TYPE, XL_LABEL_POSITION, XL_LEGEND_POSITION
+from pptx2.enum.dml import (
     BevelPreset,
     MSO_LINE_CAP_STYLE,
     MSO_LINE_COMPOUND_STYLE,
@@ -54,14 +54,14 @@ from power_pptx.enum.dml import (
     MSO_THEME_COLOR,
     PresetMaterial,
 )
-from power_pptx.enum.presentation import MSO_TRANSITION_TYPE
-from power_pptx.enum.shapes import MSO_CONNECTOR, MSO_SHAPE
-from power_pptx.enum.text import (
+from pptx2.enum.presentation import MSO_TRANSITION_TYPE
+from pptx2.enum.shapes import MSO_CONNECTOR, MSO_SHAPE
+from pptx2.enum.text import (
     MSO_TEXT_UNDERLINE_TYPE,
     MSO_VERTICAL_ANCHOR,
     PP_ALIGN,
 )
-from power_pptx.util import Inches, Pt
+from pptx2.util import Inches, Pt
 
 ASSETS = Path(__file__).parent / "_assets"
 
@@ -727,7 +727,7 @@ def build():
     # core properties
     import datetime
     cp = prs.core_properties
-    cp.author = "power-pptx stress harness"
+    cp.author = "python-pptx2 stress harness"
     cp.title = "The Everything Deck"
     cp.subject = "bug surfacing"
     cp.keywords = "stress, schema, everything"

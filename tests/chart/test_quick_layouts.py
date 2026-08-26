@@ -1,18 +1,18 @@
-"""Unit-test suite for `power_pptx.chart.quick_layouts`."""
+"""Unit-test suite for `pptx2.chart.quick_layouts`."""
 
 from __future__ import annotations
 
 import pytest
 
-from power_pptx import Presentation
-from power_pptx.chart.data import CategoryChartData
-from power_pptx.chart.quick_layouts import (
+from pptx2 import Presentation
+from pptx2.chart.data import CategoryChartData
+from pptx2.chart.quick_layouts import (
     QUICK_LAYOUTS,
     apply_quick_layout,
     layout_names,
 )
-from power_pptx.enum.chart import XL_CHART_TYPE, XL_LEGEND_POSITION
-from power_pptx.util import Inches
+from pptx2.enum.chart import XL_CHART_TYPE, XL_LEGEND_POSITION
+from pptx2.util import Inches
 
 
 def _make_column_chart(series=("S1", "S2")):

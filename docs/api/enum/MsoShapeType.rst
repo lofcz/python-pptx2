@@ -9,7 +9,7 @@ Alias: ``MSO``
 
 Example::
 
-    from power_pptx.enum.shapes import MSO_SHAPE_TYPE
+    from pptx2.enum.shapes import MSO_SHAPE_TYPE
 
     assert shape.type == MSO_SHAPE_TYPE.PICTURE
 

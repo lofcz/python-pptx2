@@ -1,4 +1,4 @@
-# power-pptx playground decks
+# python-pptx2 playground decks
 
 A second wave of example decks (alongside `examples/showcase/`),
 designed to stretch the library across a wider range of design styles
@@ -48,7 +48,7 @@ _out/
 `build_all.py` shells out to `soffice --convert-to pdf` followed by
 `pdftoppm` for one PNG per slide. The shipped
 `Presentation.render_thumbnails` also produces a PNG per slide (it
-forwards `slide_indexes` to `power_pptx.render.render_slide_thumbnails`
+forwards `slide_indexes` to `pptx2.render.render_slide_thumbnails`
 and uses the same PDF-fallback strategy under the hood) — we keep the
 local helper here only so the playground doesn't depend on `soffice`
 flag changes between LibreOffice versions. Requires:

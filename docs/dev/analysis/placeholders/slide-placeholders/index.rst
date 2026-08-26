@@ -17,16 +17,16 @@ Candidate protocol
 
     >>> slide = prs.slides[0]
     >>> slide.shapes
-    <power_pptx.shapes.shapetree.SlideShapes object at 0x104e60000>
+    <pptx2.shapes.shapetree.SlideShapes object at 0x104e60000>
     >>> slide.shapes[0]
-    <power_pptx.shapes.placeholder.ShapePlaceholder object at 0x104e60020>
+    <pptx2.shapes.placeholder.ShapePlaceholder object at 0x104e60020>
     >>> slide_placeholders = slide.placeholders
     >>> slide_placeholders
-    <power_pptx.shapes.shapetree.SlidePlaceholders object at 0x104e60040>
+    <pptx2.shapes.shapetree.SlidePlaceholders object at 0x104e60040>
     >>> len(slide_placeholders)
     2
     >>> slide_placeholders[1]
-    <power_pptx.shapes.placeholder.ContentPlaceholder object at 0x104e60060>
+    <pptx2.shapes.placeholder.ContentPlaceholder object at 0x104e60060>
     >>> slide_placeholders[1].type
     'body'
     >>> slide_placeholders.get(idx=1)

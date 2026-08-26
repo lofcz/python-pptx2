@@ -83,7 +83,7 @@ the sense that it adds an axis title if there is none::
     >>> axis.has_title
     False
     >>> axis.axis_title
-    <power_pptx.chart.axis.AxisTitle object at 0x65432fd>
+    <pptx2.chart.axis.AxisTitle object at 0x65432fd>
     >>> axis.has_title
     True
 
@@ -131,7 +131,7 @@ always returns a text frame object, newly created if not already present::
     >>> axis_title.has_text_frame
     False
     >>> axis_title.text_frame
-    <power_pptx.text.text.TextFrame object at 0x65432fe>
+    <pptx2.text.text.TextFrame object at 0x65432fe>
     >>> axis_title.has_text_frame
     True
 

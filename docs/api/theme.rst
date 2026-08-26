@@ -3,7 +3,7 @@
 Theme
 =====
 
-.. currentmodule:: power_pptx.theme
+.. currentmodule:: pptx2.theme
 
 
 |Theme| objects
@@ -28,6 +28,6 @@ Theme
 Inheritance helpers
 -------------------
 
-.. currentmodule:: power_pptx.inherit
+.. currentmodule:: pptx2.inherit
 
 .. autofunction:: resolve_color

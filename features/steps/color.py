@@ -5,9 +5,9 @@ from __future__ import annotations
 from behave import given, then, when
 from helpers import test_pptx
 
-from power_pptx import Presentation
-from power_pptx.dml.color import RGBColor
-from power_pptx.enum.dml import MSO_THEME_COLOR
+from pptx2 import Presentation
+from pptx2.dml.color import RGBColor
+from pptx2.enum.dml import MSO_THEME_COLOR
 
 # given ====================================================
 

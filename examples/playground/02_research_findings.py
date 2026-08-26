@@ -16,14 +16,14 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from power_pptx import Presentation
-from power_pptx.chart.data import CategoryChartData, XyChartData
-from power_pptx.design.layout import Grid
-from power_pptx.dml.color import RGBColor
-from power_pptx.enum.chart import XL_CHART_TYPE, XL_LEGEND_POSITION
-from power_pptx.enum.shapes import MSO_SHAPE
-from power_pptx.enum.text import MSO_AUTO_SIZE, PP_ALIGN
-from power_pptx.util import Inches, Pt
+from pptx2 import Presentation
+from pptx2.chart.data import CategoryChartData, XyChartData
+from pptx2.design.layout import Grid
+from pptx2.dml.color import RGBColor
+from pptx2.enum.chart import XL_CHART_TYPE, XL_LEGEND_POSITION
+from pptx2.enum.shapes import MSO_SHAPE
+from pptx2.enum.text import MSO_AUTO_SIZE, PP_ALIGN
+from pptx2.util import Inches, Pt
 
 from _brand import SUNSET, SUNSET_CHART_PALETTE
 from _common import lint_or_die
@@ -74,7 +74,7 @@ def _cover(prs: Presentation) -> None:
     )
     kt = kicker.text_frame
     kt.word_wrap = True
-    kt.text = "WORKING PAPER  •  POWER-PPTX RESEARCH  •  N°27"
+    kt.text = "WORKING PAPER  •  PYTHON-PPTX2 RESEARCH  •  N°27"
     p = kt.paragraphs[0]
     p.font.name = "DejaVu Sans"
     p.font.size = Pt(13)

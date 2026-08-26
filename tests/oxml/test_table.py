@@ -1,11 +1,11 @@
-"""Unit-test suite for power_pptx.oxml.table module"""
+"""Unit-test suite for pptx2.oxml.table module"""
 
 from __future__ import annotations
 
 import pytest
 
-from power_pptx.oxml.ns import nsdecls
-from power_pptx.oxml.table import CT_Table, TcRange
+from pptx2.oxml.ns import nsdecls
+from pptx2.oxml.table import CT_Table, TcRange
 
 from ..unitutil.cxml import element
 

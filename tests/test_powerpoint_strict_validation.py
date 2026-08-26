@@ -25,11 +25,11 @@ import zipfile
 import pytest
 from lxml import etree
 
-from power_pptx import Presentation
-from power_pptx.chart.data import CategoryChartData
-from power_pptx.dml.color import RGBColor
-from power_pptx.enum.chart import XL_CHART_TYPE
-from power_pptx.util import Inches
+from pptx2 import Presentation
+from pptx2.chart.data import CategoryChartData
+from pptx2.dml.color import RGBColor
+from pptx2.enum.chart import XL_CHART_TYPE
+from pptx2.util import Inches
 
 
 def _deck_with_every_chart_type():
@@ -241,7 +241,7 @@ class DescribeIssue0FamilyRegressions:
     def it_coerces_float_setters_on_shape_geometry(self):
         # Direct property-setter path — `shape.width = float_value`
         # would have written a float-valued `cx` attribute pre-fix.
-        from power_pptx.enum.shapes import MSO_SHAPE
+        from pptx2.enum.shapes import MSO_SHAPE
         prs = Presentation()
         slide = prs.slides.add_slide(prs.slide_layouts[6])
         shape = slide.shapes.add_shape(

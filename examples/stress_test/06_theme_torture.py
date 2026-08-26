@@ -8,12 +8,12 @@ import io
 
 from _util import blank, deck, save
 
-from power_pptx import Presentation
-from power_pptx.dml.color import RGBColor
-from power_pptx.enum.dml import MSO_THEME_COLOR
-from power_pptx.enum.shapes import MSO_SHAPE
-from power_pptx.inherit import resolve_color
-from power_pptx.util import Inches
+from pptx2 import Presentation
+from pptx2.dml.color import RGBColor
+from pptx2.enum.dml import MSO_THEME_COLOR
+from pptx2.enum.shapes import MSO_SHAPE
+from pptx2.inherit import resolve_color
+from pptx2.util import Inches
 
 SLOTS = [
     MSO_THEME_COLOR.ACCENT_1, MSO_THEME_COLOR.ACCENT_2, MSO_THEME_COLOR.ACCENT_3,

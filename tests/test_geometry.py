@@ -1,12 +1,12 @@
-"""Unit tests for :mod:`power_pptx.geometry`."""
+"""Unit tests for :mod:`pptx2.geometry`."""
 
 from __future__ import annotations
 
 import pytest
 
-from power_pptx import BBox, Presentation
-from power_pptx.enum.shapes import MSO_SHAPE
-from power_pptx.util import Emu, Inches, Pt
+from pptx2 import BBox, Presentation
+from pptx2.enum.shapes import MSO_SHAPE
+from pptx2.util import Emu, Inches, Pt
 
 
 @pytest.fixture

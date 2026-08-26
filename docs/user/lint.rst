@@ -24,7 +24,7 @@ For a whole deck, iterate the slides yourself::
     for slide in prs.slides:
         all_issues.extend(slide.lint().issues)
 
-The :func:`power_pptx.compose.from_spec` entry point also accepts a
+The :func:`pptx2.compose.from_spec` entry point also accepts a
 deck-level ``"lint": "warn" | "raise"`` field that walks every slide
 and surfaces issues for you, and any presentation — however it was
 built — can be checked at save time with
@@ -33,41 +33,41 @@ built — can be checked at save time with
 Issue types
 -----------
 
-* :class:`power_pptx.lint.TextOverflow` — estimated text extent exceeds the
+* :class:`pptx2.lint.TextOverflow` — estimated text extent exceeds the
   text-frame extent.  The current implementation uses a fast
   character/line-count heuristic (default character width of
   ``0.55 × pt``, line height of ``1.2 × pt``) and respects text-frame
   margins; shapes with ``auto_size`` set to ``TEXT_TO_FIT_SHAPE`` or
   ``SHAPE_TO_FIT_TEXT`` are skipped because they cannot overflow by
   definition.
-* :class:`power_pptx.lint.OffSlide` — a shape is wholly or partly outside the
+* :class:`pptx2.lint.OffSlide` — a shape is wholly or partly outside the
   slide bounds.
-* :class:`power_pptx.lint.ShapeCollision` — two shapes' bounding boxes overlap
+* :class:`pptx2.lint.ShapeCollision` — two shapes' bounding boxes overlap
   significantly.  See :ref:`lint-groups` for the three ways to declare that an
   overlap is intentional.
-* :class:`power_pptx.lint.MinFontSize` — a text run is below the configured
+* :class:`pptx2.lint.MinFontSize` — a text run is below the configured
   legibility threshold (default 9pt).
-* :class:`power_pptx.lint.OffGridDrift` — a shape's left or top edge is
+* :class:`pptx2.lint.OffGridDrift` — a shape's left or top edge is
   slightly off a dominant column/row that several other shapes hit cleanly.
   Auto-fixable: :meth:`SlideLintReport.auto_fix` snaps the drifted edge onto
   the grid.
-* :class:`power_pptx.lint.LowContrast` — text and resolved background fill
+* :class:`pptx2.lint.LowContrast` — text and resolved background fill
   have a WCAG contrast ratio below 4.5:1.  Resolves only solid RGB fills
   (theme colors and gradients are skipped silently to avoid false
   positives).
-* :class:`power_pptx.lint.ZOrderAnomaly` — a filled shape is drawn above a
+* :class:`pptx2.lint.ZOrderAnomaly` — a filled shape is drawn above a
   shape it visually contains, hiding the inner shape at render time.
-* :class:`power_pptx.lint.LayerOrderViolation` — a shape declares
+* :class:`pptx2.lint.LayerOrderViolation` — a shape declares
   ``layer_above = "..."`` but is drawn *below* a shape in that layer, so it
   will be hidden at render time.  Severity ERROR, because the declaration
   records what the author meant and the drawing order is what failed to
   deliver it.  Auto-fixable: :meth:`SlideLintReport.auto_fix` restacks the
   declaring shape.  See :ref:`lint-groups`.
-* :class:`power_pptx.lint.MasterPlaceholderCollision` — a non-placeholder
+* :class:`pptx2.lint.MasterPlaceholderCollision` — a non-placeholder
   shape sits at exactly the position of a layout placeholder it should
   likely have inherited from instead of redrawing.
 
-Each issue carries a ``severity`` (:class:`~power_pptx.lint.LintSeverity`),
+Each issue carries a ``severity`` (:class:`~pptx2.lint.LintSeverity`),
 a ``code`` string, a human-readable ``message``, and a ``shapes``
 tuple of the shapes it implicates.
 
@@ -110,7 +110,7 @@ Not auto-fixable:
 * ``LowContrast``, ``MinFontSize``, ``ZOrderAnomaly``,
   ``MasterPlaceholderCollision`` — require designer judgment.
 
-:meth:`Slide.tidy <power_pptx.slide.Slide.tidy>` is the one-call wrapper around lint-then-fix, with the
+:meth:`Slide.tidy <pptx2.slide.Slide.tidy>` is the one-call wrapper around lint-then-fix, with the
 flags most decks want by default::
 
     slide.tidy()                            # the usual case
@@ -195,8 +195,8 @@ six overlaps between them, including the one that really would be a bug.
 An allowance licenses exactly one pair and leaves every other overlap on
 the slide policed::
 
-    from power_pptx.enum.shapes import MSO_SHAPE
-    from power_pptx.util import Inches
+    from pptx2.enum.shapes import MSO_SHAPE
+    from pptx2.util import Inches
 
     card = slide.shapes.add_shape(
         MSO_SHAPE.ROUNDED_RECTANGLE, Inches(0.8), Inches(1.5),
@@ -238,7 +238,7 @@ can fail::
 ``layer`` is ``"card"``.  Where the drawing order agrees, the overlap is
 treated as intentional and stays out of the report.  Where it *disagrees*
 — ``badge`` comes earlier in the shape tree and is therefore painted
-underneath — you get a :class:`~power_pptx.lint.LayerOrderViolation` at
+underneath — you get a :class:`~pptx2.lint.LayerOrderViolation` at
 ERROR severity, plus the ``ShapeCollision`` that was never licensed,
 because the declaration is taken as what you meant and the z-order is
 reported as the bug::
@@ -289,9 +289,9 @@ Every presentation carries a ``lint_on_save`` switch, whatever built it::
 Only **error**-severity issues count; warnings and info never trigger it.
 The lint pass runs *before* anything is written, so ``"raise"`` never
 leaves a bad file on disk — it raises
-:class:`power_pptx.exc.LintError` naming the offending slide indexes.
+:class:`pptx2.exc.LintError` naming the offending slide indexes.
 ``"warn"`` logs each issue through stdlib :mod:`logging` on the
-``power_pptx.presentation`` logger and writes the file anyway.
+``pptx2.presentation`` logger and writes the file anyway.
 
 The default is ``"off"`` so existing code is unaffected and pays nothing.
 Any other value raises ``ValueError``.  The setting lives on the in-memory
@@ -299,7 +299,7 @@ Any other value raises ``ValueError``.  The setting lives on the in-memory
 deck re-opened from disk starts out at ``"off"`` again.
 
 This is the same gate as the ``"lint"`` field of
-:func:`power_pptx.compose.from_spec`, available to decks that were not
+:func:`pptx2.compose.from_spec`, available to decks that were not
 built from a spec.
 
 Recommended pattern for generators
@@ -317,5 +317,5 @@ Recommended pattern for generators
     prs.lint_on_save = "raise"
     prs.save("out.pptx")           # raises LintError if anything remains
 
-When building through :func:`power_pptx.compose.from_spec`, the
+When building through :func:`pptx2.compose.from_spec`, the
 ``"lint": "raise"`` field on the spec dict is the equivalent of step 2.

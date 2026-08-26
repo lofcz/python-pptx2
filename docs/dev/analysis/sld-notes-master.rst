@@ -52,15 +52,15 @@ A NotesMaster part is created on first access when not yet present::
 
     >>> notes_master = presentation.notes_master
     >>> notes_master
-    <power_pptx.slide.NotesMaster object at 0x10698c1e0>
+    <pptx2.slide.NotesMaster object at 0x10698c1e0>
 
 It provides access to its placeholders and its shapes (which include
 placeholders)::
 
     >>> notes_master.shapes
-    <power_pptx.shapes.shapetree.MasterShapes object at 0x10698d140>
+    <pptx2.shapes.shapetree.MasterShapes object at 0x10698d140>
     >>> notes_master.placeholders
-    <power_pptx.shapes.shapetree.MasterPlaceholders object at 0x1069902f0>
+    <pptx2.shapes.shapetree.MasterPlaceholders object at 0x1069902f0>
 
 These placeholders and other shapes can be manipulated as usual.
 

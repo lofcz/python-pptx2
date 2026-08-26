@@ -1,4 +1,4 @@
-power-pptx
+python-pptx2
 ==========
 
 Release v\ |version| (:ref:`Installation <install>`)

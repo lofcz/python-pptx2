@@ -1,4 +1,4 @@
-"""Tests for the figure-embedding adapters in `power_pptx.design.figures`.
+"""Tests for the figure-embedding adapters in `pptx2.design.figures`.
 
 The adapters delegate to optional third-party libraries (Plotly, Kaleido,
 Matplotlib, Playwright); these tests stub those dependencies so the
@@ -13,17 +13,17 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from power_pptx import Presentation
-from power_pptx.design.figures import (
+from pptx2 import Presentation
+from pptx2.design.figures import (
     FigureBackendUnavailable,
     add_html_figure,
     add_matplotlib_figure,
     add_plotly_figure,
     add_svg_figure,
 )
-from power_pptx.design.recipes import figure_slide
-from power_pptx.enum.shapes import MSO_SHAPE_TYPE
-from power_pptx.util import Inches
+from pptx2.design.recipes import figure_slide
+from pptx2.enum.shapes import MSO_SHAPE_TYPE
+from pptx2.util import Inches
 
 
 @pytest.fixture
@@ -196,7 +196,7 @@ class DescribeFigureSlideDispatch:
         # through figure_slide; instead, this path needs cairosvg.
         # Mock the rasteriser so we don't depend on cairosvg.
         with patch(
-            "power_pptx._svg.rasterize_svg", return_value=_TINY_PNG,
+            "pptx2._svg.rasterize_svg", return_value=_TINY_PNG,
         ):
             slide = figure_slide(prs, title="SVG", figure=_STUB_SVG)
         pictures = [

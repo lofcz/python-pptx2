@@ -23,12 +23,12 @@ from pathlib import Path
 HERE = Path(__file__).parent
 sys.path.insert(0, str(HERE))
 
-from power_pptx.chart.data import CategoryChartData
-from power_pptx.design.recipes import kpi_slide, quote_slide
-from power_pptx.enum.chart import XL_CHART_TYPE
-from power_pptx.enum.shapes import MSO_SHAPE
-from power_pptx.enum.text import MSO_VERTICAL_ANCHOR, PP_ALIGN
-from power_pptx.util import Inches, Pt
+from pptx2.chart.data import CategoryChartData
+from pptx2.design.recipes import kpi_slide, quote_slide
+from pptx2.enum.chart import XL_CHART_TYPE
+from pptx2.enum.shapes import MSO_SHAPE
+from pptx2.enum.text import MSO_VERTICAL_ANCHOR, PP_ALIGN
+from pptx2.util import Inches, Pt
 
 from _brand import STRATEGY as TOKENS, STRATEGY_PALETTE as PALETTE
 from _common import (

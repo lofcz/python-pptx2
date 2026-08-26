@@ -1,13 +1,13 @@
 # Contributing
 
-Thank you for considering a contribution to `power-pptx`.
+Thank you for considering a contribution to `python-pptx2`.
 
 This document covers the basics: how to propose a change, what your PR
 needs to look like, and how the test suite is laid out.
 
 ## Where to start
 
-- Browse the [GitHub issues](https://github.com/codehalwell/python-pptx/issues),
+- Browse the [GitHub issues](https://github.com/lofcz/python-pptx2/issues),
   especially anything labelled `good-first-issue`.
 - Read the [`ROADMAP.md`](ROADMAP.md). Each phase lists concrete
   user-visible API surface that's planned; if you'd like to take on
@@ -23,7 +23,7 @@ include:
 
 - A small, self-contained snippet that reproduces the issue.
 - The output you got and the output you expected.
-- The Python version, `power-pptx` version, and platform.
+- The Python version, `python-pptx2` version, and platform.
 
 If the bug touches an existing PowerPoint file, please attach a
 minimal redacted `.pptx` that still triggers the issue.
@@ -34,8 +34,8 @@ This project uses standard Python tooling — no exotic build steps.
 
 ```bash
 # clone and create a virtualenv
-git clone https://github.com/codehalwell/python-pptx.git
-cd python-pptx
+git clone https://github.com/lofcz/python-pptx2.git
+cd python-pptx2
 python -m venv .venv && source .venv/bin/activate
 
 # install in editable mode plus dev dependencies
@@ -49,7 +49,7 @@ pip install -r requirements-test.txt
 The test suite has three layers:
 
 1. **Unit tests** under `tests/`, organized by source module
-   (`tests/dml/test_color.py` covers `power_pptx/dml/color.py`, etc.).
+   (`tests/dml/test_color.py` covers `pptx2/dml/color.py`, etc.).
 2. **Integration tests** under `tests/integration/` — including the
    round-trip diff harness used by every later roadmap phase to assert
    that `save → open → save` is byte-clean.
@@ -59,7 +59,7 @@ The test suite has three layers:
 Running everything:
 
 ```bash
-pytest --cov=power_pptx tests
+pytest --cov=pptx2 tests
 behave --stop
 ```
 

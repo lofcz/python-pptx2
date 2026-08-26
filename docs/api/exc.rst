@@ -3,7 +3,7 @@
 Exceptions
 ==========
 
-.. automodule:: power_pptx.exc
+.. automodule:: pptx2.exc
    :members:
    :member-order: bysource
    :undoc-members:

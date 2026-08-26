@@ -9,8 +9,8 @@ from pathlib import Path
 
 from _util import blank, deck, save
 
-from power_pptx.dml.color import RGBColor
-from power_pptx.util import Inches
+from pptx2.dml.color import RGBColor
+from pptx2.util import Inches
 
 ASSETS = Path(__file__).parent / "_assets"
 

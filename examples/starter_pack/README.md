@@ -1,7 +1,7 @@
-# power-pptx starter pack
+# python-pptx2 starter pack
 
 Three opinionated `DesignTokens` sets that drop straight into the
-`power_pptx.design.recipes` slide constructors. Pick the one closest to what
+`pptx2.design.recipes` slide constructors. Pick the one closest to what
 you want, copy it into your project, and tweak the palette or
 typography to taste.
 
@@ -14,8 +14,8 @@ typography to taste.
 ## Using a token set
 
 ```python
-from power_pptx import Presentation
-from power_pptx.design.recipes import title_slide, bullet_slide, kpi_slide
+from pptx2 import Presentation
+from pptx2.design.recipes import title_slide, bullet_slide, kpi_slide
 
 # Pick whichever set fits the brief.
 from examples.starter_pack.modern import TOKENS

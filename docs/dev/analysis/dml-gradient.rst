@@ -28,7 +28,7 @@ Protocol
     >>> shape = shapes.add_shape(...)
     >>> fill = shape.fill
     >>> fill
-    <power_pptx.dml.fill.FillFormat object at 0x...>
+    <pptx2.dml.fill.FillFormat object at 0x...>
     >>> fill.type
     None
 
@@ -71,14 +71,14 @@ individual gradient stop.::
 
     >>> gradient_stops = fill.gradient_stops
     >>> gradient_stops
-    <power_pptx.dml.fill.GradientStops object at 0x...>
+    <pptx2.dml.fill.GradientStops object at 0x...>
 
     >>> len(gradient_stops)
     3
 
     >>> gradient_stop = gradient_stops[0]
     >>> gradient_stop
-    <power_pptx.dml.fill.GradientStop object at 0x...>
+    <pptx2.dml.fill.GradientStop object at 0x...>
 
 **Manipulate gradient stop color.** The `.color` property of a gradient stop
 is a `ColorFormat` object, which may be manipulated like any other color to
@@ -86,7 +86,7 @@ achieve the desired effect::
 
     >>> color = gradient_stop.color
     >>> color
-    <power_pptx.dml.color.ColorFormat object at 0x...>
+    <pptx2.dml.color.ColorFormat object at 0x...>
     >>> color.theme_color = MSO_THEME_COLOR.ACCENT_2
 
 **Manipulate gradient stop position.**::

@@ -8,9 +8,9 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from power_pptx import Presentation
-from power_pptx.dml.color import RGBColor
-from power_pptx.util import Inches, Pt
+from pptx2 import Presentation
+from pptx2.dml.color import RGBColor
+from pptx2.util import Inches, Pt
 
 from _lint import lint_or_die
 

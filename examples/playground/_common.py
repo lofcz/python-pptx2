@@ -6,9 +6,9 @@ formatter so build_all output stays scannable.
 
 from __future__ import annotations
 
-from power_pptx.exc import LintError
-from power_pptx.lint import LintSeverity
-from power_pptx.presentation import Presentation
+from pptx2.exc import LintError
+from pptx2.lint import LintSeverity
+from pptx2.presentation import Presentation
 
 
 def lint_or_die(prs: Presentation) -> None:

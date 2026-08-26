@@ -1,4 +1,4 @@
-"""Unit-test suite for `power_pptx.enum.base`."""
+"""Unit-test suite for `pptx2.enum.base`."""
 
 from __future__ import annotations
 
@@ -6,12 +6,12 @@ import warnings
 
 import pytest
 
-from power_pptx.enum.action import PP_ACTION, PP_ACTION_TYPE
-from power_pptx.enum.dml import MSO_LINE_DASH_STYLE, MSO_PATTERN_TYPE
+from pptx2.enum.action import PP_ACTION, PP_ACTION_TYPE
+from pptx2.enum.dml import MSO_LINE_DASH_STYLE, MSO_PATTERN_TYPE
 
 
 class DescribeBaseEnum:
-    """Unit-test suite for `power_pptx.enum.base.BaseEnum`."""
+    """Unit-test suite for `pptx2.enum.base.BaseEnum`."""
 
     def it_produces_members_each_equivalent_to_an_integer_value(self):
         assert PP_ACTION_TYPE.END_SHOW == 6
@@ -46,7 +46,7 @@ class DescribeBaseEnum:
 
 
 class DescribeBaseXmlEnum:
-    """Unit-test suite for `power_pptx.enum.base.BaseXmlEnum`."""
+    """Unit-test suite for `pptx2.enum.base.BaseXmlEnum`."""
 
     def it_can_look_up_a_member_by_its_corresponding_XML_attribute_value(self):
         assert MSO_LINE_DASH_STYLE.from_xml("dash") == MSO_LINE_DASH_STYLE.DASH
@@ -76,9 +76,9 @@ class DescribeBaseXmlEnum:
 
     def it_maps_a_read_only_xml_alias_to_its_canonical_member(self):
         # PresetMaterial declares __xml_read_aliases__ = {"softMetal": "softmetal"}
-        # so decks written by power-pptx <= 2.8.0 (which emitted the invalid
+        # so decks written by python-pptx2 <= 2.8.0 (which emitted the invalid
         # camelCase value) still load; writing always uses the canonical value.
-        from power_pptx.enum.dml import PresetMaterial
+        from pptx2.enum.dml import PresetMaterial
 
         assert PresetMaterial.from_xml("softMetal") is PresetMaterial.SOFT_METAL
         assert PresetMaterial.from_xml("softmetal") is PresetMaterial.SOFT_METAL

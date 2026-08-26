@@ -5,7 +5,7 @@ Builds a six-slide branded deck using the high-level recipes:
     title_slide → kpi_slide → bullet_slide → quote_slide
     → image_hero_slide → custom Grid-laid card row
 
-Demonstrates: ``DesignTokens``, every recipe in ``power_pptx.design.recipes``,
+Demonstrates: ``DesignTokens``, every recipe in ``pptx2.design.recipes``,
 the ``Grid`` layout primitive, and the lint-on-save safety net.
 """
 
@@ -13,18 +13,18 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from power_pptx import Presentation
-from power_pptx.design.layout import Grid
-from power_pptx.design.recipes import (
+from pptx2 import Presentation
+from pptx2.design.layout import Grid
+from pptx2.design.recipes import (
     bullet_slide,
     image_hero_slide,
     kpi_slide,
     quote_slide,
     title_slide,
 )
-from power_pptx.dml.color import RGBColor
-from power_pptx.enum.shapes import MSO_SHAPE
-from power_pptx.util import Inches, Pt
+from pptx2.dml.color import RGBColor
+from pptx2.enum.shapes import MSO_SHAPE
+from pptx2.util import Inches, Pt
 
 from _lint import lint_or_die
 from _tokens import BRAND
@@ -40,7 +40,7 @@ def build(out_path: Path) -> Presentation:
 
     title_slide(
         prs,
-        title="The power-pptx Showcase",
+        title="The python-pptx2 Showcase",
         subtitle="Space-aware authoring, design tokens & visual effects",
         tokens=BRAND,
     )

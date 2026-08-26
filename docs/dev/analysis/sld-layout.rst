@@ -27,7 +27,7 @@ Protocol
 The default slide layout collection (the one belonging to the first slide master) is
 accessible directly from the presentation object::
 
-  >>> from power_pptx import Presentation
+  >>> from pptx2 import Presentation
   >>> prs = Presentation()
   >>> slide_layouts = prs.slide_layouts
 
@@ -39,8 +39,8 @@ Identify unused slide layouts::
 
   >>> [layout for layout in slide_layouts if not layout.used_by_slides])
   [
-      <power_pptx.slide.SlideLayout object at 0x..a>
-      <power_pptx.slide.SlideLayout object at 0x..b>
+      <pptx2.slide.SlideLayout object at 0x..a>
+      <pptx2.slide.SlideLayout object at 0x..b>
       ...
   ]
 

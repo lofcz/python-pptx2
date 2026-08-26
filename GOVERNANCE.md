@@ -1,6 +1,6 @@
 # Project governance
 
-`power-pptx` is an actively-maintained fork of `python-pptx`. This
+`python-pptx2` is a maintained fork of `power-pptx` / `python-pptx`. This
 document describes how decisions get made and how new contributors can
 gain commit rights.
 
@@ -8,7 +8,7 @@ gain commit rights.
 
 ### Maintainer
 
-The current maintainer is **Daniel Halwell** (@codehalwell). The
+The current maintainer is **Matěj Štágl** (@lofcz). The
 maintainer is responsible for:
 
 - Reviewing and merging pull requests.
@@ -56,14 +56,14 @@ PR; an issue with the `phase-N` label is enough to record intent.
 
 ## Releases
 
-`power-pptx` follows semantic versioning as described in the
+`python-pptx2` follows semantic versioning as described in the
 roadmap's [Versioning](ROADMAP.md#versioning) section:
 
 - `1.x.y` — additive changes only; no removals.
 - `2.0.0` — breaking changes batched together; no new features.
 
 Pre-release builds use the `.devN` / `.aN` / `.bN` suffixes and publish
-to PyPI under the same distribution name (`power-pptx`).
+to PyPI under the same distribution name (`python-pptx2`).
 
 ## Code of conduct
 

@@ -1,6 +1,6 @@
-# power-pptx documentation site
+# python-pptx2 documentation site
 
-The [power-pptx](https://github.com/CodeHalwell/power-pptx) documentation site,
+The [python-pptx2](https://github.com/lofcz/python-pptx2) documentation site,
 built with **Astro**, **TypeScript**, **React**, **shadcn-style** UI primitives
 (Tailwind + class-variance-authority) and **MUI** (Material UI) for interactive
 islands. Light mode by default, with a persisted dark-mode toggle.
@@ -10,13 +10,13 @@ islands. Light mode by default, with a persisted dark-mode toggle.
 ```bash
 cd site
 npm install
-npm run dev        # http://localhost:4321/power-pptx/
+npm run dev        # http://localhost:4321/python-pptx2/
 ```
 
 ## Build
 
 ```bash
-npm run build      # static output in dist/ (base path /power-pptx)
+npm run build      # static output in dist/ (base path /python-pptx2)
 npm run preview    # serve the production build locally
 ```
 

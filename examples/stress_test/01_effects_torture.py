@@ -7,16 +7,16 @@ from __future__ import annotations
 
 from _util import blank, deck, save
 
-from power_pptx.dml.color import RGBColor
-from power_pptx.enum.dml import (
+from pptx2.dml.color import RGBColor
+from pptx2.enum.dml import (
     MSO_LINE_CAP_STYLE,
     MSO_LINE_COMPOUND_STYLE,
     MSO_LINE_END_SIZE,
     MSO_LINE_END_TYPE,
     MSO_LINE_JOIN_STYLE,
 )
-from power_pptx.enum.shapes import MSO_CONNECTOR, MSO_SHAPE
-from power_pptx.util import Inches, Pt
+from pptx2.enum.shapes import MSO_CONNECTOR, MSO_SHAPE
+from pptx2.util import Inches, Pt
 
 
 def build():

@@ -10,7 +10,7 @@ Alias: ``MSO_THEME_COLOR``
 
 Example::
 
-    from power_pptx.enum.dml import MSO_THEME_COLOR
+    from pptx2.enum.dml import MSO_THEME_COLOR
 
     shape.fill.solid()
     shape.fill.fore_color.theme_color == MSO_THEME_COLOR.ACCENT_1

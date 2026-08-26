@@ -1,10 +1,10 @@
-"""Unit-test suite for `power_pptx.oxml.theme` module."""
+"""Unit-test suite for `pptx2.oxml.theme` module."""
 
 from __future__ import annotations
 
 import pytest
 
-from power_pptx.oxml.theme import CT_OfficeStyleSheet
+from pptx2.oxml.theme import CT_OfficeStyleSheet
 
 from ..unitutil.file import snippet_text
 

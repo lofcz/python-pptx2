@@ -10,7 +10,7 @@ Class Hierarchy
 
 ::
 
-   power_pptx
+   pptx2
    |
    +--.packaging
       |

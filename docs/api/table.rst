@@ -4,7 +4,7 @@ Table-related objects
 =====================
 
 
-.. currentmodule:: power_pptx.table
+.. currentmodule:: pptx2.table
 
 
 |Table| objects

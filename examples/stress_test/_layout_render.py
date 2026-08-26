@@ -14,8 +14,8 @@ from pathlib import Path
 
 from PIL import Image, ImageDraw, ImageFont
 
-from power_pptx import Presentation
-from power_pptx.enum.shapes import MSO_SHAPE_TYPE
+from pptx2 import Presentation
+from pptx2.enum.shapes import MSO_SHAPE_TYPE
 
 EMU = 914400
 

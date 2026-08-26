@@ -1,4 +1,4 @@
-"""Unit-test suite for `power_pptx.lint`."""
+"""Unit-test suite for `pptx2.lint`."""
 
 from __future__ import annotations
 
@@ -6,9 +6,9 @@ import io
 
 import pytest
 
-from power_pptx import Presentation
-from power_pptx.dml.color import RGBColor
-from power_pptx.lint import (
+from pptx2 import Presentation
+from pptx2.dml.color import RGBColor
+from pptx2.lint import (
     LayerOrderViolation,
     LintSeverity,
     LowContrast,
@@ -27,7 +27,7 @@ from power_pptx.lint import (
     _find_lint_ext,
     _write_lint_group,
 )
-from power_pptx.util import Emu, Inches, Pt
+from pptx2.util import Emu, Inches, Pt
 
 
 def _new_blank_slide():
@@ -502,9 +502,9 @@ class DescribeSetParagraphDefaults:
         # non-RGB colour (e.g. ``theme_color``).  ``set_paragraph_defaults``
         # must use ``font.color.type`` as the "is anything set?" probe
         # so mixed-format text frames work.
-        from power_pptx.dml.color import RGBColor
-        from power_pptx.enum.dml import MSO_THEME_COLOR
-        from power_pptx.util import Pt
+        from pptx2.dml.color import RGBColor
+        from pptx2.enum.dml import MSO_THEME_COLOR
+        from pptx2.util import Pt
 
         _, slide = _new_blank_slide()
         box = slide.shapes.add_textbox(Inches(1), Inches(1), Inches(4), Inches(2))
@@ -542,9 +542,9 @@ class DescribeAutoFixTextOverflow:
     """
 
     def _overflowing_textbox(self):
-        from power_pptx.enum.shapes import MSO_SHAPE
-        from power_pptx.enum.text import MSO_AUTO_SIZE
-        from power_pptx.lint import TextOverflow
+        from pptx2.enum.shapes import MSO_SHAPE
+        from pptx2.enum.text import MSO_AUTO_SIZE
+        from pptx2.lint import TextOverflow
 
         _, slide = _new_blank_slide()
         # 1.5" × 0.4" rectangle with ~80 chars at 18pt — way too much.
@@ -565,8 +565,8 @@ class DescribeAutoFixTextOverflow:
         return slide, box
 
     def it_flips_auto_size_to_TEXT_TO_FIT_SHAPE(self):
-        from power_pptx.enum.text import MSO_AUTO_SIZE
-        from power_pptx.lint import TextOverflow
+        from pptx2.enum.text import MSO_AUTO_SIZE
+        from pptx2.lint import TextOverflow
 
         slide, box = self._overflowing_textbox()
         report = slide.lint()
@@ -580,7 +580,7 @@ class DescribeAutoFixTextOverflow:
         ] == []
 
     def it_skips_frames_that_already_set_auto_size(self):
-        from power_pptx.enum.text import MSO_AUTO_SIZE
+        from pptx2.enum.text import MSO_AUTO_SIZE
 
         slide, box = self._overflowing_textbox()
         # Capture the report while auto_size is still NONE so the report
@@ -597,7 +597,7 @@ class DescribeAutoFixTextOverflow:
         assert box.text_frame.auto_size == MSO_AUTO_SIZE.SHAPE_TO_FIT_TEXT
 
     def it_supports_dry_run(self):
-        from power_pptx.enum.text import MSO_AUTO_SIZE
+        from pptx2.enum.text import MSO_AUTO_SIZE
 
         slide, box = self._overflowing_textbox()
         report = slide.lint()
@@ -836,8 +836,8 @@ class DescribeEffectBleedGeometry:
         # Charts / tables (GraphicFrame) expose ``shape.shadow == None``
         # since 2.1.1 — the bleed helper must handle that gracefully
         # and fall back to the raw bbox.
-        from power_pptx.shapes.base import BaseShape
-        from power_pptx.lint import _effective_bbox, _shape_bbox
+        from pptx2.shapes.base import BaseShape
+        from pptx2.lint import _effective_bbox, _shape_bbox
 
         class _FakeGraphicFrame:
             name = "tbl"
@@ -1100,7 +1100,7 @@ class DescribeSarifExport:
         assert isinstance(sarif["runs"], list)
         assert len(sarif["runs"]) == 1
         driver = sarif["runs"][0]["tool"]["driver"]
-        assert driver["name"] == "power-pptx-lint"
+        assert driver["name"] == "python-pptx2-lint"
         assert isinstance(driver["rules"], list)
 
     def it_has_one_result_per_issue_with_mapped_levels(self):
@@ -1159,7 +1159,7 @@ class DescribeSarifExport:
         assert all(r["properties"]["slideIndex"] == 3 for r in results)
 
     def it_aggregates_a_whole_deck_with_slide_indices(self):
-        from power_pptx.lint import lint_report_to_sarif
+        from pptx2.lint import lint_report_to_sarif
 
         prs = Presentation()
         reports = []
@@ -1177,7 +1177,7 @@ class DescribeSarifExport:
         assert indices == {0, 1, 2}
 
     def it_accepts_a_single_report(self):
-        from power_pptx.lint import lint_report_to_sarif
+        from pptx2.lint import lint_report_to_sarif
 
         _, slide = _new_blank_slide()
         slide.shapes.add_shape(1, Inches(15), Inches(10), Inches(2), Inches(1))
@@ -2023,8 +2023,8 @@ class DescribeCrossSlideOverlapAllowance:
     """
 
     def _two_slides(self):
-        from power_pptx import Presentation
-        from power_pptx.util import Inches
+        from pptx2 import Presentation
+        from pptx2.util import Inches
 
         prs = Presentation()
         s1 = prs.slides.add_slide(prs.slide_layouts[6])
@@ -2081,7 +2081,7 @@ class DescribeCrossSlideOverlapAllowance:
         assert not [i for i in s1.lint().issues if i.code == "ShapeCollision"]
 
     def it_still_accepts_a_group_member_on_the_same_slide(self):
-        from power_pptx.util import Inches
+        from pptx2.util import Inches
 
         s1, p, _, _, _ = self._two_slides()
         group = s1.shapes.add_group_shape()
@@ -2104,8 +2104,8 @@ class DescribeAllowanceCleanupOnDelete:
     """
 
     def _overlapping_pair(self):
-        from power_pptx import Presentation
-        from power_pptx.util import Inches
+        from pptx2 import Presentation
+        from pptx2.util import Inches
 
         prs = Presentation()
         slide = prs.slides.add_slide(prs.slide_layouts[6])
@@ -2123,7 +2123,7 @@ class DescribeAllowanceCleanupOnDelete:
         assert a.overlap_allowances == frozenset()
 
     def it_keeps_allowances_naming_other_shapes(self):
-        from power_pptx.util import Inches
+        from pptx2.util import Inches
 
         _, slide, a, b = self._overlapping_pair()
         other = slide.shapes.add_textbox(
@@ -2136,7 +2136,7 @@ class DescribeAllowanceCleanupOnDelete:
         assert a.overlap_allowances == frozenset({other.shape_id})
 
     def it_purges_allowances_held_by_shapes_inside_groups(self):
-        from power_pptx.util import Inches
+        from pptx2.util import Inches
 
         _, slide, _, b = self._overlapping_pair()
         group = slide.shapes.add_group_shape()
@@ -2152,8 +2152,8 @@ class DescribeAllowanceCleanupOnDelete:
     def it_does_not_suppress_a_collision_with_a_shape_reusing_the_id(self):
         import io
 
-        from power_pptx import Presentation
-        from power_pptx.util import Inches
+        from pptx2 import Presentation
+        from pptx2.util import Inches
 
         prs, _, _, b = self._overlapping_pair()
         deleted_id = b.shape_id
@@ -2182,8 +2182,8 @@ class DescribeAllowanceCleanupOnGroupDelete:
     """
 
     def _slide_with_grouped_shape(self):
-        from power_pptx import Presentation
-        from power_pptx.util import Inches
+        from pptx2 import Presentation
+        from pptx2.util import Inches
 
         prs = Presentation()
         slide = prs.slides.add_slide(prs.slide_layouts[6])
@@ -2204,8 +2204,8 @@ class DescribeAllowanceCleanupOnGroupDelete:
         assert a.overlap_allowances == frozenset()
 
     def it_purges_ids_nested_more_than_one_level_deep(self):
-        from power_pptx import Presentation
-        from power_pptx.util import Inches
+        from pptx2 import Presentation
+        from pptx2.util import Inches
 
         prs = Presentation()
         slide = prs.slides.add_slide(prs.slide_layouts[6])
@@ -2222,7 +2222,7 @@ class DescribeAllowanceCleanupOnGroupDelete:
         assert a.overlap_allowances == frozenset()
 
     def it_keeps_allowances_naming_shapes_outside_the_group(self):
-        from power_pptx.util import Inches
+        from pptx2.util import Inches
 
         _, slide, a, group, _ = self._slide_with_grouped_shape()
         survivor = slide.shapes.add_textbox(
@@ -2237,8 +2237,8 @@ class DescribeAllowanceCleanupOnGroupDelete:
     def it_does_not_suppress_a_collision_with_a_shape_reusing_a_member_id(self):
         import io
 
-        from power_pptx import Presentation
-        from power_pptx.util import Inches
+        from pptx2 import Presentation
+        from pptx2.util import Inches
 
         prs, _, _, group, inner = self._slide_with_grouped_shape()
         stale_id = inner.shape_id

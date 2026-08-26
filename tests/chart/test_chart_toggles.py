@@ -17,10 +17,10 @@ import io
 
 import pytest
 
-from power_pptx import Presentation
-from power_pptx.chart.data import CategoryChartData
-from power_pptx.enum.chart import XL_CHART_TYPE
-from power_pptx.util import Inches
+from pptx2 import Presentation
+from pptx2.chart.data import CategoryChartData
+from pptx2.enum.chart import XL_CHART_TYPE
+from pptx2.util import Inches
 
 from ..integration.round_trip import assert_round_trip
 from ..schema.oxml_schema_validator import (

@@ -6,7 +6,7 @@ from __future__ import annotations
 
 from _util import save
 
-from power_pptx.compose import from_spec
+from pptx2.compose import from_spec
 
 
 def build():

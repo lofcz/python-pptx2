@@ -92,7 +92,7 @@ Missing the part of the schema that controls how the 3D shape is
 
 The 2.4.0 animation API has 8 entrance, 3 emphasis, and 6 exit
 presets. The PowerPoint gallery has 22 / 30+ / 18+ respectively. As
-long as `power_pptx.animation` stays experimental (per
+long as `pptx2.animation` stays experimental (per
 `IMPROVEMENT_PLAN.md` #1), this isn't catastrophic — but the moment
 the playback bug is fixed, the gallery gap becomes the next
 limiting factor.
@@ -403,7 +403,7 @@ is fragile; several quality knobs would harden it.
   `js_eval=`, `device_pixel_ratio=`. `[low/high]`
 - **HTML→native-shape converter.** `from_html(html)` parses
   headings as titles, `<ul>` as bullets, `<table>` as a real
-  power-pptx table, `<img>` as a picture, `<pre>` as a
+  python-pptx2 table, `<img>` as a picture, `<pre>` as a
   `code_slide`. This is the markdown-to-deck bridge LLM workflows
   want, and it removes the dependency on the screenshot path
   entirely. `[high/high]`
@@ -450,14 +450,14 @@ is fragile; several quality knobs would harden it.
 
 ### M3. Spec authoring + LLM-friendly errors
 
-- **JSON Schema export** — `power_pptx.spec.json_schema()` so
+- **JSON Schema export** — `pptx2.spec.json_schema()` so
   IDEs autocomplete and lint specs before building. Big
   LLM-authoring win. `[low/high]`
 - **Did-you-mean for unknown spec keys.** `from_spec` already
   rejects them (2.5.0); raise a `ValueError` with the closest
   match name (Levenshtein over the known schema). Pure DX.
   `[low/high]`
-- **LLM-friendly error messages.** All `power_pptx.exc` errors
+- **LLM-friendly error messages.** All `pptx2.exc` errors
   should include: (1) what went wrong, (2) why it matters,
   (3) a concrete code example of the fix. Makes errors
   recoverable for an LLM in a single follow-up turn. `[med/high]`
@@ -487,12 +487,12 @@ is fragile; several quality knobs would harden it.
 
 ### M6. CLI + plugins
 
-- **CLI** — `power-pptx new`, `power-pptx lint`, `power-pptx
+- **CLI** — `python-pptx2 new`, `python-pptx2 lint`, `python-pptx2
   render-thumbs`. The library is Python-only today; a thin CLI
   on top makes it scriptable from CI / Make. `[med/high]`
-- **Plugin / extension API** — `@power_pptx.register_recipe`,
-  `@power_pptx.register_lint_rule`,
-  `@power_pptx.register_chart_palette`. Lets brands ship their
+- **Plugin / extension API** — `@pptx2.register_recipe`,
+  `@pptx2.register_lint_rule`,
+  `@pptx2.register_chart_palette`. Lets brands ship their
   own design system without forking. `[med/high]`
 
 ### M7. Validation + diff
@@ -552,10 +552,10 @@ tracker.
 
 This punch list was assembled by:
 
-1. Reading every file in `src/power_pptx/dml/`,
-   `src/power_pptx/animation.py`, `src/power_pptx/lint.py`,
-   `src/power_pptx/table.py`, `src/power_pptx/text/`,
-   `src/power_pptx/chart/`, and `src/power_pptx/design/`.
+1. Reading every file in `src/pptx2/dml/`,
+   `src/pptx2/animation.py`, `src/pptx2/lint.py`,
+   `src/pptx2/table.py`, `src/pptx2/text/`,
+   `src/pptx2/chart/`, and `src/pptx2/design/`.
 2. Cross-referencing the OOXML schema for each surface against
    the public proxy, looking for round-tripping XML elements
    that have no Python accessor.

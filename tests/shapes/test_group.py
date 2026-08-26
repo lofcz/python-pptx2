@@ -1,17 +1,17 @@
-"""Test suite for power_pptx.shapes.group module."""
+"""Test suite for pptx2.shapes.group module."""
 
 from __future__ import annotations
 
 import pytest
 
-from power_pptx import Presentation
-from power_pptx.dml.color import RGBColor
-from power_pptx.dml.effect import ShadowFormat
-from power_pptx.enum.dml import MSO_FILL
-from power_pptx.enum.shapes import MSO_SHAPE, MSO_SHAPE_TYPE
-from power_pptx.shapes.group import GroupShape
-from power_pptx.shapes.shapetree import GroupShapes
-from power_pptx.util import Emu, Inches, Pt
+from pptx2 import Presentation
+from pptx2.dml.color import RGBColor
+from pptx2.dml.effect import ShadowFormat
+from pptx2.enum.dml import MSO_FILL
+from pptx2.enum.shapes import MSO_SHAPE, MSO_SHAPE_TYPE
+from pptx2.shapes.group import GroupShape
+from pptx2.shapes.shapetree import GroupShapes
+from pptx2.util import Emu, Inches, Pt
 
 from ..unitutil.cxml import element
 from ..unitutil.mock import class_mock, initializer_mock, instance_mock
@@ -74,7 +74,7 @@ class DescribeGroupShape(object):
 
     @pytest.fixture
     def ShadowFormat_(self, request):
-        return class_mock(request, "power_pptx.shapes.group.ShadowFormat")
+        return class_mock(request, "pptx2.shapes.group.ShadowFormat")
 
 
 class DescribeGroupShapeSurface(object):
@@ -143,7 +143,7 @@ class DescribeGroupShapeSurface(object):
     def it_exposes_inner_and_preset_shadow_over_grpSpPr(self, group):
         # BaseShape routes these through spPr; a group has grpSpPr, so without
         # the override they'd raise AttributeError (PR #39 review).
-        from power_pptx.dml.effect import InnerShadowFormat, PresetShadowFormat
+        from pptx2.dml.effect import InnerShadowFormat, PresetShadowFormat
 
         assert isinstance(group.inner_shadow, InnerShadowFormat)
         assert isinstance(group.preset_shadow, PresetShadowFormat)

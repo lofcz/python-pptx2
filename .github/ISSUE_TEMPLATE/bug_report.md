@@ -1,6 +1,6 @@
 ---
 name: Bug report
-about: Report a reproducible defect in power-pptx
+about: Report a reproducible defect in python-pptx2
 labels: bug
 ---
 
@@ -12,7 +12,7 @@ A clear and concise description of what the bug is.
 
 ```python
 # paste the smallest snippet that triggers the bug
-from power_pptx import Presentation
+from pptx2 import Presentation
 
 prs = Presentation()
 # ...
@@ -32,6 +32,6 @@ What actually happened. Include the full traceback if an exception was raised.
 ## Environment
 
 - Python version: (e.g. 3.12.2)
-- `power-pptx` version: (e.g. 1.1.0)
+- `python-pptx2` version: (e.g. 1.1.0)
 - Platform: (e.g. macOS 14, Ubuntu 24.04, Windows 11)
-- Installed via: (e.g. `pip install power-pptx`)
+- Installed via: (e.g. `pip install python-pptx2`)

@@ -7,7 +7,7 @@ import pytest
 
 class DescribeSkillRoot:
     def it_returns_a_directory_containing_skill_md(self):
-        from power_pptx.skill import skill_root
+        from pptx2.skill import skill_root
 
         root = skill_root()
         assert root.is_dir()
@@ -17,9 +17,9 @@ class DescribeSkillRoot:
 
 class DescribeInstallSkill:
     def it_copies_skill_md_and_references_into_target(self, tmp_path):
-        from power_pptx.skill import install_skill
+        from pptx2.skill import install_skill
 
-        target = tmp_path / "skills" / "power-pptx"
+        target = tmp_path / "skills" / "python-pptx2"
         dest = install_skill(target=target)
 
         assert dest == target
@@ -30,7 +30,7 @@ class DescribeInstallSkill:
         assert refs, "expected at least one reference markdown file"
 
     def it_overwrites_an_existing_install_by_default(self, tmp_path):
-        from power_pptx.skill import install_skill
+        from pptx2.skill import install_skill
 
         target = tmp_path / "skill"
         install_skill(target=target)
@@ -41,7 +41,7 @@ class DescribeInstallSkill:
         assert not stray.exists()
 
     def it_refuses_to_overwrite_when_no_overwrite(self, tmp_path):
-        from power_pptx.skill import install_skill
+        from pptx2.skill import install_skill
 
         target = tmp_path / "skill"
         install_skill(target=target)

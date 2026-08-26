@@ -1,7 +1,7 @@
 # Configuration file for the Sphinx documentation builder.
 #
 # Originally created for python-pptx by Steve Canny in 2012; updated for
-# the power-pptx fork in 2026.
+# the python-pptx2 fork in 2026.
 
 from __future__ import annotations
 
@@ -10,13 +10,13 @@ import sys
 
 sys.path.insert(0, os.path.abspath(".."))
 
-from power_pptx import __version__  # noqa: E402
+from pptx2 import __version__  # noqa: E402
 
 # -- Project information -----------------------------------------------------
 
-project = "power-pptx"
-copyright = "2012, 2013, Steve Canny; 2026, Daniel Halwell"
-author = "Daniel Halwell"
+project = "python-pptx2"
+copyright = "2012, 2013, Steve Canny; 2026, Daniel Halwell; 2026, Matěj Štágl"
+author = "Matěj Štágl"
 
 version = __version__
 release = __version__
@@ -58,7 +58,7 @@ intersphinx_mapping = {
 # -- Substitutions used across the documentation -----------------------------
 
 rst_epilog = """
-.. |pp| replace:: power-pptx
+.. |pp| replace:: python-pptx2
 
 .. |str| replace:: :class:`str`
 .. |int| replace:: :class:`int`
@@ -172,7 +172,7 @@ rst_epilog = """
 .. |PlaceholderPicture| replace:: :class:`.PlaceholderPicture`
 .. |Plots| replace:: :class:`.Plots`
 .. |Point| replace:: :class:`.Point`
-.. |Presentation| replace:: :class:`~power_pptx.presentation.Presentation`
+.. |Presentation| replace:: :class:`~pptx2.presentation.Presentation`
 .. |Pt| replace:: :class:`.Pt`
 .. |RadarSeries| replace:: :class:`.RadarSeries`
 .. |ReflectionFormat| replace:: :class:`.ReflectionFormat`
@@ -232,21 +232,21 @@ html_theme_options = {
     "style_external_links": True,
 }
 html_static_path = ["_static"]
-html_title = f"power-pptx {release}"
-html_short_title = "power-pptx"
-htmlhelp_basename = "power-pptxdoc"
+html_title = f"python-pptx2 {release}"
+html_short_title = "python-pptx2"
+htmlhelp_basename = "python-pptx2doc"
 
 
 # -- LaTeX output ------------------------------------------------------------
 
 latex_documents = [
-    ("index", "power-pptx.tex", "power-pptx Documentation", author, "manual"),
+    ("index", "python-pptx2.tex", "python-pptx2 Documentation", author, "manual"),
 ]
 
 
 # -- Manual page output ------------------------------------------------------
 
-man_pages = [("index", "power-pptx", "power-pptx Documentation", [author], 1)]
+man_pages = [("index", "python-pptx2", "python-pptx2 Documentation", [author], 1)]
 
 
 # -- Texinfo output ----------------------------------------------------------
@@ -254,10 +254,10 @@ man_pages = [("index", "power-pptx", "power-pptx Documentation", [author], 1)]
 texinfo_documents = [
     (
         "index",
-        "power-pptx",
-        "power-pptx Documentation",
+        "python-pptx2",
+        "python-pptx2 Documentation",
         author,
-        "power-pptx",
+        "python-pptx2",
         "Create, read, and update PowerPoint 2007+ (.pptx) files from Python.",
         "Miscellaneous",
     ),

@@ -1,0 +1,2027 @@
+"""The shape tree, the structure that holds a slide's shapes."""
+
+from __future__ import annotations
+
+import io
+import os
+import warnings
+from typing import IO, TYPE_CHECKING, Callable, Iterable, Iterator, cast
+
+from pptx2.enum.shapes import PP_PLACEHOLDER, PROG_ID
+from pptx2.media import SPEAKER_IMAGE_BYTES, Video
+from pptx2.opc.constants import CONTENT_TYPE as CT
+from pptx2.oxml.ns import qn
+from pptx2.oxml.shapes.autoshape import CT_Shape
+from pptx2.oxml.shapes.graphfrm import CT_GraphicalObjectFrame
+from pptx2.oxml.shapes.picture import CT_Picture
+from pptx2.oxml.simpletypes import ST_Direction
+from pptx2.shapes.autoshape import AutoShapeType, Shape
+from pptx2.shapes.base import BaseShape
+from pptx2.shapes.connector import Connector
+from pptx2.shapes.freeform import FreeformBuilder
+from pptx2.shapes.graphfrm import GraphicFrame
+from pptx2.shapes.group import GroupShape
+from pptx2.shapes.picture import Movie, Picture
+from pptx2.shapes.placeholder import (
+    ChartPlaceholder,
+    LayoutPlaceholder,
+    MasterPlaceholder,
+    NotesSlidePlaceholder,
+    PicturePlaceholder,
+    PlaceholderGraphicFrame,
+    PlaceholderPicture,
+    SlidePlaceholder,
+    TablePlaceholder,
+)
+from pptx2.shared import ParentedElementProxy
+from pptx2.util import Emu, _coerce_emu, lazyproperty
+
+if TYPE_CHECKING:
+    from pptx2.chart.chart import Chart
+    from pptx2.chart.data import ChartData
+    from pptx2.enum.chart import XL_CHART_TYPE
+    from pptx2.enum.shapes import MSO_CONNECTOR_TYPE, MSO_SHAPE
+    from pptx2.oxml.shapes import ShapeElement
+    from pptx2.oxml.shapes.connector import CT_Connector
+    from pptx2.oxml.shapes.groupshape import CT_GroupShape
+    from pptx2.parts.image import ImagePart
+    from pptx2.parts.slide import SlidePart
+    from pptx2.slide import Slide, SlideLayout
+    from pptx2.types import ProvidesPart
+    from pptx2.util import Length
+
+# Horizontal-bar chart types — those where category[0] sits at the
+# bottom of the axis by default. We flip ``reverse_order`` on these
+# at creation time so the first category renders at the top, matching
+# the natural reading order. ``BAR_OF_PIE`` is excluded — it's a pie
+# variant, not a horizontal-bar chart.
+_HORIZONTAL_BAR_CHART_NAMES = frozenset(
+    {
+        "BAR_CLUSTERED",
+        "BAR_STACKED",
+        "BAR_STACKED_100",
+        "THREE_D_BAR_CLUSTERED",
+        "THREE_D_BAR_STACKED",
+        "THREE_D_BAR_STACKED_100",
+        "CONE_BAR_CLUSTERED",
+        "CONE_BAR_STACKED",
+        "CONE_BAR_STACKED_100",
+        "CYLINDER_BAR_CLUSTERED",
+        "CYLINDER_BAR_STACKED",
+        "CYLINDER_BAR_STACKED_100",
+        "PYRAMID_BAR_CLUSTERED",
+        "PYRAMID_BAR_STACKED",
+        "PYRAMID_BAR_STACKED_100",
+    }
+)
+
+
+# Anchor strings accepted by ``add_picture`` / ``add_shape`` /
+# ``add_textbox``. The first token is vertical, the second horizontal;
+# ``"center"`` matches both axes (``center-center`` and bare
+# ``"center"`` are equivalent). The variant spellings keep both UK and
+# US conventions usable.
+_VERTICAL_ANCHORS = {"top", "middle", "center", "centre", "bottom"}
+_HORIZONTAL_ANCHORS = {"left", "center", "centre", "right"}
+
+
+def _resolve_anchor(anchor: str) -> tuple[str, str]:
+    """Return ``(vertical, horizontal)`` from a hyphenated anchor string.
+
+    Accepts ``"top-left"``, ``"top-center"``, ``"top-centre"``,
+    ``"middle-left"``, ``"middle-center"``, ``"middle-right"``,
+    ``"center"`` (== ``"middle-center"``), ``"bottom-left"``,
+    ``"bottom-center"``, ``"bottom-right"``, etc. ``"center-left"``
+    is also accepted as a synonym for ``"middle-left"`` since it's
+    a common typo.
+    """
+    raw = anchor.strip().lower()
+    if raw in {"center", "centre"}:
+        return ("middle", "center")
+    if "-" not in raw:
+        raise ValueError(
+            f"anchor must be 'center' or 'vertical-horizontal' "
+            f"(e.g. 'top-right'); got {anchor!r}"
+        )
+    parts = [p.strip() for p in raw.split("-", 1)]
+    v, h = parts[0], parts[1]
+    # Accept "center-left" etc. as synonyms for "middle-left".
+    if v == "center" or v == "centre":
+        v = "middle"
+    if v not in _VERTICAL_ANCHORS or h not in _HORIZONTAL_ANCHORS:
+        raise ValueError(
+            f"anchor must be one of top|middle|bottom dash "
+            f"left|center|right; got {anchor!r}"
+        )
+    # Normalise "centre" → "center" on the horizontal half.
+    if h == "centre":
+        h = "center"
+    return (v, h)
+
+
+def _compute_anchor_left_top(
+    anchor: str,
+    container_w: int,
+    container_h: int,
+    shape_w: int,
+    shape_h: int,
+    margin: int = 0,
+) -> tuple[int, int]:
+    """Compute ``(left, top)`` EMU values for a shape under `anchor`.
+
+    The shape is positioned inside a container of size
+    (`container_w`, `container_h`), with `margin` EMU between the
+    shape and the matching container edges (margin is ignored on the
+    centre axes — centred shapes don't need an outer margin).
+    """
+    v, h = _resolve_anchor(anchor)
+
+    if h == "left":
+        left = margin
+    elif h == "right":
+        left = container_w - margin - shape_w
+    else:  # center
+        left = (container_w - shape_w) // 2
+
+    if v == "top":
+        top = margin
+    elif v == "bottom":
+        top = container_h - margin - shape_h
+    else:  # middle
+        top = (container_h - shape_h) // 2
+
+    return (left, top)
+
+
+def _container_box(shapetree, container) -> tuple[int, int, int, int]:
+    """Return the slide-relative ``(left, top, width, height)`` of a container.
+
+    Shapes added through ``slide.shapes.add_*`` always live in the
+    slide's ``<p:spTree>`` and therefore use slide-relative
+    coordinates; nesting a shape inside a parent shape on the slide
+    is purely *visual*, not structural. So when ``container`` is a
+    parent shape, we need both its position *and* its size to compute
+    correct anchor coordinates — otherwise "centre inside this card"
+    silently means "centre inside a card-sized box at the slide
+    origin", which is wrong for any container not at ``(0, 0)``.
+
+    `container` may be:
+
+    * ``None`` — use the slide; origin ``(0, 0)``, extents from
+      the presentation.
+    * A slide-like object exposing ``part.package.presentation_part``
+      — same as ``None``, but resolves through the supplied object.
+    * Any object with ``.width`` and ``.height`` attributes; if it
+      also exposes ``.left`` / ``.top`` (i.e. a real shape) those
+      are honoured, otherwise the origin defaults to ``(0, 0)``
+      (useful for synthetic / virtual containers).
+
+    Raises ``ValueError`` if no usable extents can be derived.
+    """
+    if container is None:
+        prs = shapetree.part.package.presentation_part.presentation
+        return (0, 0, int(prs.slide_width), int(prs.slide_height))
+    # Shape-like: width / height attributes (with optional left / top).
+    if hasattr(container, "width") and hasattr(container, "height"):
+        w, h = container.width, container.height
+        if w is not None and h is not None:
+            left = getattr(container, "left", 0) or 0
+            top = getattr(container, "top", 0) or 0
+            return (int(left), int(top), int(w), int(h))
+    # Slide-like: try the same path as the default branch.
+    if hasattr(container, "part"):
+        try:
+            prs = container.part.package.presentation_part.presentation
+            return (0, 0, int(prs.slide_width), int(prs.slide_height))
+        except AttributeError:
+            pass
+    raise ValueError(
+        "container must be None, a slide, or a shape with .width/.height"
+    )
+
+
+def _container_extents(shapetree, container) -> tuple[int, int]:
+    """Back-compat wrapper — return ``(width, height)`` only.
+
+    Prefer :func:`_container_box` in new code; it also returns the
+    container's slide-relative origin, which the anchor helpers need
+    for non-origin containers.
+    """
+    _, _, w, h = _container_box(shapetree, container)
+    return (w, h)
+
+
+class _LintGroupScope:
+    """Context manager returned by :meth:`_BaseShapes.lint_group_scope`.
+
+    On enter it snapshots the current shape count of the tree; on
+    exit it tags every shape added in between with
+    ``shape.lint_group = name``. A diff-based approach keeps the
+    implementation independent of which ``add_*`` method the caller
+    uses — the proxy doesn't have to wrap each one individually, and
+    custom helpers that ultimately call into the tree just work.
+    """
+
+    def __init__(self, shapetree, name):
+        self._shapetree = shapetree
+        self._name = name
+        self._snapshot = 0
+
+    def __enter__(self):
+        self._snapshot = len(list(self._shapetree._iter_member_elms()))
+        return self._shapetree
+
+    def __exit__(self, exc_type, exc, tb):
+        # On exception, still tag — the shapes were added; bailing
+        # would leave them as untagged "real" overlaps in the lint
+        # report, which is the worse default.
+        from pptx2.shapes.base import BaseShape
+
+        elms = list(self._shapetree._iter_member_elms())
+        added = elms[self._snapshot :]
+        if not added:
+            return False  # nothing to tag, propagate any exception
+
+        name = self._name
+        if name is None:
+            existing_groups = set()
+            for elm in elms:
+                shape = self._shapetree._shape_factory(elm)
+                tag = getattr(shape, "lint_group", None)
+                if tag:
+                    existing_groups.add(tag)
+            n = 1
+            while f"design-group-{n}" in existing_groups:
+                n += 1
+            name = f"design-group-{n}"
+
+        for elm in added:
+            shape: BaseShape = self._shapetree._shape_factory(elm)
+            try:
+                shape.lint_group = name
+            except (AttributeError, NotImplementedError):
+                # Some shape kinds don't carry a cNvPr (rare); skip.
+                pass
+        return False  # never suppress exceptions
+
+
+def _apply_horizontal_bar_default(graphic_frame, chart_type) -> None:
+    """Reverse the category axis on horizontal-bar chart types.
+
+    OOXML's default places ``category[0]`` at the bottom of the axis,
+    which makes a chart fed ``["A", "B", "C"]`` render with ``A`` at
+    the bottom — counterintuitive for natural top-to-bottom reading.
+    This flips it for the bar types where users almost always want
+    top-to-bottom; column charts keep their default left-to-right
+    ordering. Caller can override post-creation if the legacy default
+    is wanted.
+    """
+    if getattr(chart_type, "name", None) not in _HORIZONTAL_BAR_CHART_NAMES:
+        return
+    try:
+        graphic_frame.chart.category_axis.reverse_order = True
+    except (AttributeError, ValueError):
+        # Defensive: never break chart creation on a styling tweak.
+        pass
+
+
+# +-- _BaseShapes
+# |   |
+# |   +-- _BaseGroupShapes
+# |   |   |
+# |   |   +-- GroupShapes
+# |   |   |
+# |   |   +-- SlideShapes
+# |   |
+# |   +-- LayoutShapes
+# |   |
+# |   +-- MasterShapes
+# |   |
+# |   +-- NotesSlideShapes
+# |   |
+# |   +-- BasePlaceholders
+# |       |
+# |       +-- LayoutPlaceholders
+# |       |
+# |       +-- MasterPlaceholders
+# |           |
+# |           +-- NotesSlidePlaceholders
+# |
+# +-- SlidePlaceholders
+
+
+def _endpoint_box(target):
+    """Return a ``(left, top, width, height)`` tuple for an arrow endpoint.
+
+    Accepts a ``BaseShape``, a ``BBox`` (or any 4-iterable thereof), or
+    ``None`` (in which case ``None`` is returned).  Coordinate tuples
+    are not treated as boxes — callers pass them through verbatim via
+    the ``_resolve_endpoint`` path that follows.
+    """
+    from pptx2.geometry import BBox
+
+    if target is None:
+        return None
+    if isinstance(target, BaseShape):
+        return (int(target.left), int(target.top), int(target.width), int(target.height))
+    if isinstance(target, BBox):
+        return (int(target.left), int(target.top), int(target.width), int(target.height))
+    return None
+
+
+def _resolve_endpoint(target, *, opposite, side: str, inset_emu: int):
+    """Return ``(x, y)`` for an arrow endpoint, snapping to the right edge.
+
+    * If ``target`` is a coordinate tuple ``(x, y)``, return it verbatim.
+    * If ``target`` is a Shape / BBox, choose a mid-edge anchor (the one
+      facing ``opposite``, unless ``side`` is a specific edge name), pull
+      the resulting point inward by ``inset_emu`` so an arrowhead won't
+      bleed past the target's stroke.
+    """
+    if isinstance(target, (tuple, list)) and len(target) == 2:
+        return (int(target[0]), int(target[1]))
+
+    box = _endpoint_box(target)
+    if box is None:
+        raise TypeError(
+            "arrow endpoint must be (x, y), a Shape, or a BBox; got %r"
+            % (target,)
+        )
+    left, top, width, height = box
+
+    if side in (None, "auto"):
+        opp_box = _endpoint_box(opposite)
+        if isinstance(opposite, (tuple, list)) and len(opposite) == 2:
+            opp_cx, opp_cy = int(opposite[0]), int(opposite[1])
+        elif opp_box is not None:
+            opp_cx = opp_box[0] + opp_box[2] // 2
+            opp_cy = opp_box[1] + opp_box[3] // 2
+        else:
+            opp_cx, opp_cy = left + width // 2, top + height // 2
+
+        cx = left + width // 2
+        cy = top + height // 2
+        # Pick whichever edge the opposite endpoint is closest to.
+        dx = opp_cx - cx
+        dy = opp_cy - cy
+        if abs(dx) >= abs(dy):
+            side = "right" if dx >= 0 else "left"
+        else:
+            side = "bottom" if dy >= 0 else "top"
+
+    if side == "right":
+        return (left + width - inset_emu, top + height // 2)
+    if side == "left":
+        return (left + inset_emu, top + height // 2)
+    if side == "top":
+        return (left + width // 2, top + inset_emu)
+    if side == "bottom":
+        return (left + width // 2, top + height - inset_emu)
+    raise ValueError(
+        f"side must be 'top'/'right'/'bottom'/'left'/'auto'; got {side!r}"
+    )
+
+
+class _BaseShapes(ParentedElementProxy):
+    """Base class for a shape collection appearing in a slide-type object.
+
+    Subclasses include Slide, SlideLayout, and SlideMaster. Provides common methods.
+    """
+
+    def __init__(self, spTree: CT_GroupShape, parent: ProvidesPart):
+        super(_BaseShapes, self).__init__(spTree, parent)
+        self._spTree = spTree
+        self._turbo_add_enabled = False
+
+    def __getitem__(self, idx: int) -> BaseShape:
+        """Return shape at `idx` in sequence, e.g. `shapes[2]`."""
+        shape_elms = list(self._iter_member_elms())
+        try:
+            shape_elm = shape_elms[idx]
+        except IndexError:
+            raise IndexError("shape index out of range")
+        return self._shape_factory(shape_elm)
+
+    def __iter__(self) -> Iterator[BaseShape]:
+        """Generate a reference to each shape in the collection, in sequence."""
+        for shape_elm in self._iter_member_elms():
+            yield self._shape_factory(shape_elm)
+
+    def __len__(self) -> int:
+        """Return count of shapes in this shape tree.
+
+        A group shape contributes 1 to the total, without regard to the number of shapes contained
+        in the group.
+        """
+        shape_elms = list(self._iter_member_elms())
+        return len(shape_elms)
+
+    def lint_group_scope(self, name: str | None = None):
+        """Context manager that auto-tags shapes added inside it.
+
+        Every shape appended to this shape tree between ``__enter__``
+        and ``__exit__`` is tagged with ``shape.lint_group = name`` on
+        exit, so the linter treats them as one intentional overlap
+        group. Use it for hand-built composite UI elements (progress
+        bars, gauges, badges, custom KPI tiles) where the constituent
+        shapes deliberately overlap and the auto-emitted
+        ``ShapeCollision`` warnings would be noise::
+
+            with slide.shapes.lint_group_scope(name="progress_bar") as g:
+                track = slide.shapes.add_shape(MSO_SHAPE.ROUNDED_RECTANGLE, ...)
+                fill  = slide.shapes.add_shape(MSO_SHAPE.ROUNDED_RECTANGLE, ...)
+            # both shapes now carry lint_group="progress_bar".
+
+        ``g`` (the yielded value) is this :class:`_BaseShapes`
+        instance, so calls inside the ``with`` block can also use
+        ``g.add_shape(...)`` for clarity.
+
+        When ``name`` is omitted a unique-on-this-tree name is
+        auto-generated (``"design-group-N"`` with smallest available
+        N), matching :meth:`Slide.lint_group_overlaps`.
+        """
+        return _LintGroupScope(self, name)
+
+    def clone_placeholder(self, placeholder: LayoutPlaceholder) -> None:
+        """Add a new placeholder shape based on `placeholder`."""
+        sp = placeholder.element
+        ph_type, orient, sz, idx = (sp.ph_type, sp.ph_orient, sp.ph_sz, sp.ph_idx)
+        id_ = self._next_shape_id
+        name = self._next_ph_name(ph_type, id_, orient)
+        self._spTree.add_placeholder(id_, name, ph_type, orient, sz, idx)
+
+    def ph_basename(self, ph_type: PP_PLACEHOLDER) -> str:
+        """Return the base name for a placeholder of `ph_type` in this shape collection.
+
+        There is some variance between slide types, for example a notes slide uses a different
+        name for the body placeholder, so this method can be overriden by subclasses.
+        """
+        return {
+            PP_PLACEHOLDER.BITMAP: "ClipArt Placeholder",
+            PP_PLACEHOLDER.BODY: "Text Placeholder",
+            PP_PLACEHOLDER.CENTER_TITLE: "Title",
+            PP_PLACEHOLDER.CHART: "Chart Placeholder",
+            PP_PLACEHOLDER.DATE: "Date Placeholder",
+            PP_PLACEHOLDER.FOOTER: "Footer Placeholder",
+            PP_PLACEHOLDER.HEADER: "Header Placeholder",
+            PP_PLACEHOLDER.MEDIA_CLIP: "Media Placeholder",
+            PP_PLACEHOLDER.OBJECT: "Content Placeholder",
+            PP_PLACEHOLDER.ORG_CHART: "SmartArt Placeholder",
+            PP_PLACEHOLDER.PICTURE: "Picture Placeholder",
+            PP_PLACEHOLDER.SLIDE_NUMBER: "Slide Number Placeholder",
+            PP_PLACEHOLDER.SUBTITLE: "Subtitle",
+            PP_PLACEHOLDER.TABLE: "Table Placeholder",
+            PP_PLACEHOLDER.TITLE: "Title",
+        }[ph_type]
+
+    @property
+    def turbo_add_enabled(self) -> bool:
+        """Deprecated no-op. Read/Write.
+
+        Shape-id allocation is now always cached on the shape-tree element
+        (see :meth:`CT_GroupShape.allocate_shape_id`), so the historical
+        opt-in fast path is effectively always on. The setter is kept as a
+        no-op for back-compat and emits a :class:`DeprecationWarning`; the
+        getter still reflects whatever the user last assigned for the
+        benefit of round-tripping their own code.
+        """
+        return self._turbo_add_enabled
+
+    @turbo_add_enabled.setter
+    def turbo_add_enabled(self, value: bool):
+        warnings.warn(
+            "turbo_add_enabled is a deprecated no-op; shape-id allocation is now"
+            " always O(1) per add. The setting will be removed in a future release.",
+            DeprecationWarning,
+            stacklevel=2,
+        )
+        self._turbo_add_enabled = bool(value)
+
+    @staticmethod
+    def _is_member_elm(shape_elm: ShapeElement) -> bool:
+        """Return true if `shape_elm` represents a member of this collection, False otherwise."""
+        return True
+
+    def _iter_member_elms(self) -> Iterator[ShapeElement]:
+        """Generate each child of the `p:spTree` element that corresponds to a shape.
+
+        Items appear in XML document order.
+        """
+        for shape_elm in self._spTree.iter_shape_elms():
+            if self._is_member_elm(shape_elm):
+                yield shape_elm
+
+    def _next_ph_name(self, ph_type: PP_PLACEHOLDER, id: int, orient: str) -> str:
+        """Next unique placeholder name for placeholder shape of type `ph_type`.
+
+        Usually will be standard placeholder root name suffixed with id-1, e.g.
+        _next_ph_name(ST_PlaceholderType.TBL, 4, 'horz') ==> 'Table Placeholder 3'. The number is
+        incremented as necessary to make the name unique within the collection. If `orient` is
+        `'vert'`, the placeholder name is prefixed with `'Vertical '`.
+        """
+        basename = self.ph_basename(ph_type)
+
+        # prefix rootname with 'Vertical ' if orient is 'vert'
+        if orient == ST_Direction.VERT:
+            basename = "Vertical %s" % basename
+
+        # increment numpart as necessary to make name unique
+        numpart = id - 1
+        names = self._spTree.xpath("//p:cNvPr/@name")
+        while True:
+            name = "%s %d" % (basename, numpart)
+            if name not in names:
+                break
+            numpart += 1
+
+        return name
+
+    @property
+    def _next_shape_id(self) -> int:
+        """Return a unique shape id suitable for use with a new shape.
+
+        The returned id is 1 greater than the maximum shape id used so far. In practice, the
+        minimum id is 2 because the spTree element is always assigned id="1".
+        """
+        return self._spTree.allocate_shape_id()
+
+    def _shape_factory(self, shape_elm: ShapeElement) -> BaseShape:
+        """Return an instance of the appropriate shape proxy class for `shape_elm`."""
+        return BaseShapeFactory(shape_elm, self)
+
+
+class _BaseGroupShapes(_BaseShapes):
+    """Base class for shape-trees that can add shapes."""
+
+    part: SlidePart  # pyright: ignore[reportIncompatibleMethodOverride]
+    _element: CT_GroupShape
+
+    def __init__(self, grpSp: CT_GroupShape, parent: ProvidesPart):
+        super(_BaseGroupShapes, self).__init__(grpSp, parent)
+        self._grpSp = grpSp
+
+    def add_chart(
+        self,
+        chart_type: XL_CHART_TYPE,
+        x: Length,
+        y: Length,
+        cx: Length,
+        cy: Length,
+        chart_data: ChartData,
+    ) -> Chart:
+        """Add a new chart of `chart_type` to the slide.
+
+        The chart is positioned at (`x`, `y`), has size (`cx`, `cy`), and depicts `chart_data`.
+        `chart_type` is one of the :ref:`XlChartType` enumeration values. `chart_data` is a
+        |ChartData| object populated with the categories and series values for the chart.
+
+        Note that a |GraphicFrame| shape object is returned, not the |Chart| object contained in
+        that graphic frame shape. The chart object may be accessed using the :attr:`chart`
+        property of the returned |GraphicFrame| object.
+
+        For horizontal bar charts (``BAR_*`` enum members), the category
+        axis is reversed by default so the first category renders at the
+        top — matching the natural reading order. Column charts retain
+        their default left-to-right ordering. Override by setting
+        ``chart.category_axis.reverse_order = False`` after creation.
+        """
+        x, y = _coerce_emu(x), _coerce_emu(y)
+        cx, cy = _coerce_emu(cx), _coerce_emu(cy)
+        rId = self.part.add_chart_part(chart_type, chart_data)
+        graphicFrame = self._add_chart_graphicFrame(rId, x, y, cx, cy)
+        self._recalculate_extents()
+        shape = self._shape_factory(graphicFrame)
+        _apply_horizontal_bar_default(shape, chart_type)
+        return cast("Chart", shape)
+
+    def add_connector(
+        self,
+        connector_type: MSO_CONNECTOR_TYPE,
+        begin_x: Length,
+        begin_y: Length,
+        end_x: Length,
+        end_y: Length,
+    ) -> Connector:
+        """Add a newly created connector shape to the end of this shape tree.
+
+        `connector_type` is a member of the :ref:`MsoConnectorType` enumeration and the end-point
+        values are specified as EMU values. The returned connector is of type `connector_type` and
+        has begin and end points as specified.
+        """
+        begin_x, begin_y = _coerce_emu(begin_x), _coerce_emu(begin_y)
+        end_x, end_y = _coerce_emu(end_x), _coerce_emu(end_y)
+        cxnSp = self._add_cxnSp(connector_type, begin_x, begin_y, end_x, end_y)
+        self._recalculate_extents()
+        return cast(Connector, self._shape_factory(cxnSp))
+
+    def add_group_shape(self, shapes: Iterable[BaseShape] = ()) -> GroupShape:
+        """Return a |GroupShape| object newly appended to this shape tree.
+
+        The group shape is empty and must be populated with shapes using methods on its shape
+        tree, available on its `.shapes` property. The position and extents of the group shape are
+        determined by the shapes it contains; its position and extents are recalculated each time
+        a shape is added to it.
+        """
+        shapes = tuple(shapes)
+        grpSp = self._element.add_grpSp()
+        for shape in shapes:
+            grpSp.insert_element_before(
+                shape._element, "p:extLst"  # pyright: ignore[reportPrivateUsage]
+            )
+        if shapes:
+            grpSp.recalculate_extents()
+        return cast(GroupShape, self._shape_factory(grpSp))
+
+    def add_ole_object(
+        self,
+        object_file: str | IO[bytes],
+        prog_id: str,
+        left: Length,
+        top: Length,
+        width: Length | None = None,
+        height: Length | None = None,
+        icon_file: str | IO[bytes] | None = None,
+        icon_width: Length | None = None,
+        icon_height: Length | None = None,
+    ) -> GraphicFrame:
+        """Return newly-created GraphicFrame shape embedding `object_file`.
+
+        The returned graphic-frame shape contains `object_file` as an embedded OLE object. It is
+        displayed as an icon at `left`, `top` with size `width`, `height`. `width` and `height`
+        may be omitted when `prog_id` is a member of `PROG_ID`, in which case the default icon
+        size is used. This is advised for best appearance where applicable because it avoids an
+        icon with a "stretched" appearance.
+
+        `object_file` may either be a str path to a file or file-like object (such as
+        `io.BytesIO`) containing the bytes of the object to be embedded (such as an Excel file).
+
+        `prog_id` can be either a member of `pptx2.enum.shapes.PROG_ID` or a str value like
+        `"Adobe.Exchange.7"` determined by inspecting the XML generated by PowerPoint for an
+        object of the desired type.
+
+        `icon_file` may either be a str path to an image file or a file-like object containing the
+        image. The image provided will be displayed in lieu of the OLE object; double-clicking on
+        the image opens the object (subject to operating-system limitations). The image file can
+        be any supported image file. Those produced by PowerPoint itself are generally EMF and can
+        be harvested from a PPTX package that embeds such an object. PNG and JPG also work fine.
+
+        `icon_width` and `icon_height` are `Length` values (e.g. Emu() or Inches()) that describe
+        the size of the icon image within the shape. These should be omitted unless a custom
+        `icon_file` is provided. The dimensions must be discovered by inspecting the XML.
+        Automatic resizing of the OLE-object shape can occur when the icon is double-clicked if
+        these values are not as set by PowerPoint. This behavior may only manifest in the Windows
+        version of PowerPoint.
+        """
+        left, top = _coerce_emu(left), _coerce_emu(top)
+        width, height = _coerce_emu(width), _coerce_emu(height)
+        icon_width = _coerce_emu(icon_width)
+        icon_height = _coerce_emu(icon_height)
+        graphicFrame = _OleObjectElementCreator.graphicFrame(
+            self,
+            self._next_shape_id,
+            object_file,
+            prog_id,
+            left,
+            top,
+            width,
+            height,
+            icon_file,
+            icon_width,
+            icon_height,
+        )
+        self._spTree.append(graphicFrame)
+        self._recalculate_extents()
+        return cast(GraphicFrame, self._shape_factory(graphicFrame))
+
+    def add_picture(
+        self,
+        image_file: str | IO[bytes],
+        left: Length = Emu(0),
+        top: Length = Emu(0),
+        width: Length | None = None,
+        height: Length | None = None,
+        *,
+        anchor: str | None = None,
+        margin: Length = Emu(0),
+        container=None,
+    ) -> Picture:
+        """Add picture shape displaying image in `image_file`.
+
+        `image_file` can be either a path to a file (a string) or a file-like object. The picture
+        is positioned with its top-left corner at (`left`, `top`). If `width` and `height` are
+        both |None|, the native size of the image is used. If only one of `width` or `height` is
+        used, the unspecified dimension is calculated to preserve the aspect ratio of the image.
+        If both are specified, the picture is stretched to fit, without regard to its native
+        aspect ratio.
+
+        When `anchor` is given, ``left`` and ``top`` are recomputed
+        from the anchor + the picture's rendered dimensions. The
+        common case "logo at bottom-right with a 0.25" margin"
+        becomes a single call::
+
+            slide.shapes.add_picture(
+                logo_path,
+                anchor="bottom-right",
+                margin=Inches(0.25),
+                height=Inches(0.32),
+            )
+
+        `anchor` is one of ``"top-left"``, ``"top-center"``,
+        ``"top-right"``, ``"middle-left"``, ``"middle-center"`` (or
+        bare ``"center"``), ``"middle-right"``, ``"bottom-left"``,
+        ``"bottom-center"``, ``"bottom-right"``. Either spelling of
+        "center"/"centre" is accepted.
+
+        `container` is the box the anchor is relative to. ``None``
+        (the default) anchors against the slide; pass a parent shape
+        (or any object with ``.width`` / ``.height``) to anchor inside
+        a card / group / placeholder. `margin` is the gap between the
+        picture and the matching container edges; ignored on the
+        centred axes.
+        """
+        left, top = _coerce_emu(left), _coerce_emu(top)
+        width, height = _coerce_emu(width), _coerce_emu(height)
+        image_part, rId = self.part.get_or_add_image_part(image_file)
+        pic = self._add_pic_from_image_part(image_part, rId, left, top, width, height)
+        self._recalculate_extents()
+        picture = cast(Picture, self._shape_factory(pic))
+        if anchor is not None:
+            cl, ct, cw, ch = _container_box(self, container)
+            new_left, new_top = _compute_anchor_left_top(
+                anchor, cw, ch, int(picture.width), int(picture.height), int(margin)
+            )
+            picture.left = Emu(cl + new_left)
+            picture.top = Emu(ct + new_top)
+        return picture
+
+    def add_svg_picture(
+        self,
+        svg_file,
+        left: Length,
+        top: Length,
+        width: Length | None = None,
+        height: Length | None = None,
+        *,
+        png_fallback=None,
+    ) -> Picture:
+        """Add an SVG picture with a PNG fallback (Office 2016+ compatible).
+
+        Modern PowerPoint requires every embedded SVG to ship alongside
+        a raster fallback: the slide's ``<a:blip>`` references the PNG
+        and an ``<asvg:svgBlip>`` extension references the SVG.  This
+        method handles both halves.
+
+        `svg_file` is a path, file-like object, or raw ``bytes`` blob
+        of SVG markup.  `png_fallback` is the raster fallback in the
+        same forms.  When `png_fallback` is ``None`` the SVG is
+        rasterised via ``cairosvg`` (an *optional* dependency); a
+        clear error is raised if it isn't installed.
+
+        `left` / `top` / `width` / `height` work exactly as in
+        :meth:`add_picture` — both extents default to the rasterised
+        PNG's native size when omitted.
+        """
+        left, top = _coerce_emu(left), _coerce_emu(top)
+        width, height = _coerce_emu(width), _coerce_emu(height)
+        from io import BytesIO
+
+        from pptx2._svg import (
+            add_svg_blip_extension,
+            add_svg_image_part,
+            load_image_blob,
+            looks_like_svg,
+            rasterize_svg,
+        )
+
+        svg_blob, svg_filename = load_image_blob(svg_file)
+        if not looks_like_svg(svg_blob):
+            raise ValueError(
+                "svg_file does not appear to contain SVG markup; pass an "
+                "SVG path, file-like, or bytes blob."
+            )
+
+        if png_fallback is None:
+            png_blob = rasterize_svg(svg_blob)
+        else:
+            png_blob, _ = load_image_blob(png_fallback)
+
+        # Register the PNG fallback through the existing
+        # Pillow-aware pipeline so dpi / size detection still works.
+        png_part, png_rId = self.part.get_or_add_image_part(BytesIO(png_blob))
+        pic = self._add_pic_from_image_part(png_part, png_rId, left, top, width, height)
+
+        # Register the SVG and inject the blip extension.
+        _, svg_rId = add_svg_image_part(self.part, svg_blob, svg_filename)
+        add_svg_blip_extension(pic, svg_rId)
+
+        self._recalculate_extents()
+        return cast(Picture, self._shape_factory(pic))
+
+    def add_shape(
+        self,
+        autoshape_type_id: MSO_SHAPE,
+        left: Length,
+        top: Length,
+        width: Length,
+        height: Length,
+        *,
+        anchor: str | None = None,
+        margin: Length = Emu(0),
+        container=None,
+    ) -> Shape:
+        """Return new |Shape| object appended to this shape tree.
+
+        `autoshape_type_id` is a member of :ref:`MsoAutoShapeType` e.g. `MSO_SHAPE.RECTANGLE`
+        specifying the type of shape to be added. The remaining arguments specify the new shape's
+        position and size.
+
+        See :meth:`add_picture` for the semantics of `anchor`,
+        `margin`, and `container`. With `anchor` set, the supplied
+        `left` / `top` are overwritten after creation by the
+        anchor-derived position.
+        """
+        left, top = _coerce_emu(left), _coerce_emu(top)
+        width, height = _coerce_emu(width), _coerce_emu(height)
+        autoshape_type = AutoShapeType(autoshape_type_id)
+        sp = self._add_sp(autoshape_type, left, top, width, height)
+        self._recalculate_extents()
+        shape = cast(Shape, self._shape_factory(sp))
+        if anchor is not None:
+            cl, ct, cw, ch = _container_box(self, container)
+            new_left, new_top = _compute_anchor_left_top(
+                anchor, cw, ch, int(shape.width), int(shape.height), int(margin)
+            )
+            shape.left = Emu(cl + new_left)
+            shape.top = Emu(ct + new_top)
+        return shape
+
+    def add_textbox(
+        self,
+        left: Length,
+        top: Length,
+        width: Length,
+        height: Length,
+        *,
+        anchor: str | None = None,
+        margin: Length = Emu(0),
+        container=None,
+    ) -> Shape:
+        """Return newly added text box shape appended to this shape tree.
+
+        The text box is of the specified size, located at the specified position on the slide.
+
+        See :meth:`add_picture` for `anchor` / `margin` / `container`
+        semantics.
+        """
+        left, top = _coerce_emu(left), _coerce_emu(top)
+        width, height = _coerce_emu(width), _coerce_emu(height)
+        sp = self._add_textbox_sp(left, top, width, height)
+        self._recalculate_extents()
+        textbox = cast(Shape, self._shape_factory(sp))
+        if anchor is not None:
+            cl, ct, cw, ch = _container_box(self, container)
+            new_left, new_top = _compute_anchor_left_top(
+                anchor, cw, ch, int(textbox.width), int(textbox.height), int(margin)
+            )
+            textbox.left = Emu(cl + new_left)
+            textbox.top = Emu(ct + new_top)
+        return textbox
+
+    def add_text(
+        self,
+        *bbox_or_positional,
+        text: str = "",
+        font: str | None = None,
+        size_pt: float | None = None,
+        bold: bool | None = None,
+        italic: bool | None = None,
+        color=None,
+        align: str | None = None,
+        anchor: str | None = None,
+        margin_pt: float | tuple[float, float, float, float] | None = None,
+        word_wrap: bool | None = True,
+    ) -> Shape:
+        """Add a textbox carrying *text* with one-call styling.
+
+        Accepts either a :class:`~pptx2.geometry.BBox` positionally
+        or the four ``(left, top, width, height)`` lengths::
+
+            slide.shapes.add_text(bbox, text="Hello", size_pt=24, bold=True,
+                                  color="#0B5CFF", align="center")
+            slide.shapes.add_text(Inches(1), Inches(2), Inches(4), Inches(1),
+                                  text="Hello")
+
+        Keyword args:
+
+        * ``font`` — typeface name (e.g. ``"Inter"``); ``None`` inherits.
+        * ``size_pt`` — font size in points; ``None`` inherits.
+        * ``bold`` / ``italic`` — ``True``/``False``/``None``.
+        * ``color`` — any "color-like" (``"#RRGGBB"``, ``RGBColor``,
+          ``(r, g, b)``).
+        * ``align`` — ``"left"`` / ``"center"`` / ``"right"`` /
+          ``"justify"``; ``None`` inherits.
+        * ``anchor`` — vertical anchor: ``"top"`` / ``"middle"`` /
+          ``"bottom"``; ``None`` inherits.
+        * ``margin_pt`` — uniform margin in points, or a 4-tuple
+          ``(top, right, bottom, left)``.
+        * ``word_wrap`` — defaults to ``True``.
+
+        Returns the textbox :class:`Shape` so further mutation works as
+        normal.
+        """
+        from pptx2._textstyle import apply_margins, apply_text_style, coerce_anchor
+        from pptx2.geometry import BBox
+
+        if len(bbox_or_positional) == 1 and isinstance(bbox_or_positional[0], BBox):
+            box = bbox_or_positional[0]
+            left, top, width, height = box.left, box.top, box.width, box.height
+        elif len(bbox_or_positional) == 4:
+            left, top, width, height = bbox_or_positional
+        else:
+            raise TypeError(
+                "add_text(): pass either a BBox or (left, top, width, "
+                "height); got %d positional arg(s)" % len(bbox_or_positional)
+            )
+
+        shape = self.add_textbox(left, top, width, height)
+        tf = shape.text_frame
+        if word_wrap is not None:
+            tf.word_wrap = bool(word_wrap)
+
+        if margin_pt is not None:
+            if isinstance(margin_pt, (tuple, list)) and len(margin_pt) != 4:
+                raise ValueError(
+                    "margin_pt tuple must have 4 elements (top, right, bottom, left)"
+                )
+            apply_margins(tf, margin_pt)
+
+        if anchor is not None:
+            tf.vertical_anchor = coerce_anchor(anchor)
+
+        tf.text = text or ""
+
+        apply_text_style(
+            tf,
+            font=font,
+            size_pt=size_pt,
+            bold=bold,
+            italic=italic,
+            color=color,
+            align=align,
+        )
+
+        return shape
+
+    def add_equation(
+        self,
+        *bbox_or_positional,
+        latex: str,
+        display: bool = True,
+        font: str | None = None,
+        size_pt: float | None = None,
+        color=None,
+        align: str | None = "center",
+        anchor: str | None = "middle",
+        margin_pt: float | tuple[float, float, float, float] | None = None,
+    ) -> Shape:
+        """Add a text box containing a native PowerPoint equation from LaTeX.
+
+        Accepts either a :class:`~pptx2.geometry.BBox` or
+        ``(left, top, width, height)``::
+
+            slide.shapes.add_equation(bbox, latex=r"\\frac{a}{b}", size_pt=28)
+            slide.shapes.add_equation(
+                Inches(1), Inches(2), Inches(8), Inches(1.5),
+                latex=r"E = mc^2",
+            )
+
+        Requires ``latex2mathml`` and ``mathml2omml``
+        (``pip install "python-pptx2[math]"``). The equation is editable in
+        PowerPoint's equation editor.
+
+        Keyword args match :meth:`add_text` for *font* / *size_pt* /
+        *color* / *align* / *anchor* / *margin_pt*. *display* (default
+        |True|) emits a display-math paragraph; set |False| for inline
+        OMML.
+        """
+        from pptx2._textstyle import apply_margins, coerce_align, coerce_anchor
+        from pptx2.geometry import BBox
+
+        if len(bbox_or_positional) == 1 and isinstance(bbox_or_positional[0], BBox):
+            box = bbox_or_positional[0]
+            left, top, width, height = box.left, box.top, box.width, box.height
+        elif len(bbox_or_positional) == 4:
+            left, top, width, height = bbox_or_positional
+        else:
+            raise TypeError(
+                "add_equation(): pass either a BBox or (left, top, width, "
+                "height); got %d positional arg(s)" % len(bbox_or_positional)
+            )
+
+        shape = self.add_textbox(left, top, width, height)
+        shape.name = "Equation %d" % shape.shape_id
+        tf = shape.text_frame
+        if anchor is not None:
+            tf.vertical_anchor = coerce_anchor(anchor)
+        if margin_pt is not None:
+            apply_margins(tf, margin_pt)
+
+        paragraph = tf.paragraphs[0]
+        if align is not None:
+            paragraph.alignment = coerce_align(align)
+        paragraph.add_math(
+            latex,
+            display=display,
+            font=font,
+            size_pt=size_pt,
+            color=color,
+        )
+        return shape
+
+    def add_arrow(
+        self,
+        start,
+        end,
+        *,
+        head: str | None = "triangle",
+        tail: str | None = None,
+        head_size: str = "medium",
+        tail_size: str = "medium",
+        color=None,
+        weight_pt: float = 1.5,
+        style: str = "solid",
+        route: str = "straight",
+        inset_pt: float = 0.0,
+        end_side: str = "auto",
+        start_side: str = "auto",
+    ) -> Connector:
+        """Add an arrow connector with proper arrowhead and inset routing.
+
+        ``start`` and ``end`` may each be:
+
+        * an ``(x, y)`` tuple of EMU or ``Length`` coordinates,
+        * a :class:`~pptx2.geometry.BBox`,
+        * a :class:`~pptx2.shapes.base.BaseShape`.
+
+        When the endpoint is a shape / BBox, the line is auto-routed to
+        the nearest mid-edge (or the requested ``start_side`` / ``end_side``
+        — one of ``"top"``, ``"right"``, ``"bottom"``, ``"left"``, ``"auto"``).
+        ``inset_pt`` pulls the endpoint back from the shape edge by that many
+        points so the arrowhead triangle doesn't bleed into a target box.
+
+        ``head`` and ``tail`` accept the short names from
+        :class:`~pptx2.enum.dml.MSO_LINE_END_TYPE`:
+        ``"triangle"``, ``"arrow"``, ``"stealth"``, ``"diamond"``,
+        ``"oval"``, ``"none"`` (or ``None``).
+
+        ``style`` is ``"solid"`` / ``"dashed"`` / ``"dotted"``.
+
+        ``route`` is ``"straight"`` (default), ``"elbow"``, or
+        ``"curved"`` — picks the underlying
+        :class:`~pptx2.enum.shapes.MSO_CONNECTOR_TYPE`.
+
+        Returns the :class:`Connector` so callers can tweak further.
+        """
+        from pptx2._color import coerce_color
+        from pptx2.enum.dml import (
+            MSO_LINE_DASH_STYLE,
+            MSO_LINE_END_SIZE,
+            MSO_LINE_END_TYPE,
+        )
+        from pptx2.enum.shapes import MSO_CONNECTOR_TYPE
+        from pptx2.util import Pt
+
+        _CONNECTOR = {
+            "straight": MSO_CONNECTOR_TYPE.STRAIGHT,
+            "elbow": MSO_CONNECTOR_TYPE.ELBOW,
+            "curved": MSO_CONNECTOR_TYPE.CURVE,
+        }
+        if route not in _CONNECTOR:
+            raise ValueError(
+                f"route must be one of {sorted(_CONNECTOR)}; got {route!r}"
+            )
+
+        _DASH = {
+            "solid": MSO_LINE_DASH_STYLE.SOLID,
+            "dashed": MSO_LINE_DASH_STYLE.DASH,
+            "dotted": MSO_LINE_DASH_STYLE.ROUND_DOT,
+        }
+        if style not in _DASH:
+            raise ValueError(
+                f"style must be one of {sorted(_DASH)}; got {style!r}"
+            )
+
+        _END_TYPE = {
+            None: MSO_LINE_END_TYPE.NONE,
+            "none": MSO_LINE_END_TYPE.NONE,
+            "triangle": MSO_LINE_END_TYPE.TRIANGLE,
+            "arrow": MSO_LINE_END_TYPE.ARROW,
+            "stealth": MSO_LINE_END_TYPE.STEALTH,
+            "diamond": MSO_LINE_END_TYPE.DIAMOND,
+            "oval": MSO_LINE_END_TYPE.OVAL,
+        }
+        _END_SIZE = {
+            "small": MSO_LINE_END_SIZE.SMALL,
+            "medium": MSO_LINE_END_SIZE.MEDIUM,
+            "large": MSO_LINE_END_SIZE.LARGE,
+        }
+
+        # Strict validation up front — silently mapping an unknown name to
+        # ``None`` would produce a headless line and make a typo
+        # impossible to debug.  Normalise case so ``"Triangle"`` works.
+        def _norm(name):
+            if name is None:
+                return None
+            if isinstance(name, str):
+                return name.lower()
+            return name
+
+        head_key = _norm(head)
+        tail_key = _norm(tail)
+        if head_key not in _END_TYPE:
+            raise ValueError(
+                f"head must be one of {sorted(k for k in _END_TYPE if k is not None)} "
+                f"or None; got {head!r}"
+            )
+        if tail_key not in _END_TYPE:
+            raise ValueError(
+                f"tail must be one of {sorted(k for k in _END_TYPE if k is not None)} "
+                f"or None; got {tail!r}"
+            )
+        head_size_key = _norm(head_size)
+        tail_size_key = _norm(tail_size)
+        if head_size_key not in _END_SIZE:
+            raise ValueError(
+                f"head_size must be one of {sorted(_END_SIZE)}; got {head_size!r}"
+            )
+        if tail_size_key not in _END_SIZE:
+            raise ValueError(
+                f"tail_size must be one of {sorted(_END_SIZE)}; got {tail_size!r}"
+            )
+
+        bx, by = _resolve_endpoint(start, opposite=end, side=start_side, inset_emu=int(Pt(inset_pt)))
+        ex, ey = _resolve_endpoint(end, opposite=start, side=end_side, inset_emu=int(Pt(inset_pt)))
+
+        conn = self.add_connector(_CONNECTOR[route], bx, by, ex, ey)
+        line = conn.line
+        line.width = Pt(float(weight_pt))
+        line.dash_style = _DASH[style]
+        if color is not None:
+            line.color.rgb = coerce_color(color)
+
+        # The arrowhead is the tail by OOXML convention: tail = end-point.
+        line.head_end.type = _END_TYPE[tail_key]  # start
+        line.tail_end.type = _END_TYPE[head_key]  # end
+        line.tail_end.width = _END_SIZE[head_size_key]
+        line.tail_end.length = _END_SIZE[head_size_key]
+        line.head_end.width = _END_SIZE[tail_size_key]
+        line.head_end.length = _END_SIZE[tail_size_key]
+        return conn
+
+    def build_freeform(
+        self, start_x: float = 0, start_y: float = 0, scale: tuple[float, float] | float = 1.0
+    ) -> FreeformBuilder:
+        """Return |FreeformBuilder| object to specify a freeform shape.
+
+        The optional `start_x` and `start_y` arguments specify the starting pen position in local
+        coordinates. They will be rounded to the nearest integer before use and each default to
+        zero.
+
+        The optional `scale` argument specifies the size of local coordinates proportional to
+        slide coordinates (EMU). If the vertical scale is different than the horizontal scale
+        (local coordinate units are "rectangular"), a pair of numeric values can be provided as
+        the `scale` argument, e.g. `scale=(1.0, 2.0)`. In this case the first number is
+        interpreted as the horizontal (X) scale and the second as the vertical (Y) scale.
+
+        A convenient method for calculating scale is to divide a |Length| object by an equivalent
+        count of local coordinate units, e.g. `scale = Inches(1)/1000` for 1000 local units per
+        inch.
+        """
+        x_scale, y_scale = scale if isinstance(scale, tuple) else (scale, scale)
+
+        return FreeformBuilder.new(self, start_x, start_y, x_scale, y_scale)
+
+    def index(self, shape: BaseShape) -> int:
+        """Return the index of `shape` in this sequence.
+
+        Raises |ValueError| if `shape` is not in the collection.
+        """
+        shape_elms = list(self._element.iter_shape_elms())
+        return shape_elms.index(shape.element)
+
+    def _add_chart_graphicFrame(
+        self, rId: str, x: Length, y: Length, cx: Length, cy: Length
+    ) -> CT_GraphicalObjectFrame:
+        """Return new `p:graphicFrame` element appended to this shape tree.
+
+        The `p:graphicFrame` element has the specified position and size and refers to the chart
+        part identified by `rId`.
+        """
+        shape_id = self._next_shape_id
+        name = "Chart %d" % (shape_id - 1)
+        graphicFrame = CT_GraphicalObjectFrame.new_chart_graphicFrame(
+            shape_id, name, rId, x, y, cx, cy
+        )
+        self._spTree.append(graphicFrame)
+        return graphicFrame
+
+    def _add_cxnSp(
+        self,
+        connector_type: MSO_CONNECTOR_TYPE,
+        begin_x: Length,
+        begin_y: Length,
+        end_x: Length,
+        end_y: Length,
+    ) -> CT_Connector:
+        """Return a newly-added `p:cxnSp` element as specified.
+
+        The `p:cxnSp` element is for a connector of `connector_type` beginning at (`begin_x`,
+        `begin_y`) and extending to (`end_x`, `end_y`).
+        """
+        id_ = self._next_shape_id
+        name = "Connector %d" % (id_ - 1)
+
+        flipH, flipV = begin_x > end_x, begin_y > end_y
+        x, y = min(begin_x, end_x), min(begin_y, end_y)
+        cx, cy = abs(end_x - begin_x), abs(end_y - begin_y)
+
+        return self._element.add_cxnSp(id_, name, connector_type, x, y, cx, cy, flipH, flipV)
+
+    def _add_pic_from_image_part(
+        self,
+        image_part: ImagePart,
+        rId: str,
+        x: Length,
+        y: Length,
+        cx: Length | None,
+        cy: Length | None,
+    ) -> CT_Picture:
+        """Return a newly appended `p:pic` element as specified.
+
+        The `p:pic` element displays the image in `image_part` with size and position specified by
+        `x`, `y`, `cx`, and `cy`. The element is appended to the shape tree, causing it to be
+        displayed first in z-order on the slide.
+        """
+        id_ = self._next_shape_id
+        scaled_cx, scaled_cy = image_part.scale(cx, cy)
+        name = "Picture %d" % (id_ - 1)
+        desc = image_part.desc
+        pic = self._grpSp.add_pic(id_, name, desc, rId, x, y, scaled_cx, scaled_cy)
+        return pic
+
+    def _add_sp(
+        self, autoshape_type: AutoShapeType, x: Length, y: Length, cx: Length, cy: Length
+    ) -> CT_Shape:
+        """Return newly-added `p:sp` element as specified.
+
+        `p:sp` element is of `autoshape_type` at position (`x`, `y`) and of size (`cx`, `cy`).
+        """
+        id_ = self._next_shape_id
+        name = "%s %d" % (autoshape_type.basename, id_ - 1)
+        sp = self._grpSp.add_autoshape(id_, name, autoshape_type.prst, x, y, cx, cy)
+        return sp
+
+    def _add_textbox_sp(self, x: Length, y: Length, cx: Length, cy: Length) -> CT_Shape:
+        """Return newly-appended textbox `p:sp` element.
+
+        Element has position (`x`, `y`) and size (`cx`, `cy`).
+        """
+        id_ = self._next_shape_id
+        name = "TextBox %d" % (id_ - 1)
+        sp = self._spTree.add_textbox(id_, name, x, y, cx, cy)
+        return sp
+
+    def add_table(
+        self,
+        rows: int,
+        cols: int,
+        left: Length,
+        top: Length,
+        width: Length,
+        height: Length,
+        *,
+        style: str = "default",
+    ) -> GraphicFrame:
+        """Add a |GraphicFrame| object containing a table.
+
+        The table has the specified number of `rows` and `cols` and the specified position and
+        size. `width` is evenly distributed between the columns of the new table. Likewise,
+        `height` is evenly distributed between the rows. Note that the `.table` property on the
+        returned |GraphicFrame| shape must be used to access the enclosed |Table| object.
+
+        Available on a slide's shape tree and on a group's, so a table can be bundled into a
+        group alongside a caption or badge.
+
+        ``style`` controls the inherited table-style flags applied at
+        construction time:
+
+        * ``"default"`` (back-compat) — leave PowerPoint's
+          inherited-style flags alone. Behaves as before this argument
+          existed.
+        * ``"clean"`` — disable every inherited style flag
+          (``first_row``, ``first_col``, ``last_row``, ``last_col``,
+          ``horz_banding``, ``vert_banding``). Use when applying custom
+          cell borders or fills, since the inherited style otherwise
+          overlays them and renders inconsistently across PowerPoint
+          and LibreOffice.
+        """
+        if style not in ("default", "clean"):
+            raise ValueError(f"style must be 'default' or 'clean'; got {style!r}")
+        left, top = _coerce_emu(left), _coerce_emu(top)
+        width, height = _coerce_emu(width), _coerce_emu(height)
+        graphicFrame = self._add_graphicFrame_containing_table(rows, cols, left, top, width, height)
+        self._recalculate_extents()
+        shape = cast(GraphicFrame, self._shape_factory(graphicFrame))
+        if style == "clean":
+            tbl = shape.table
+            tbl.first_row = False
+            tbl.first_col = False
+            tbl.last_row = False
+            tbl.last_col = False
+            tbl.horz_banding = False
+            tbl.vert_banding = False
+        return shape
+
+    def add_movie(
+        self,
+        movie_file: str | IO[bytes],
+        left: Length,
+        top: Length,
+        width: Length,
+        height: Length,
+        poster_frame_image: str | IO[bytes] | None = None,
+        mime_type: str = CT.VIDEO,
+    ) -> GraphicFrame:
+        """Return newly added movie shape displaying video in `movie_file`.
+
+        **EXPERIMENTAL.** This method has important limitations:
+
+        * The size must be specified; no auto-scaling such as that provided by :meth:`add_picture`
+          is performed.
+        * The MIME type of the video file should be specified, e.g. 'video/mp4'. The provided
+          video file is not interrogated for its type. The MIME type `video/unknown` is used by
+          default (and works fine in tests as of this writing).
+        * A poster frame image must be provided, it cannot be automatically extracted from the
+          video file. If no poster frame is provided, the default "media loudspeaker" image will
+          be used.
+
+        Return a newly added movie shape, positioned at (`left`, `top`), having size
+        (`width`, `height`), and containing `movie_file`. Before the video is started,
+        `poster_frame_image` is displayed as a placeholder for the video. The video play-controls
+        timing is registered on the enclosing slide even when the movie is added to a group.
+        """
+        left, top = _coerce_emu(left), _coerce_emu(top)
+        width, height = _coerce_emu(width), _coerce_emu(height)
+        movie_pic = _MoviePicElementCreator.new_movie_pic(
+            self,
+            self._next_shape_id,
+            movie_file,
+            left,
+            top,
+            width,
+            height,
+            poster_frame_image,
+            mime_type,
+        )
+        self._spTree.append(movie_pic)
+        self._add_video_timing(movie_pic)
+        self._recalculate_extents()
+        return cast(GraphicFrame, self._shape_factory(movie_pic))
+
+    def _add_graphicFrame_containing_table(
+        self, rows: int, cols: int, x: Length, y: Length, cx: Length, cy: Length
+    ) -> CT_GraphicalObjectFrame:
+        """Return a newly added `p:graphicFrame` element containing a table as specified."""
+        _id = self._next_shape_id
+        name = "Table %d" % (_id - 1)
+        graphicFrame = self._spTree.add_table(_id, name, rows, cols, x, y, cx, cy)
+        return graphicFrame
+
+    def _add_video_timing(self, pic: CT_Picture) -> None:
+        """Add a `p:video` element under `p:sld/p:timing`.
+
+        The element will refer to the specified `pic` element by its shape id, and cause the video
+        play controls to appear for that video. Resolved via an absolute XPath so it also works
+        when the movie lives inside a group on the slide.
+        """
+        sld = self._spTree.xpath("/p:sld")[0]
+        childTnLst = sld.get_or_add_childTnLst()
+        childTnLst.add_video(pic.shape_id)
+
+    def _recalculate_extents(self) -> None:
+        """Adjust position and size to incorporate all contained shapes.
+
+        This would typically be called when a contained shape is added, removed, or its position
+        or size updated.
+        """
+        # ---default behavior is to do nothing, GroupShapes overrides to
+        #    produce the distinctive behavior of groups and subgroups.---
+        pass
+
+
+class GroupShapes(_BaseGroupShapes):
+    """The sequence of child shapes belonging to a group shape.
+
+    Note that this collection can itself contain a group shape, making this part of a recursive,
+    tree data structure (acyclic graph).
+    """
+
+    def _recalculate_extents(self) -> None:
+        """Adjust position and size to incorporate all contained shapes.
+
+        This would typically be called when a contained shape is added, removed, or its position
+        or size updated.
+        """
+        self._grpSp.recalculate_extents()
+
+
+class SlideShapes(_BaseGroupShapes):
+    """Sequence of shapes appearing on a slide.
+
+    The first shape in the sequence is the backmost in z-order and the last shape is topmost.
+    Supports indexed access, len(), index(), and iteration.
+    """
+
+    parent: Slide  # pyright: ignore[reportIncompatibleMethodOverride]
+
+    def clone_layout_placeholders(self, slide_layout: SlideLayout) -> None:
+        """Add placeholder shapes based on those in `slide_layout`.
+
+        Z-order of placeholders is preserved. Latent placeholders (date, slide number, and footer)
+        are not cloned.
+        """
+        for placeholder in slide_layout.iter_cloneable_placeholders():
+            self.clone_placeholder(placeholder)
+
+    @property
+    def placeholders(self) -> SlidePlaceholders:
+        """Sequence of placeholder shapes in this slide."""
+        return self.parent.placeholders
+
+    @property
+    def title(self) -> Shape | None:
+        """The title placeholder shape on the slide.
+
+        |None| if the slide has no title placeholder.
+        """
+        for elm in self._spTree.iter_ph_elms():
+            if elm.ph_idx == 0:
+                return cast(Shape, self._shape_factory(elm))
+        return None
+
+    def _shape_factory(self, shape_elm: ShapeElement) -> BaseShape:
+        """Return an instance of the appropriate shape proxy class for `shape_elm`."""
+        return SlideShapeFactory(shape_elm, self)
+
+
+class LayoutShapes(_BaseShapes):
+    """Sequence of shapes appearing on a slide layout.
+
+    The first shape in the sequence is the backmost in z-order and the last shape is topmost.
+    Supports indexed access, len(), index(), and iteration.
+    """
+
+    def _shape_factory(self, shape_elm: ShapeElement) -> BaseShape:
+        """Return an instance of the appropriate shape proxy class for `shape_elm`."""
+        return _LayoutShapeFactory(shape_elm, self)
+
+
+class MasterShapes(_BaseShapes):
+    """Sequence of shapes appearing on a slide master.
+
+    The first shape in the sequence is the backmost in z-order and the last shape is topmost.
+    Supports indexed access, len(), and iteration.
+    """
+
+    def _shape_factory(self, shape_elm: ShapeElement) -> BaseShape:
+        """Return an instance of the appropriate shape proxy class for `shape_elm`."""
+        return _MasterShapeFactory(shape_elm, self)
+
+
+class NotesSlideShapes(_BaseShapes):
+    """Sequence of shapes appearing on a notes slide.
+
+    The first shape in the sequence is the backmost in z-order and the last shape is topmost.
+    Supports indexed access, len(), index(), and iteration.
+    """
+
+    def ph_basename(self, ph_type: PP_PLACEHOLDER) -> str:
+        """Return the base name for a placeholder of `ph_type` in this shape collection.
+
+        A notes slide uses a different name for the body placeholder and has some unique
+        placeholder types, so this method overrides the default in the base class.
+        """
+        return {
+            PP_PLACEHOLDER.BODY: "Notes Placeholder",
+            PP_PLACEHOLDER.DATE: "Date Placeholder",
+            PP_PLACEHOLDER.FOOTER: "Footer Placeholder",
+            PP_PLACEHOLDER.HEADER: "Header Placeholder",
+            PP_PLACEHOLDER.SLIDE_IMAGE: "Slide Image Placeholder",
+            PP_PLACEHOLDER.SLIDE_NUMBER: "Slide Number Placeholder",
+        }[ph_type]
+
+    def _shape_factory(self, shape_elm: ShapeElement) -> BaseShape:
+        """Return appropriate shape object for `shape_elm` appearing on a notes slide."""
+        return _NotesSlideShapeFactory(shape_elm, self)
+
+
+class BasePlaceholders(_BaseShapes):
+    """Base class for placeholder collections.
+
+    Subclasses differentiate behaviors for a master, layout, and slide. By default, placeholder
+    shapes are constructed using |BaseShapeFactory|. Subclasses should override
+    :method:`_shape_factory` to use custom placeholder classes.
+    """
+
+    @staticmethod
+    def _is_member_elm(shape_elm: ShapeElement) -> bool:
+        """True if `shape_elm` is a placeholder shape, False otherwise."""
+        return shape_elm.has_ph_elm
+
+
+class LayoutPlaceholders(BasePlaceholders):
+    """Sequence of |LayoutPlaceholder| instance for each placeholder shape on a slide layout."""
+
+    __iter__: Callable[  # pyright: ignore[reportIncompatibleMethodOverride]
+        [], Iterator[LayoutPlaceholder]
+    ]
+
+    def get(self, idx: int, default: LayoutPlaceholder | None = None) -> LayoutPlaceholder | None:
+        """The first placeholder shape with matching `idx` value, or `default` if not found."""
+        for placeholder in self:
+            if placeholder.element.ph_idx == idx:
+                return placeholder
+        return default
+
+    def _shape_factory(self, shape_elm: ShapeElement) -> BaseShape:
+        """Return an instance of the appropriate shape proxy class for `shape_elm`."""
+        return _LayoutShapeFactory(shape_elm, self)
+
+
+class MasterPlaceholders(BasePlaceholders):
+    """Sequence of MasterPlaceholder representing the placeholder shapes on a slide master."""
+
+    __iter__: Callable[  # pyright: ignore[reportIncompatibleMethodOverride]
+        [], Iterator[MasterPlaceholder]
+    ]
+
+    def get(self, ph_type: PP_PLACEHOLDER, default: MasterPlaceholder | None = None):
+        """Return the first placeholder shape with type `ph_type` (e.g. 'body').
+
+        Returns `default` if no such placeholder shape is present in the collection.
+        """
+        for placeholder in self:
+            if placeholder.ph_type == ph_type:
+                return placeholder
+        return default
+
+    def _shape_factory(  # pyright: ignore[reportIncompatibleMethodOverride]
+        self, placeholder_elm: CT_Shape
+    ) -> MasterPlaceholder:
+        """Return an instance of the appropriate shape proxy class for `shape_elm`."""
+        return cast(MasterPlaceholder, _MasterShapeFactory(placeholder_elm, self))
+
+
+class NotesSlidePlaceholders(MasterPlaceholders):
+    """Sequence of placeholder shapes on a notes slide."""
+
+    __iter__: Callable[  # pyright: ignore[reportIncompatibleMethodOverride]
+        [], Iterator[NotesSlidePlaceholder]
+    ]
+
+    def _shape_factory(  # pyright: ignore[reportIncompatibleMethodOverride]
+        self, placeholder_elm: CT_Shape
+    ) -> NotesSlidePlaceholder:
+        """Return an instance of the appropriate placeholder proxy class for `placeholder_elm`."""
+        return cast(NotesSlidePlaceholder, _NotesSlideShapeFactory(placeholder_elm, self))
+
+
+class SlidePlaceholders(ParentedElementProxy):
+    """Collection of placeholder shapes on a slide.
+
+    Supports iteration, :func:`len`, and dictionary-style lookup on the `idx` value of the
+    placeholders it contains.
+    """
+
+    _element: CT_GroupShape
+
+    def __getitem__(self, idx: int):
+        """Access placeholder shape having `idx`.
+
+        Note that while this looks like list access, idx is actually a dictionary key and will
+        raise |KeyError| if no placeholder with that idx value is in the collection.
+        """
+        for e in self._element.iter_ph_elms():
+            if e.ph_idx == idx:
+                return SlideShapeFactory(e, self)
+        raise KeyError("no placeholder on this slide with idx == %d" % idx)
+
+    def __iter__(self):
+        """Generate placeholder shapes in `idx` order."""
+        ph_elms = sorted([e for e in self._element.iter_ph_elms()], key=lambda e: e.ph_idx)
+        return (SlideShapeFactory(e, self) for e in ph_elms)
+
+    def __len__(self) -> int:
+        """Return count of placeholder shapes."""
+        return len(list(self._element.iter_ph_elms()))
+
+
+def BaseShapeFactory(shape_elm: ShapeElement, parent: ProvidesPart) -> BaseShape:
+    """Return an instance of the appropriate shape proxy class for `shape_elm`."""
+    tag = shape_elm.tag
+
+    if isinstance(shape_elm, CT_Picture):
+        videoFiles = shape_elm.xpath("./p:nvPicPr/p:nvPr/a:videoFile")
+        if videoFiles:
+            return Movie(shape_elm, parent)
+        return Picture(shape_elm, parent)
+
+    shape_cls = {
+        qn("p:cxnSp"): Connector,
+        qn("p:grpSp"): GroupShape,
+        qn("p:sp"): Shape,
+        qn("p:graphicFrame"): GraphicFrame,
+    }.get(tag, BaseShape)
+
+    return shape_cls(shape_elm, parent)  # pyright: ignore[reportArgumentType]
+
+
+def _LayoutShapeFactory(shape_elm: ShapeElement, parent: ProvidesPart) -> BaseShape:
+    """Return appropriate shape object for `shape_elm` on a slide layout."""
+    if isinstance(shape_elm, CT_Shape) and shape_elm.has_ph_elm:
+        return LayoutPlaceholder(shape_elm, parent)
+    return BaseShapeFactory(shape_elm, parent)
+
+
+def _MasterShapeFactory(shape_elm: ShapeElement, parent: ProvidesPart) -> BaseShape:
+    """Return appropriate shape object for `shape_elm` on a slide master."""
+    if isinstance(shape_elm, CT_Shape) and shape_elm.has_ph_elm:
+        return MasterPlaceholder(shape_elm, parent)
+    return BaseShapeFactory(shape_elm, parent)
+
+
+def _NotesSlideShapeFactory(shape_elm: ShapeElement, parent: ProvidesPart) -> BaseShape:
+    """Return appropriate shape object for `shape_elm` on a notes slide."""
+    if isinstance(shape_elm, CT_Shape) and shape_elm.has_ph_elm:
+        return NotesSlidePlaceholder(shape_elm, parent)
+    return BaseShapeFactory(shape_elm, parent)
+
+
+def _SlidePlaceholderFactory(shape_elm: ShapeElement, parent: ProvidesPart):
+    """Return a placeholder shape of the appropriate type for `shape_elm`."""
+    tag = shape_elm.tag
+    if tag == qn("p:sp"):
+        Constructor = {
+            PP_PLACEHOLDER.BITMAP: PicturePlaceholder,
+            PP_PLACEHOLDER.CHART: ChartPlaceholder,
+            PP_PLACEHOLDER.PICTURE: PicturePlaceholder,
+            PP_PLACEHOLDER.TABLE: TablePlaceholder,
+        }.get(shape_elm.ph_type, SlidePlaceholder)
+    elif tag == qn("p:graphicFrame"):
+        Constructor = PlaceholderGraphicFrame
+    elif tag == qn("p:pic"):
+        Constructor = PlaceholderPicture
+    else:
+        Constructor = BaseShapeFactory
+    return Constructor(shape_elm, parent)  # pyright: ignore[reportArgumentType]
+
+
+def SlideShapeFactory(shape_elm: ShapeElement, parent: ProvidesPart) -> BaseShape:
+    """Return appropriate shape object for `shape_elm` on a slide."""
+    if shape_elm.has_ph_elm:
+        return _SlidePlaceholderFactory(shape_elm, parent)
+    return BaseShapeFactory(shape_elm, parent)
+
+
+class _MoviePicElementCreator(object):
+    """Functional service object for creating a new movie p:pic element.
+
+    It's entire external interface is its :meth:`new_movie_pic` class method that returns a new
+    `p:pic` element containing the specified video. This class is not intended to be constructed
+    or an instance of it retained by the caller; it is a "one-shot" object, really a function
+    wrapped in a object such that its helper methods can be organized here.
+    """
+
+    def __init__(
+        self,
+        shapes: _BaseGroupShapes,
+        shape_id: int,
+        movie_file: str | IO[bytes],
+        x: Length,
+        y: Length,
+        cx: Length,
+        cy: Length,
+        poster_frame_file: str | IO[bytes] | None,
+        mime_type: str | None,
+    ):
+        super(_MoviePicElementCreator, self).__init__()
+        self._shapes = shapes
+        self._shape_id = shape_id
+        self._movie_file = movie_file
+        self._x, self._y, self._cx, self._cy = x, y, cx, cy
+        self._poster_frame_file = poster_frame_file
+        self._mime_type = mime_type
+
+    @classmethod
+    def new_movie_pic(
+        cls,
+        shapes: _BaseGroupShapes,
+        shape_id: int,
+        movie_file: str | IO[bytes],
+        x: Length,
+        y: Length,
+        cx: Length,
+        cy: Length,
+        poster_frame_image: str | IO[bytes] | None,
+        mime_type: str | None,
+    ) -> CT_Picture:
+        """Return a new `p:pic` element containing video in `movie_file`.
+
+        If `mime_type` is None, 'video/unknown' is used. If `poster_frame_file` is None, the
+        default "media loudspeaker" image is used.
+        """
+        return cls(shapes, shape_id, movie_file, x, y, cx, cy, poster_frame_image, mime_type)._pic
+
+    @property
+    def _media_rId(self) -> str:
+        """Return the rId of RT.MEDIA relationship to video part.
+
+        For historical reasons, there are two relationships to the same part; one is the video rId
+        and the other is the media rId.
+        """
+        return self._video_part_rIds[0]
+
+    @lazyproperty
+    def _pic(self) -> CT_Picture:
+        """Return the new `p:pic` element referencing the video."""
+        return CT_Picture.new_video_pic(
+            self._shape_id,
+            self._shape_name,
+            self._video_rId,
+            self._media_rId,
+            self._poster_frame_rId,
+            self._x,
+            self._y,
+            self._cx,
+            self._cy,
+        )
+
+    @lazyproperty
+    def _poster_frame_image_file(self) -> str | IO[bytes]:
+        """Return the image file for video placeholder image.
+
+        If no poster frame file is provided, the default "media loudspeaker" image is used.
+        """
+        poster_frame_file = self._poster_frame_file
+        if poster_frame_file is None:
+            return io.BytesIO(SPEAKER_IMAGE_BYTES)
+        return poster_frame_file
+
+    @lazyproperty
+    def _poster_frame_rId(self) -> str:
+        """Return the rId of relationship to poster frame image.
+
+        The poster frame is the image used to represent the video before it's played.
+        """
+        _, poster_frame_rId = self._slide_part.get_or_add_image_part(self._poster_frame_image_file)
+        return poster_frame_rId
+
+    @property
+    def _shape_name(self) -> str:
+        """Return the appropriate shape name for the p:pic shape.
+
+        A movie shape is named with the base filename of the video.
+        """
+        return self._video.filename
+
+    @property
+    def _slide_part(self) -> SlidePart:
+        """Return SlidePart object for slide containing this movie."""
+        return self._shapes.part
+
+    @lazyproperty
+    def _video(self) -> Video:
+        """Return a |Video| object containing the movie file."""
+        return Video.from_path_or_file_like(self._movie_file, self._mime_type)
+
+    @lazyproperty
+    def _video_part_rIds(self) -> tuple[str, str]:
+        """Return the rIds for relationships to media part for video.
+
+        This is where the media part and its relationships to the slide are actually created.
+        """
+        media_rId, video_rId = self._slide_part.get_or_add_video_media_part(self._video)
+        return media_rId, video_rId
+
+    @property
+    def _video_rId(self) -> str:
+        """Return the rId of RT.VIDEO relationship to video part.
+
+        For historical reasons, there are two relationships to the same part; one is the video rId
+        and the other is the media rId.
+        """
+        return self._video_part_rIds[1]
+
+
+class _OleObjectElementCreator(object):
+    """Functional service object for creating a new OLE-object p:graphicFrame element.
+
+    It's entire external interface is its :meth:`graphicFrame` class method that returns a new
+    `p:graphicFrame` element containing the specified embedded OLE-object shape. This class is not
+    intended to be constructed or an instance of it retained by the caller; it is a "one-shot"
+    object, really a function wrapped in a object such that its helper methods can be organized
+    here.
+    """
+
+    def __init__(
+        self,
+        shapes: _BaseGroupShapes,
+        shape_id: int,
+        ole_object_file: str | IO[bytes],
+        prog_id: PROG_ID | str,
+        x: Length,
+        y: Length,
+        cx: Length | None,
+        cy: Length | None,
+        icon_file: str | IO[bytes] | None,
+        icon_width: Length | None,
+        icon_height: Length | None,
+    ):
+        self._shapes = shapes
+        self._shape_id = shape_id
+        self._ole_object_file = ole_object_file
+        self._prog_id_arg = prog_id
+        self._x = x
+        self._y = y
+        self._cx_arg = cx
+        self._cy_arg = cy
+        self._icon_file_arg = icon_file
+        self._icon_width_arg = icon_width
+        self._icon_height_arg = icon_height
+
+    @classmethod
+    def graphicFrame(
+        cls,
+        shapes: _BaseGroupShapes,
+        shape_id: int,
+        ole_object_file: str | IO[bytes],
+        prog_id: PROG_ID | str,
+        x: Length,
+        y: Length,
+        cx: Length | None,
+        cy: Length | None,
+        icon_file: str | IO[bytes] | None,
+        icon_width: Length | None,
+        icon_height: Length | None,
+    ) -> CT_GraphicalObjectFrame:
+        """Return new `p:graphicFrame` element containing embedded `ole_object_file`."""
+        return cls(
+            shapes,
+            shape_id,
+            ole_object_file,
+            prog_id,
+            x,
+            y,
+            cx,
+            cy,
+            icon_file,
+            icon_width,
+            icon_height,
+        )._graphicFrame
+
+    @lazyproperty
+    def _graphicFrame(self) -> CT_GraphicalObjectFrame:
+        """Newly-created `p:graphicFrame` element referencing embedded OLE-object."""
+        return CT_GraphicalObjectFrame.new_ole_object_graphicFrame(
+            self._shape_id,
+            self._shape_name,
+            self._ole_object_rId,
+            self._progId,
+            self._icon_rId,
+            self._x,
+            self._y,
+            self._cx,
+            self._cy,
+            self._icon_width,
+            self._icon_height,
+            self._pic_id,
+        )
+
+    @lazyproperty
+    def _cx(self) -> Length:
+        """Emu object specifying width of "show-as-icon" image for OLE shape."""
+        # --- a user-specified width overrides any default ---
+        if self._cx_arg is not None:
+            return self._cx_arg
+
+        # --- the default width is specified by the PROG_ID member if prog_id is one,
+        # --- otherwise it gets the default icon width.
+        return (
+            Emu(self._prog_id_arg.width) if isinstance(self._prog_id_arg, PROG_ID) else Emu(965200)
+        )
+
+    @lazyproperty
+    def _cy(self) -> Length:
+        """Emu object specifying height of "show-as-icon" image for OLE shape."""
+        # --- a user-specified width overrides any default ---
+        if self._cy_arg is not None:
+            return self._cy_arg
+
+        # --- the default height is specified by the PROG_ID member if prog_id is one,
+        # --- otherwise it gets the default icon height.
+        return (
+            Emu(self._prog_id_arg.height) if isinstance(self._prog_id_arg, PROG_ID) else Emu(609600)
+        )
+
+    @lazyproperty
+    def _icon_height(self) -> Length:
+        """Vertical size of enclosed EMF icon within the OLE graphic-frame.
+
+        This must be specified when a custom icon is used, to avoid stretching of the image and
+        possible undesired resizing by PowerPoint when the OLE shape is double-clicked to open it.
+
+        The correct size can be determined by creating an example PPTX using PowerPoint and then
+        inspecting the XML of the OLE graphics-frame (p:oleObj.imgH).
+        """
+        return self._icon_height_arg if self._icon_height_arg is not None else Emu(609600)
+
+    @lazyproperty
+    def _icon_image_file(self) -> str | IO[bytes]:
+        """Reference to image file containing icon to show in lieu of this object.
+
+        This can be either a str path or a file-like object (io.BytesIO typically).
+        """
+        # --- a user-specified icon overrides any default ---
+        if self._icon_file_arg is not None:
+            return self._icon_file_arg
+
+        # --- A prog_id belonging to PROG_ID gets its icon filename from there. A
+        # --- user-specified (str) prog_id gets the default icon.
+        icon_filename = (
+            self._prog_id_arg.icon_filename
+            if isinstance(self._prog_id_arg, PROG_ID)
+            else "generic-icon.emf"
+        )
+
+        _thisdir = os.path.split(__file__)[0]
+        return os.path.abspath(os.path.join(_thisdir, "..", "templates", icon_filename))
+
+    @lazyproperty
+    def _icon_rId(self) -> str:
+        """str rId like "rId7" of rel to icon (image) representing OLE-object part."""
+        _, rId = self._slide_part.get_or_add_image_part(self._icon_image_file)
+        return rId
+
+    @lazyproperty
+    def _icon_width(self) -> Length:
+        """Width of enclosed EMF icon within the OLE graphic-frame.
+
+        This must be specified when a custom icon is used, to avoid stretching of the image and
+        possible undesired resizing by PowerPoint when the OLE shape is double-clicked to open it.
+        """
+        return self._icon_width_arg if self._icon_width_arg is not None else Emu(965200)
+
+    @lazyproperty
+    def _ole_object_rId(self) -> str:
+        """str rId like "rId6" of relationship to embedded ole_object part.
+
+        This is where the ole_object part and its relationship to the slide are actually created.
+        """
+        return self._slide_part.add_embedded_ole_object_part(
+            self._prog_id_arg, self._ole_object_file
+        )
+
+    @lazyproperty
+    def _progId(self) -> str:
+        """str like "Excel.Sheet.12" identifying program used to open object.
+
+        This value appears in the `progId` attribute of the `p:oleObj` element for the object.
+        """
+        prog_id_arg = self._prog_id_arg
+
+        # --- member of PROG_ID enumeration knows its progId keyphrase, otherwise caller
+        # --- has specified it explicitly (as str)
+        return prog_id_arg.progId if isinstance(prog_id_arg, PROG_ID) else prog_id_arg
+
+    @lazyproperty
+    def _shape_name(self) -> str:
+        """str name like "Object 1" for the embedded ole_object shape.
+
+        The name is formed from the prefix "Object " and the shape-id decremented by 1.
+        """
+        return "Object %d" % (self._shape_id - 1)
+
+    @lazyproperty
+    def _pic_id(self) -> int:
+        """Unique shape id for the inner "show-as-icon" ``p:pic`` element.
+
+        Allocated separately from the graphic-frame's own id so two OLE objects on the same
+        slide don't both emit the hardcoded ``id="0"`` used previously — a duplicate shape id
+        that makes PowerPoint report the deck as needing repair.
+        """
+        return self._shapes._next_shape_id
+
+    @lazyproperty
+    def _slide_part(self) -> SlidePart:
+        """SlidePart object for this slide."""
+        return self._shapes.part

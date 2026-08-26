@@ -7,8 +7,8 @@ from __future__ import annotations
 
 from _util import blank, deck, save
 
-from power_pptx.enum.presentation import MSO_TRANSITION_TYPE
-from power_pptx.util import Inches
+from pptx2.enum.presentation import MSO_TRANSITION_TYPE
+from pptx2.util import Inches
 
 KINDS = [
     MSO_TRANSITION_TYPE.NONE, MSO_TRANSITION_TYPE.FADE, MSO_TRANSITION_TYPE.PUSH,

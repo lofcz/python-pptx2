@@ -9,7 +9,7 @@ Specifies the dash style for a line.
 
     Example::
 
-        from power_pptx.enum.dml import MSO_LINE
+        from pptx2.enum.dml import MSO_LINE
 
         shape.line.dash_style = MSO_LINE.DASH_DOT_DOT
 

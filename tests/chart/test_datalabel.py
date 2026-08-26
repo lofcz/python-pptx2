@@ -1,12 +1,12 @@
-"""Unit test suite for the power_pptx.chart.datalabel module"""
+"""Unit test suite for the pptx2.chart.datalabel module"""
 
 from __future__ import annotations
 
 import pytest
 
-from power_pptx.chart.datalabel import DataLabel, DataLabels
-from power_pptx.enum.chart import XL_LABEL_POSITION
-from power_pptx.text.text import Font
+from pptx2.chart.datalabel import DataLabel, DataLabels
+from pptx2.enum.chart import XL_LABEL_POSITION
+from pptx2.text.text import Font
 
 from ..unitutil.cxml import element, xml
 from ..unitutil.mock import class_mock, instance_mock, method_mock
@@ -257,7 +257,7 @@ class DescribeDataLabel(object):
 
     @pytest.fixture
     def TextFrame_(self, request):
-        return class_mock(request, "power_pptx.chart.datalabel.TextFrame")
+        return class_mock(request, "pptx2.chart.datalabel.TextFrame")
 
 
 class DescribeDataLabels(object):
@@ -662,7 +662,7 @@ class DescribeDataLabels(object):
 
     @pytest.fixture
     def Font_(self, request, font_):
-        return class_mock(request, "power_pptx.chart.datalabel.Font", return_value=font_)
+        return class_mock(request, "pptx2.chart.datalabel.Font", return_value=font_)
 
     @pytest.fixture
     def font_(self, request):

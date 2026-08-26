@@ -1,16 +1,16 @@
-"""Unit-test suite for `power_pptx.shapes.placeholder` module."""
+"""Unit-test suite for `pptx2.shapes.placeholder` module."""
 
 from __future__ import annotations
 
 import pytest
 
-from power_pptx.chart.data import ChartData
-from power_pptx.enum.chart import XL_CHART_TYPE as XCT
-from power_pptx.enum.shapes import MSO_SHAPE_TYPE, PP_PLACEHOLDER
-from power_pptx.oxml.shapes.shared import ST_Direction, ST_PlaceholderSize
-from power_pptx.parts.image import ImagePart
-from power_pptx.parts.slide import NotesSlidePart, SlidePart
-from power_pptx.shapes.placeholder import (
+from pptx2.chart.data import ChartData
+from pptx2.enum.chart import XL_CHART_TYPE as XCT
+from pptx2.enum.shapes import MSO_SHAPE_TYPE, PP_PLACEHOLDER
+from pptx2.oxml.shapes.shared import ST_Direction, ST_PlaceholderSize
+from pptx2.parts.image import ImagePart
+from pptx2.parts.slide import NotesSlidePart, SlidePart
+from pptx2.shapes.placeholder import (
     BasePlaceholder,
     ChartPlaceholder,
     LayoutPlaceholder,
@@ -23,8 +23,8 @@ from power_pptx.shapes.placeholder import (
     _BaseSlidePlaceholder,
     _InheritsDimensions,
 )
-from power_pptx.shapes.shapetree import NotesSlidePlaceholders
-from power_pptx.slide import NotesMaster, SlideLayout, SlideMaster
+from pptx2.shapes.shapetree import NotesSlidePlaceholders
+from pptx2.slide import NotesMaster, SlideLayout, SlideMaster
 
 from ..oxml.unitdata.shape import (
     a_graphicFrame,
@@ -41,7 +41,7 @@ from ..unitutil.mock import class_mock, instance_mock, method_mock, property_moc
 
 
 class Describe_BaseSlidePlaceholder(object):
-    """Unit-test suite for `power_pptx.shapes.placeholder._BaseSlidePlaceholder` object."""
+    """Unit-test suite for `pptx2.shapes.placeholder._BaseSlidePlaceholder` object."""
 
     def it_knows_its_shape_type(self):
         placeholder = _BaseSlidePlaceholder(None, None)
@@ -163,7 +163,7 @@ class Describe_BaseSlidePlaceholder(object):
 
 
 class DescribeBasePlaceholder(object):
-    """Unit-test suite for `power_pptx.shapes.placeholder.BasePlaceholder` object."""
+    """Unit-test suite for `pptx2.shapes.placeholder.BasePlaceholder` object."""
 
     def it_knows_its_idx_value(self, idx_fixture):
         placeholder, idx = idx_fixture
@@ -279,7 +279,7 @@ class DescribeBasePlaceholder(object):
 
 
 class DescribeChartPlaceholder(object):
-    """Unit-test suite for `power_pptx.shapes.placeholder.ChartPlaceholder` object."""
+    """Unit-test suite for `pptx2.shapes.placeholder.ChartPlaceholder` object."""
 
     def it_can_insert_a_chart_into_itself(self, request, part_prop_):
         slide_part_ = instance_mock(request, SlidePart)
@@ -298,7 +298,7 @@ class DescribeChartPlaceholder(object):
         placeholder_graphic_frame_ = instance_mock(request, PlaceholderGraphicFrame)
         PlaceholderGraphicFrame_ = class_mock(
             request,
-            "power_pptx.shapes.placeholder.PlaceholderGraphicFrame",
+            "pptx2.shapes.placeholder.PlaceholderGraphicFrame",
             return_value=placeholder_graphic_frame_,
         )
         chart_data_ = instance_mock(request, ChartData)
@@ -341,7 +341,7 @@ class DescribeChartPlaceholder(object):
 
 
 class DescribeLayoutPlaceholder(object):
-    """Unit-test suite for `power_pptx.shapes.placeholder.LayoutPlaceholder` object."""
+    """Unit-test suite for `pptx2.shapes.placeholder.LayoutPlaceholder` object."""
 
     def it_uses_InheritsDimensions_mixin(self):
         layout_placeholder = LayoutPlaceholder(None, None)
@@ -386,7 +386,7 @@ class DescribeLayoutPlaceholder(object):
 
 
 class DescribeNotesSlidePlaceholder(object):
-    """Unit-test suite for `power_pptx.shapes.placeholder.NotesSlidePlaceholder` object."""
+    """Unit-test suite for `pptx2.shapes.placeholder.NotesSlidePlaceholder` object."""
 
     def it_finds_its_base_placeholder_to_help(self, base_ph_fixture):
         placeholder, notes_master_, ph_type, master_placeholder_ = base_ph_fixture
@@ -437,7 +437,7 @@ class DescribeNotesSlidePlaceholder(object):
 
 
 class DescribePicturePlaceholder(object):
-    """Unit-test suite for `power_pptx.shapes.placeholder.PicturePlaceholder` object."""
+    """Unit-test suite for `pptx2.shapes.placeholder.PicturePlaceholder` object."""
 
     def it_can_insert_a_picture_into_itself(self, request):
         pic = element("p:pic")
@@ -450,7 +450,7 @@ class DescribePicturePlaceholder(object):
         placeholder_picture_ = instance_mock(request, PlaceholderPicture)
         PlaceholderPicture_ = class_mock(
             request,
-            "power_pptx.shapes.placeholder.PlaceholderPicture",
+            "pptx2.shapes.placeholder.PlaceholderPicture",
             return_value=placeholder_picture_,
         )
         picture_ph = PicturePlaceholder(None, "parent")
@@ -523,7 +523,7 @@ class DescribePicturePlaceholder(object):
 
 
 class DescribeTablePlaceholder(object):
-    """Unit-test suite for `power_pptx.shapes.placeholder.TablePlaceholder` object."""
+    """Unit-test suite for `pptx2.shapes.placeholder.TablePlaceholder` object."""
 
     def it_can_insert_a_table_into_itself(self, request):
         graphicFrame = element("p:graphicFrame")
@@ -539,7 +539,7 @@ class DescribeTablePlaceholder(object):
         placeholder_graphic_frame_ = instance_mock(request, PlaceholderGraphicFrame)
         PlaceholderGraphicFrame_ = class_mock(
             request,
-            "power_pptx.shapes.placeholder.PlaceholderGraphicFrame",
+            "pptx2.shapes.placeholder.PlaceholderGraphicFrame",
             return_value=placeholder_graphic_frame_,
         )
         table_ph = TablePlaceholder(None, "parent")
@@ -573,8 +573,8 @@ class DescribeInheritedDimensionSiblings(object):
     """
 
     def it_keeps_the_inherited_height_when_only_width_is_set(self):
-        from power_pptx import Presentation
-        from power_pptx.util import Inches
+        from pptx2 import Presentation
+        from pptx2.util import Inches
 
         prs = Presentation()
         body = prs.slides.add_slide(prs.slide_layouts[1]).placeholders[1]
@@ -587,8 +587,8 @@ class DescribeInheritedDimensionSiblings(object):
         assert body.height == inherited_height
 
     def it_keeps_the_inherited_width_when_only_height_is_set(self):
-        from power_pptx import Presentation
-        from power_pptx.util import Inches
+        from pptx2 import Presentation
+        from pptx2.util import Inches
 
         prs = Presentation()
         body = prs.slides.add_slide(prs.slide_layouts[1]).placeholders[1]
@@ -600,8 +600,8 @@ class DescribeInheritedDimensionSiblings(object):
         assert body.width == inherited_width
 
     def it_keeps_the_inherited_top_when_only_left_is_set(self):
-        from power_pptx import Presentation
-        from power_pptx.util import Inches
+        from pptx2 import Presentation
+        from pptx2.util import Inches
 
         prs = Presentation()
         body = prs.slides.add_slide(prs.slide_layouts[1]).placeholders[1]
@@ -613,8 +613,8 @@ class DescribeInheritedDimensionSiblings(object):
         assert body.top == inherited_top
 
     def it_keeps_the_inherited_left_when_only_top_is_set(self):
-        from power_pptx import Presentation
-        from power_pptx.util import Inches
+        from pptx2 import Presentation
+        from pptx2.util import Inches
 
         prs = Presentation()
         body = prs.slides.add_slide(prs.slide_layouts[1]).placeholders[1]
@@ -626,8 +626,8 @@ class DescribeInheritedDimensionSiblings(object):
         assert body.left == inherited_left
 
     def it_still_honors_an_explicit_zero(self):
-        from power_pptx import Presentation
-        from power_pptx.util import Inches
+        from pptx2 import Presentation
+        from pptx2.util import Inches
 
         prs = Presentation()
         body = prs.slides.add_slide(prs.slide_layouts[1]).placeholders[1]

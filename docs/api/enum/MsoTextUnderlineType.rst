@@ -10,7 +10,7 @@ Alias: ``MSO_UNDERLINE``
 
 Example::
 
-    from power_pptx.enum.text import MSO_UNDERLINE
+    from pptx2.enum.text import MSO_UNDERLINE
 
     run.font.underline = MSO_UNDERLINE.DOUBLE_LINE
 

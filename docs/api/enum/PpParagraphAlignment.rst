@@ -9,7 +9,7 @@ Alias: ``PP_ALIGN``
 
 Example::
 
-    from power_pptx.enum.text import PP_ALIGN
+    from pptx2.enum.text import PP_ALIGN
 
     shape.paragraphs[0].alignment = PP_ALIGN.CENTER
 

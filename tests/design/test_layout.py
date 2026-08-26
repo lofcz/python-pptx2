@@ -1,12 +1,12 @@
-"""Unit tests for `power_pptx.design.layout`."""
+"""Unit tests for `pptx2.design.layout`."""
 
 from __future__ import annotations
 
 import pytest
 
-from power_pptx import BBox, Presentation
-from power_pptx.design.layout import Box, Grid, Stack
-from power_pptx.util import Emu, Inches, Pt
+from pptx2 import BBox, Presentation
+from pptx2.design.layout import Box, Grid, Stack
+from pptx2.util import Emu, Inches, Pt
 
 
 @pytest.fixture
@@ -245,7 +245,7 @@ class DescribeGridFromBox:
             Grid.from_box(BBox.from_inches(0, 0, 4, 4), cols=0)
 
     def it_can_place_a_shape_into_a_cell(self, slide):
-        from power_pptx.enum.shapes import MSO_SHAPE
+        from pptx2.enum.shapes import MSO_SHAPE
 
         region = BBox.from_inches(1, 1, 6, 2)
         grid = Grid.from_box(region, cols=2)

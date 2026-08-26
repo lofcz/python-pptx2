@@ -3,15 +3,15 @@ requires = ["setuptools>=61.0.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "power-pptx"
+name = "python-pptx2"
 # Split the name and email into separate entries so setuptools populates
 # *both* the bare `Author:` core-metadata field (from the name-only entry)
 # and `Author-email:` (from the email-only entry).  A single combined
 # {name, email} entry only fills `Author-email:`, leaving `Author:` blank —
 # which makes simple aggregators (e.g. pypistats) read the package as
 # "Author: None".
-authors = [{name = "Daniel Halwell"}, {email = "danielhalwell@gmail.com"}]
-maintainers = [{name = "Daniel Halwell"}, {email = "danielhalwell@gmail.com"}]
+authors = [{name = "Matěj Štágl"}, {email = "stagl@wattlescript.org"}]
+maintainers = [{name = "Matěj Štágl"}, {email = "stagl@wattlescript.org"}]
 classifiers = [
     "Development Status :: 5 - Production/Stable",
     "Environment :: Console",
@@ -34,20 +34,27 @@ dependencies = [
     "lxml>=3.1.0",
     "typing_extensions>=4.9.0",
 ]
-description = "Create, read, and update PowerPoint 2007+ (.pptx) files. Actively-maintained fork of python-pptx, published as power-pptx."
+description = "Create, read, and update PowerPoint 2007+ (.pptx) files. Fork of power-pptx / python-pptx, published as python-pptx2."
 dynamic = ["version"]
 keywords = ["powerpoint", "ppt", "pptx", "openxml", "office", "presentation"]
 license = { text = "MIT" }
 readme = "README.rst"
 requires-python = ">=3.9"
 
+[project.optional-dependencies]
+math = [
+    "latex2mathml>=3.0",
+    "mathml2omml>=0.0.2",
+]
+
 [project.urls]
-Changelog = "https://github.com/codehalwell/power-pptx/blob/master/HISTORY.rst"
-Documentation = "https://codehalwell.github.io/power-pptx/"
-Homepage = "https://github.com/codehalwell/power-pptx"
-Issues = "https://github.com/codehalwell/power-pptx/issues"
-Repository = "https://github.com/codehalwell/power-pptx"
-Roadmap = "https://github.com/codehalwell/power-pptx/blob/master/ROADMAP.md"
+Changelog = "https://github.com/lofcz/python-pptx2/blob/master/HISTORY.rst"
+Documentation = "https://github.com/lofcz/python-pptx2"
+Homepage = "https://github.com/lofcz/python-pptx2"
+Issues = "https://github.com/lofcz/python-pptx2/issues"
+Repository = "https://github.com/lofcz/python-pptx2"
+Roadmap = "https://github.com/lofcz/python-pptx2/blob/master/ROADMAP.md"
+ParentFork = "https://github.com/CodeHalwell/power-pptx"
 Upstream = "https://github.com/scanny/python-pptx"
 UpstreamDocumentation = "https://python-pptx.readthedocs.io/en/latest/"
 
@@ -60,7 +67,7 @@ exclude = [
     "**/.*"
 ]
 include = [
-    "src/power_pptx",
+    "src/pptx2",
     "tests/"
 ]
 ignore =  []
@@ -150,21 +157,22 @@ ignore = [
 ]
 
 [tool.ruff.lint.isort]
-known-first-party = ["power_pptx"]
+known-first-party = ["pptx2"]
 
 [tool.setuptools.dynamic]
-version = {attr = "power_pptx.__version__"}
+version = {attr = "pptx2.__version__"}
 
 [tool.setuptools.package-data]
 # Ship the bundled Claude skill (SKILL.md + reference docs) so that
-# `python -m power_pptx.skill install` works for downstream installs,
+# `python -m pptx2.skill install` works for downstream installs,
 # and any in-tree templates (the .pptx files used by Presentation()).
-power_pptx = [
+pptx2 = [
     "skill/SKILL.md",
     "skill/references/*.md",
     "templates/*",
 ]
 
 [project.scripts]
-# Convenience CLI: `power-pptx-skill install` ≈ `python -m power_pptx.skill install`.
-power-pptx-skill = "power_pptx.skill.__main__:main"
+# Convenience CLI: `pptx2-skill install` ≈ `python -m pptx2.skill install`.
+pptx2-skill = "pptx2.skill.__main__:main"
+python-pptx2-skill = "pptx2.skill.__main__:main"

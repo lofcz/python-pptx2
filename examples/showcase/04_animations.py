@@ -14,14 +14,14 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from power_pptx import Presentation
-from power_pptx.animation import Emphasis, Entrance, MotionPath, Trigger
-from power_pptx.design.recipes import bullet_slide, kpi_slide, title_slide
-from power_pptx.dml.color import RGBColor
-from power_pptx.enum.presentation import MSO_TRANSITION_TYPE
-from power_pptx.enum.shapes import MSO_SHAPE, MSO_SHAPE_TYPE
-from power_pptx.enum.text import PP_ALIGN
-from power_pptx.util import Inches, Pt
+from pptx2 import Presentation
+from pptx2.animation import Emphasis, Entrance, MotionPath, Trigger
+from pptx2.design.recipes import bullet_slide, kpi_slide, title_slide
+from pptx2.dml.color import RGBColor
+from pptx2.enum.presentation import MSO_TRANSITION_TYPE
+from pptx2.enum.shapes import MSO_SHAPE, MSO_SHAPE_TYPE
+from pptx2.enum.text import PP_ALIGN
+from pptx2.util import Inches, Pt
 
 from _lint import lint_or_die
 from _tokens import BRAND
@@ -37,7 +37,7 @@ def build(out_path: Path) -> Presentation:
     # 1. Title — full-slide entrance sequence
     s1 = title_slide(
         prs,
-        title="Animations in power-pptx",
+        title="Animations in python-pptx2",
         subtitle="Click to advance — every effect is preset-driven",
         tokens=BRAND,
     )

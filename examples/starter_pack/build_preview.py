@@ -6,7 +6,7 @@ Run::
 
 Outputs ``examples/starter_pack/_out/<set>.pptx`` for ``modern``,
 ``classic``, and ``editorial``.  Each deck is the same content rendered
-through :mod:`power_pptx.design.recipes` so you can compare how the tokens
+through :mod:`pptx2.design.recipes` so you can compare how the tokens
 land.
 """
 
@@ -15,8 +15,8 @@ from __future__ import annotations
 import os
 import sys
 
-from power_pptx import Presentation
-from power_pptx.design.recipes import (
+from pptx2 import Presentation
+from pptx2.design.recipes import (
     bullet_slide,
     kpi_slide,
     quote_slide,

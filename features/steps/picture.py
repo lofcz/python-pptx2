@@ -7,10 +7,10 @@ import io
 from behave import given, then, when
 from helpers import saved_pptx_path, test_image, test_pptx
 
-from power_pptx import Presentation
-from power_pptx.enum.shapes import MSO_AUTO_SHAPE_TYPE
-from power_pptx.package import Package
-from power_pptx.util import Inches
+from pptx2 import Presentation
+from pptx2.enum.shapes import MSO_AUTO_SHAPE_TYPE
+from pptx2.package import Package
+from pptx2.util import Inches
 
 # given ===================================================
 

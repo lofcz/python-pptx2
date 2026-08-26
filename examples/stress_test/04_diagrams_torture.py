@@ -6,8 +6,8 @@ from __future__ import annotations
 
 from _util import blank, deck, save
 
-from power_pptx import BBox
-from power_pptx.diagrams import (
+from pptx2 import BBox
+from pptx2.diagrams import (
     comparison_columns,
     cycle,
     decision_tree,
@@ -15,7 +15,7 @@ from power_pptx.diagrams import (
     hub_and_spoke,
     vertical_pipeline,
 )
-from power_pptx.util import Inches
+from pptx2.util import Inches
 
 
 def _title(s, text):

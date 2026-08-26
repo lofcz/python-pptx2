@@ -79,8 +79,8 @@ Adding a table
 
 The following code adds a 3-by-3 table in a new presentation::
 
-    >>> from power_pptx import Presentation
-    >>> from power_pptx.util import Inches
+    >>> from pptx2 import Presentation
+    >>> from pptx2.util import Inches
 
     >>> # ---create presentation with 1 slide---
     >>> prs = Presentation()
@@ -91,12 +91,12 @@ The following code adds a 3-by-3 table in a new presentation::
     >>> shape = slide.shapes.add_table(3, 3, x, y, cx, cy)
 
     >>> shape
-    <power_pptx.shapes.graphfrm.GraphicFrame object at 0x1022816d0>
+    <pptx2.shapes.graphfrm.GraphicFrame object at 0x1022816d0>
     >>> shape.has_table
     True
     >>> table = shape.table
     >>> table
-    <power_pptx.table.Table object at 0x1096f8d90>
+    <pptx2.table.Table object at 0x1096f8d90>
 
 .. image:: /_static/img/table-03.png
    :align: center

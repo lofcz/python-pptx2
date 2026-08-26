@@ -1,7 +1,7 @@
 """Playground 05 — Declarative authoring with ``from_spec``.
 
 A short five-slide deck built almost entirely from a single dict spec,
-demonstrating ``power_pptx.compose.from_spec`` with built-in recipes,
+demonstrating ``pptx2.compose.from_spec`` with built-in recipes,
 deck-wide theme tokens, lint-as-spec-field, and per-slide transitions.
 
 Companion to the imperative decks in this folder — useful to compare
@@ -17,7 +17,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from power_pptx.compose import from_spec
+from pptx2.compose import from_spec
 
 from _brand import SUNSET
 

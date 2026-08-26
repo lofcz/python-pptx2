@@ -1,6 +1,6 @@
 # pyright: reportPrivateUsage=false
 
-"""Unit-test suite for `power_pptx.text.fonts` module."""
+"""Unit-test suite for `pptx2.text.fonts` module."""
 
 from __future__ import annotations
 
@@ -9,7 +9,7 @@ from struct import calcsize
 
 import pytest
 
-from power_pptx.text.fonts import (
+from pptx2.text.fonts import (
     FontFiles,
     _BaseTable,
     _Font,
@@ -37,7 +37,7 @@ from ..unitutil.mock import (
 
 
 class DescribeFontFiles(object):
-    """Unit-test suite for `power_pptx.text.fonts.FontFiles` object."""
+    """Unit-test suite for `pptx2.text.fonts.FontFiles` object."""
 
     def it_can_find_a_system_font_file(self, find_fixture):
         family_name, is_bold, is_italic, expected_path = find_fixture
@@ -68,7 +68,7 @@ class DescribeFontFiles(object):
     def it_knows_linux_font_dirs_to_help_find(self, request):
         import os
 
-        os_ = var_mock(request, "power_pptx.text.fonts.os")
+        os_ = var_mock(request, "pptx2.text.fonts.os")
         os_.path = os.path
         os_.environ = {"HOME": "/home/fbar"}
 
@@ -83,14 +83,14 @@ class DescribeFontFiles(object):
         ]
 
     def it_uses_linux_dirs_on_linux(self, request, _linux_font_directories_):
-        sys_ = var_mock(request, "power_pptx.text.fonts.sys")
+        sys_ = var_mock(request, "pptx2.text.fonts.sys")
         sys_.platform = "linux"
         _linux_font_directories_.return_value = ["/x"]
 
         assert FontFiles._font_directories() == ["/x"]
 
     def it_returns_no_dirs_on_unknown_os(self, request):
-        sys_ = var_mock(request, "power_pptx.text.fonts.sys")
+        sys_ = var_mock(request, "pptx2.text.fonts.sys")
         sys_.platform = "haiku"
 
         assert FontFiles._font_directories() == []
@@ -129,7 +129,7 @@ class DescribeFontFiles(object):
             "darwin": _os_x_font_directories_,
             "win32": _windows_font_directories_,
         }[platform]
-        sys_ = var_mock(request, "power_pptx.text.fonts.sys")
+        sys_ = var_mock(request, "pptx2.text.fonts.sys")
         sys_.platform = platform
         dirs_meth_mock.return_value = expected_dirs
         return expected_dirs
@@ -159,7 +159,7 @@ class DescribeFontFiles(object):
     def osx_dirs_fixture(self, request):
         import os
 
-        os_ = var_mock(request, "power_pptx.text.fonts.os")
+        os_ = var_mock(request, "pptx2.text.fonts.os")
         os_.path = os.path
         os_.environ = {"HOME": "/Users/fbar"}
         return [
@@ -178,7 +178,7 @@ class DescribeFontFiles(object):
 
     @pytest.fixture
     def _Font_(self, request):
-        return class_mock(request, "power_pptx.text.fonts._Font")
+        return class_mock(request, "pptx2.text.fonts._Font")
 
     @pytest.fixture
     def _font_directories_(self, request):
@@ -216,7 +216,7 @@ class DescribeFontFiles(object):
 
 
 class Describe_Font(object):
-    """Unit-test suite for `power_pptx.text.fonts._Font` object."""
+    """Unit-test suite for `pptx2.text.fonts._Font` object."""
 
     def it_can_construct_from_a_font_file_path(self, open_fixture):
         path, _Stream_, stream_ = open_fixture
@@ -352,7 +352,7 @@ class Describe_Font(object):
 
     @pytest.fixture
     def _Stream_(self, request):
-        return class_mock(request, "power_pptx.text.fonts._Stream")
+        return class_mock(request, "pptx2.text.fonts._Stream")
 
     @pytest.fixture
     def stream_(self, request):
@@ -364,7 +364,7 @@ class Describe_Font(object):
 
     @pytest.fixture
     def _TableFactory_(self, request):
-        return function_mock(request, "power_pptx.text.fonts._TableFactory")
+        return function_mock(request, "pptx2.text.fonts._TableFactory")
 
     @pytest.fixture
     def _table_count_(self, request):
@@ -376,10 +376,10 @@ class Describe_Font(object):
 
 
 class Describe_Stream(object):
-    """Unit-test suite for `power_pptx.text.fonts._Stream` object."""
+    """Unit-test suite for `pptx2.text.fonts._Stream` object."""
 
     def it_can_construct_from_a_path(self, request):
-        open_ = open_mock(request, "power_pptx.text.fonts")
+        open_ = open_mock(request, "pptx2.text.fonts")
         _init_ = initializer_mock(request, _Stream)
         file_ = open_.return_value
 
@@ -439,7 +439,7 @@ class Describe_Stream(object):
 
 
 class Describe_TableFactory(object):
-    """Unit-test suite for `power_pptx.text.fonts._TableFactory` object."""
+    """Unit-test suite for `pptx2.text.fonts._TableFactory` object."""
 
     def it_constructs_the_appropriate_table_object(self, fixture):
         tag, stream_, offset, length, TableClass_, TableClass = fixture
@@ -454,9 +454,9 @@ class Describe_TableFactory(object):
         tag = request.param
         offset, length = 42, 21
         TableClass, target = {
-            "name": (_NameTable, "power_pptx.text.fonts._NameTable"),
-            "head": (_HeadTable, "power_pptx.text.fonts._HeadTable"),
-            "foob": (_BaseTable, "power_pptx.text.fonts._BaseTable"),
+            "name": (_NameTable, "pptx2.text.fonts._NameTable"),
+            "head": (_HeadTable, "pptx2.text.fonts._HeadTable"),
+            "foob": (_BaseTable, "pptx2.text.fonts._BaseTable"),
         }[tag]
         TableClass_ = class_mock(request, target)
         return tag, stream_, offset, length, TableClass_, TableClass
@@ -469,7 +469,7 @@ class Describe_TableFactory(object):
 
 
 class Describe_HeadTable(object):
-    """Unit-test suite for `power_pptx.text.fonts._HeadTable` object."""
+    """Unit-test suite for `pptx2.text.fonts._HeadTable` object."""
 
     def it_knows_whether_the_font_is_bold(self, bold_fixture):
         head_table, expected_value = bold_fixture
@@ -516,7 +516,7 @@ class Describe_HeadTable(object):
 
 
 class Describe_NameTable(object):
-    """Unit-test suite for `power_pptx.text.fonts._NameTable` object."""
+    """Unit-test suite for `pptx2.text.fonts._NameTable` object."""
 
     def it_knows_the_font_family_name(self, family_fixture):
         name_table, expected_value = family_fixture

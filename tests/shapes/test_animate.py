@@ -4,9 +4,9 @@ from __future__ import annotations
 
 import pytest
 
-from power_pptx import Presentation
-from power_pptx.enum.shapes import MSO_SHAPE
-from power_pptx.util import Inches
+from pptx2 import Presentation
+from pptx2.enum.shapes import MSO_SHAPE
+from pptx2.util import Inches
 
 
 def _shape():

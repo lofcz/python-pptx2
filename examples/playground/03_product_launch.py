@@ -17,13 +17,13 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from power_pptx import Presentation
-from power_pptx.design.layout import Grid
-from power_pptx.dml.color import RGBColor
-from power_pptx.enum.presentation import MSO_TRANSITION_TYPE
-from power_pptx.enum.shapes import MSO_SHAPE
-from power_pptx.enum.text import MSO_AUTO_SIZE, PP_ALIGN
-from power_pptx.util import Inches, Pt
+from pptx2 import Presentation
+from pptx2.design.layout import Grid
+from pptx2.dml.color import RGBColor
+from pptx2.enum.presentation import MSO_TRANSITION_TYPE
+from pptx2.enum.shapes import MSO_SHAPE
+from pptx2.enum.text import MSO_AUTO_SIZE, PP_ALIGN
+from pptx2.util import Inches, Pt
 
 from _brand import SUNSET
 from _common import lint_or_die

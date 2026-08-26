@@ -1,4 +1,4 @@
-"""Unit-test suite for `power_pptx.util` module."""
+"""Unit-test suite for `pptx2.util` module."""
 
 from __future__ import annotations
 
@@ -6,7 +6,7 @@ from decimal import Decimal
 
 import pytest
 
-from power_pptx.util import Centipoints, Cm, Emu, Inches, Length, Mm, Pt, _coerce_emu
+from pptx2.util import Centipoints, Cm, Emu, Inches, Length, Mm, Pt, _coerce_emu
 
 
 class DescribeLength(object):

@@ -1,12 +1,12 @@
-"""Unit-test suite for `power_pptx.dml.three_d` module."""
+"""Unit-test suite for `pptx2.dml.three_d` module."""
 
 from __future__ import annotations
 
 import pytest
 
-from power_pptx.dml.three_d import ThreeDFormat, _BevelFormat
-from power_pptx.enum.dml import BevelPreset, PresetMaterial
-from power_pptx.util import Emu, Pt
+from pptx2.dml.three_d import ThreeDFormat, _BevelFormat
+from pptx2.enum.dml import BevelPreset, PresetMaterial
+from pptx2.util import Emu, Pt
 
 from ..unitutil.cxml import element, xml
 
@@ -223,7 +223,7 @@ class DescribeThreeDFormat:
         assert td._element.xml == xml("p:spPr")
 
     def it_creates_extrusionClr_on_color_write(self):
-        from power_pptx.dml.color import RGBColor
+        from pptx2.dml.color import RGBColor
 
         spPr = element("p:spPr")
         td = ThreeDFormat(spPr)
@@ -234,7 +234,7 @@ class DescribeThreeDFormat:
     def it_supports_direct_extrusion_color_assignment(self):
         # Docs show ``three_d.extrusion_color = RGBColor(...)``; the property
         # must accept that in addition to ``.rgb =``.
-        from power_pptx.dml.color import RGBColor
+        from pptx2.dml.color import RGBColor
 
         spPr = element("p:spPr")
         td = ThreeDFormat(spPr)
@@ -242,7 +242,7 @@ class DescribeThreeDFormat:
         assert td.extrusion_color.rgb == RGBColor(0x12, 0x1E, 0x4D)
 
     def it_supports_direct_contour_color_assignment(self):
-        from power_pptx.dml.color import RGBColor
+        from pptx2.dml.color import RGBColor
 
         spPr = element("p:spPr")
         td = ThreeDFormat(spPr)

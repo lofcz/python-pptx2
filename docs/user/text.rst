@@ -98,8 +98,8 @@ adjust the width and height of the shape to fit its text. Note that vertical
 alignment is set on the text frame. Horizontal alignment is set on each
 paragraph::
 
-    from power_pptx.util import Inches
-    from power_pptx.enum.text import MSO_ANCHOR, MSO_AUTO_SIZE
+    from pptx2.util import Inches
+    from pptx2.enum.text import MSO_ANCHOR, MSO_AUTO_SIZE
 
     text_frame = shape.text_frame
     text_frame.text = 'Spam, eggs, and spam'
@@ -120,7 +120,7 @@ Applying paragraph formatting
 The following produces a shape containing three left-aligned paragraphs, the
 second and third indented (like sub-bullets) under the first::
 
-    from power_pptx.enum.text import PP_ALIGN
+    from pptx2.enum.text import PP_ALIGN
 
     paragraph_strs = [
         'Egg, bacon, sausage and spam.',
@@ -151,9 +151,9 @@ the theme color Accent 1.
 
 ::
 
-    from power_pptx.dml.color import RGBColor
-    from power_pptx.enum.dml import MSO_THEME_COLOR
-    from power_pptx.util import Pt
+    from pptx2.dml.color import RGBColor
+    from pptx2.enum.dml import MSO_THEME_COLOR
+    from pptx2.util import Pt
 
     text_frame = shape.text_frame
     text_frame.clear()  # not necessary for newly-created shape

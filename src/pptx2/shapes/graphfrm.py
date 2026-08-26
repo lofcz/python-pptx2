@@ -1,0 +1,316 @@
+"""Graphic Frame shape and related objects.
+
+A graphic frame is a common container for table, chart, smart art, and media
+objects.
+"""
+
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, cast
+
+from pptx2.dml.effect import (
+    BlurFormat,
+    GlowFormat,
+    ReflectionFormat,
+    ShadowFormat,
+    SoftEdgeFormat,
+)
+from pptx2.enum.shapes import MSO_SHAPE_TYPE
+from pptx2.shapes.base import BaseShape
+from pptx2.shared import ParentedElementProxy
+from pptx2.spec import (
+    GRAPHIC_DATA_URI_CHART,
+    GRAPHIC_DATA_URI_OLEOBJ,
+    GRAPHIC_DATA_URI_TABLE,
+)
+from pptx2.table import Table
+from pptx2.util import lazyproperty
+
+if TYPE_CHECKING:
+    from pptx2.chart.chart import Chart
+    from pptx2.dml.effect import InnerShadowFormat, PresetShadowFormat, ShadowFormat
+    from pptx2.oxml.shapes.graphfrm import CT_GraphicalObjectData, CT_GraphicalObjectFrame
+    from pptx2.parts.chart import ChartPart
+    from pptx2.parts.slide import BaseSlidePart
+    from pptx2.types import ProvidesPart
+
+
+class GraphicFrame(BaseShape):
+    """Container shape for table, chart, smart art, and media objects.
+
+    Corresponds to a `p:graphicFrame` element in the shape tree.
+    """
+
+    def __init__(self, graphicFrame: CT_GraphicalObjectFrame, parent: ProvidesPart):
+        super().__init__(graphicFrame, parent)
+        self._graphicFrame = graphicFrame
+
+    @property
+    def chart(self) -> Chart:
+        """The |Chart| object containing the chart in this graphic frame.
+
+        Raises |ValueError| if this graphic frame does not contain a chart.
+        """
+        if not self.has_chart:
+            raise ValueError("shape does not contain a chart")
+        chart = self.chart_part.chart
+        # Cache the parent shape ref on the chart so callers can reach
+        # back to the GraphicFrame without keeping the ``add_chart``
+        # return value around.  ``Chart.shape`` reads this attribute.
+        chart._parent_shape = self  # type: ignore[attr-defined]
+        return chart
+
+    @property
+    def chart_part(self) -> ChartPart:
+        """The |ChartPart| object containing the chart in this graphic frame."""
+        chart_rId = self._graphicFrame.chart_rId
+        if chart_rId is None:
+            raise ValueError("this graphic frame does not contain a chart")
+        return cast("ChartPart", self.part.related_part(chart_rId))
+
+    @property
+    def has_chart(self) -> bool:
+        """|True| if this graphic frame contains a chart object. |False| otherwise.
+
+        When |True|, the chart object can be accessed using the `.chart` property.
+        """
+        return self._graphicFrame.graphicData_uri == GRAPHIC_DATA_URI_CHART
+
+    @property
+    def has_table(self) -> bool:
+        """|True| if this graphic frame contains a table object, |False| otherwise.
+
+        When |True|, the table object can be accessed using the `.table` property.
+        """
+        return self._graphicFrame.graphicData_uri == GRAPHIC_DATA_URI_TABLE
+
+    @property
+    def ole_format(self) -> _OleFormat:
+        """_OleFormat object for this graphic-frame shape.
+
+        Raises `ValueError` on a GraphicFrame instance that does not contain an OLE object.
+
+        An shape that contains an OLE object will have `.shape_type` of either
+        `EMBEDDED_OLE_OBJECT` or `LINKED_OLE_OBJECT`.
+        """
+        if not self._graphicFrame.has_oleobj:
+            raise ValueError("not an OLE-object shape")
+        return _OleFormat(self._graphicFrame.graphicData, self._parent)
+
+    @lazyproperty
+    def blur(self) -> BlurFormat:
+        """Unconditionally raises |NotImplementedError|.
+
+        Gaussian blur access for graphic-frame objects is content-specific
+        (i.e. different for charts, tables, etc.) and has not yet been
+        implemented.
+        """
+        raise NotImplementedError("blur property on GraphicFrame not yet supported")
+
+    @lazyproperty
+    def glow(self) -> GlowFormat:
+        """Unconditionally raises |NotImplementedError|.
+
+        Glow effect access for graphic-frame objects is not yet implemented.
+        """
+        raise NotImplementedError("glow property on GraphicFrame not yet supported")
+
+    @lazyproperty
+    def reflection(self) -> ReflectionFormat:
+        """Unconditionally raises |NotImplementedError|.
+
+        Reflection effect access for graphic-frame objects is not yet
+        implemented.
+        """
+        raise NotImplementedError("reflection property on GraphicFrame not yet supported")
+
+    @lazyproperty
+    def shadow(self) -> ShadowFormat | None:
+        """Returns ``None``: shadow access on a |GraphicFrame| is unsupported.
+
+        Charts and tables expose their effect tree at content-specific
+        locations (e.g. ``c:spPr/a:effectLst`` on a chart) and the unified
+        :class:`~pptx2.dml.effect.ShadowFormat` facade doesn't apply.
+        Returning ``None`` keeps callers that probe ``shape.shadow`` across
+        every shape on a slide free from per-type ``try/except`` guards;
+        ``if shape.shadow is None`` is the supported "no facade available"
+        check.
+        """
+        return None
+
+    @lazyproperty
+    def inner_shadow(self) -> InnerShadowFormat | None:
+        """Returns ``None``: inner-shadow access on a |GraphicFrame| is unsupported.
+
+        A graphic frame has no ``spPr``, so (like :attr:`shadow`) the unified
+        effect facade doesn't apply; ``None`` lets callers probe every shape
+        without a per-type ``try/except``.
+        """
+        return None
+
+    @lazyproperty
+    def preset_shadow(self) -> PresetShadowFormat | None:
+        """Returns ``None``: preset-shadow access on a |GraphicFrame| is unsupported."""
+        return None
+
+    @lazyproperty
+    def soft_edges(self) -> SoftEdgeFormat:
+        """Unconditionally raises |NotImplementedError|.
+
+        Soft-edge effect access for graphic-frame objects is not yet implemented.
+        """
+        raise NotImplementedError("soft_edges property on GraphicFrame not yet supported")
+
+    @property
+    def three_d(self):
+        """Unconditionally raises |NotImplementedError|.
+
+        A graphic frame has no ``p:spPr``, so the |ThreeDFormat| facade does
+        not apply (mirrors :attr:`blur` / :attr:`glow` behaviour).
+        """
+        raise NotImplementedError("three_d property on GraphicFrame not yet supported")
+
+    @property
+    def shape_type(self) -> MSO_SHAPE_TYPE:
+        """Optional member of `MSO_SHAPE_TYPE` identifying the type of this shape.
+
+        Possible values are `MSO_SHAPE_TYPE.CHART`, `MSO_SHAPE_TYPE.TABLE`,
+        `MSO_SHAPE_TYPE.EMBEDDED_OLE_OBJECT`, `MSO_SHAPE_TYPE.LINKED_OLE_OBJECT`.
+
+        This value is `None` when none of these four types apply, for example when the shape
+        contains SmartArt.
+        """
+        graphicData_uri = self._graphicFrame.graphicData_uri
+        if graphicData_uri == GRAPHIC_DATA_URI_CHART:
+            return MSO_SHAPE_TYPE.CHART
+        elif graphicData_uri == GRAPHIC_DATA_URI_TABLE:
+            return MSO_SHAPE_TYPE.TABLE
+        elif graphicData_uri == GRAPHIC_DATA_URI_OLEOBJ:
+            return (
+                MSO_SHAPE_TYPE.EMBEDDED_OLE_OBJECT
+                if self._graphicFrame.is_embedded_ole_obj
+                else MSO_SHAPE_TYPE.LINKED_OLE_OBJECT
+            )
+        else:
+            return None  # pyright: ignore[reportReturnType]
+
+    @property
+    def table(self) -> Table:
+        """The |Table| object contained in this graphic frame.
+
+        Raises |ValueError| if this graphic frame does not contain a table.
+        """
+        if not self.has_table:
+            raise ValueError("shape does not contain a table")
+        tbl = self._graphicFrame.graphic.graphicData.tbl
+        return Table(tbl, self)
+
+    def render_to_png(self, **kwargs):
+        """Render this graphic frame's region to a PNG.
+
+        Renders the parent slide via headless LibreOffice (the same path
+        used by :meth:`Slide.render_thumbnail`), then crops the result to
+        this frame's bounding box.  Useful for getting a standalone
+        chart / table image out of a deck.
+
+        Forwards keyword arguments (``out_path``, ``soffice_bin``,
+        ``timeout``) to :meth:`Slide.render_thumbnail`.  ``return_bytes``
+        is also supported and returns the cropped PNG bytes directly.
+
+        Requires :pypi:`Pillow` for cropping (already a python-pptx2
+        dependency) and ``soffice`` on PATH.
+        """
+        from io import BytesIO
+
+        try:
+            from PIL import Image
+        except ImportError as e:  # pragma: no cover - Pillow is a dep
+            raise RuntimeError(
+                "render_to_png requires Pillow; install python-pptx2[render]"
+            ) from e
+
+        return_bytes = kwargs.pop("return_bytes", False)
+        out_path = kwargs.pop("out_path", None)
+
+        slide = self.part.slide
+        png_bytes = slide.render_thumbnail(return_bytes=True, **kwargs)
+
+        with Image.open(BytesIO(png_bytes)) as img:
+            # Compute pixel bounds of this graphic frame from the EMU-vs-pixel
+            # scale of the rendered slide.
+            prs = self.part.package.presentation_part.presentation
+            slide_w_emu = int(prs.slide_width or 9144000)
+            slide_h_emu = int(prs.slide_height or 6858000)
+            scale_x = img.width / slide_w_emu
+            scale_y = img.height / slide_h_emu
+            left = int(int(self.left) * scale_x)
+            top = int(int(self.top) * scale_y)
+            right = int((int(self.left) + int(self.width)) * scale_x)
+            bottom = int((int(self.top) + int(self.height)) * scale_y)
+            cropped = img.crop((left, top, right, bottom))
+            buf = BytesIO()
+            cropped.save(buf, format="PNG")
+            data = buf.getvalue()
+
+        if return_bytes:
+            return data
+        if out_path is not None:
+            from pathlib import Path
+
+            target = Path(out_path)
+            target.parent.mkdir(parents=True, exist_ok=True)
+            target.write_bytes(data)
+            return target
+        # No destination given: persist to a stable temp file.
+        import os
+        import tempfile
+        from pathlib import Path
+
+        fd, persistent = tempfile.mkstemp(prefix="pptx-frame-", suffix=".png")
+        os.close(fd)
+        try:
+            Path(persistent).write_bytes(data)
+        except Exception:
+            # Don't leak the empty temp file when the write fails.
+            try:
+                os.remove(persistent)
+            except OSError:
+                pass
+            raise
+        return Path(persistent)
+
+
+class _OleFormat(ParentedElementProxy):
+    """Provides attributes on an embedded OLE object."""
+
+    part: BaseSlidePart  # pyright: ignore[reportIncompatibleMethodOverride]
+
+    def __init__(self, graphicData: CT_GraphicalObjectData, parent: ProvidesPart):
+        super().__init__(graphicData, parent)
+        self._graphicData = graphicData
+
+    @property
+    def blob(self) -> bytes | None:
+        """Optional bytes of OLE object, suitable for loading or saving as a file.
+
+        This value is `None` if the embedded object does not represent a "file".
+        """
+        blob_rId = self._graphicData.blob_rId
+        if blob_rId is None:
+            return None
+        return self.part.related_part(blob_rId).blob
+
+    @property
+    def prog_id(self) -> str | None:
+        """str "progId" attribute of this embedded OLE object.
+
+        The progId is a str like "Excel.Sheet.12" that identifies the "file-type" of the embedded
+        object, or perhaps more precisely, the application (aka. "server" in OLE parlance) to be
+        used to open this object.
+        """
+        return self._graphicData.progId
+
+    @property
+    def show_as_icon(self) -> bool | None:
+        """True when OLE object should appear as an icon (rather than preview)."""
+        return self._graphicData.showAsIcon

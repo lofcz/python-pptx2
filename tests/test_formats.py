@@ -1,10 +1,10 @@
-"""Unit tests for :mod:`power_pptx.formats`."""
+"""Unit tests for :mod:`pptx2.formats`."""
 
 from __future__ import annotations
 
 import pytest
 
-from power_pptx import formats as fmt
+from pptx2 import formats as fmt
 
 
 class DescribeCurrency:

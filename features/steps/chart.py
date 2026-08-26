@@ -8,12 +8,12 @@ from itertools import islice
 from behave import given, then, when
 from helpers import count, test_pptx
 
-from power_pptx import Presentation
-from power_pptx.chart.chart import Legend
-from power_pptx.chart.data import BubbleChartData, CategoryChartData, ChartData, XyChartData
-from power_pptx.enum.chart import XL_CHART_TYPE
-from power_pptx.parts.embeddedpackage import EmbeddedXlsxPart
-from power_pptx.util import Inches
+from pptx2 import Presentation
+from pptx2.chart.chart import Legend
+from pptx2.chart.data import BubbleChartData, CategoryChartData, ChartData, XyChartData
+from pptx2.enum.chart import XL_CHART_TYPE
+from pptx2.parts.embeddedpackage import EmbeddedXlsxPart
+from pptx2.util import Inches
 
 # given ===================================================
 

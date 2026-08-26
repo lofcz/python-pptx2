@@ -7,7 +7,7 @@ playground decks read differently from the cooler indigo/cyan of
 
 from __future__ import annotations
 
-from power_pptx.design.tokens import DesignTokens
+from pptx2.design.tokens import DesignTokens
 
 # Sunset-on-paper identity: warm coral primary, deep navy text, cream
 # surface. Picked to look distinct from the existing showcase palette.

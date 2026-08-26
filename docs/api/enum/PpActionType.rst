@@ -9,7 +9,7 @@ Alias: ``PP_ACTION``
 
 Example::
 
-    from power_pptx.enum.action import PP_ACTION
+    from pptx2.enum.action import PP_ACTION
 
     assert shape.click_action.action == PP_ACTION.HYPERLINK
 

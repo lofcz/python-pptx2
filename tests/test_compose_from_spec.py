@@ -6,8 +6,8 @@ import textwrap
 
 import pytest
 
-from power_pptx.compose import from_spec, from_yaml
-from power_pptx.enum.shapes import MSO_SHAPE_TYPE
+from pptx2.compose import from_spec, from_yaml
+from pptx2.enum.shapes import MSO_SHAPE_TYPE
 
 
 class DescribeRecipeDispatch:
@@ -210,7 +210,7 @@ class DescribeRecipeKwargValidation:
     """Recipe layouts in `from_spec` reject unknown kwargs (fail-closed)."""
 
     def it_rejects_a_typo_in_a_recipe_kwarg(self):
-        from power_pptx.compose.from_spec import from_spec
+        from pptx2.compose.from_spec import from_spec
 
         spec = {
             "slides": [
@@ -227,7 +227,7 @@ class DescribeRecipeKwargValidation:
             from_spec(spec)
 
     def it_accepts_known_recipe_kwargs(self):
-        from power_pptx.compose.from_spec import from_spec
+        from pptx2.compose.from_spec import from_spec
 
         spec = {
             "slides": [
@@ -248,7 +248,7 @@ class DescribeComparisonLayoutAlias:
     """`comparison` routes to the recipe; `comparison_layout` to placeholder."""
 
     def it_routes_comparison_to_the_recipe(self):
-        from power_pptx.compose.from_spec import from_spec
+        from pptx2.compose.from_spec import from_spec
 
         spec = {
             "slides": [
@@ -269,7 +269,7 @@ class DescribeComparisonLayoutPlaceholders:
     """`comparison_layout` (the placeholder-based opt-in) populates left/right."""
 
     def it_populates_left_and_right_placeholders(self):
-        from power_pptx.compose.from_spec import from_spec
+        from pptx2.compose.from_spec import from_spec
 
         spec = {
             "slides": [
@@ -307,7 +307,7 @@ class DescribeThemeAlias:
         slide = prs.slides[0]
         # ``modern_dark`` preset's primary is ``#7C5CFF``; the recipe pins
         # the title colour to that, so the title run reflects the preset.
-        from power_pptx.dml.color import RGBColor
+        from pptx2.dml.color import RGBColor
 
         title_rgb = None
         for sh in slide.shapes:
@@ -344,7 +344,7 @@ class DescribeTokensAcceptsDesignTokens:
     def it_accepts_a_DesignTokens_instance_directly(self):
         # See IMPROVEMENTS item 8 — previously rejected with
         # "'tokens' must be a mapping".
-        from power_pptx.design.tokens import DesignTokens
+        from pptx2.design.tokens import DesignTokens
 
         tokens = DesignTokens.from_preset("modern_light")
         prs = from_spec({
@@ -361,7 +361,7 @@ class DescribeSlideSize:
     """``slide_size`` resizes the deck to the named shorthand or explicit pair."""
 
     def it_resizes_to_16_9_widescreen(self):
-        from power_pptx.util import Inches
+        from pptx2.util import Inches
 
         prs = from_spec({
             "slide_size": "16:9",
@@ -371,7 +371,7 @@ class DescribeSlideSize:
         assert prs.slide_height == Inches(7.5)
 
     def it_resizes_from_an_inches_pair(self):
-        from power_pptx.util import Inches
+        from pptx2.util import Inches
 
         prs = from_spec({
             "slide_size": (12, 9),
@@ -381,7 +381,7 @@ class DescribeSlideSize:
         assert prs.slide_height == Inches(9)
 
     def it_resizes_from_a_width_height_mapping(self):
-        from power_pptx.util import Inches
+        from pptx2.util import Inches
 
         prs = from_spec({
             "slide_size": {"width": 13.333, "height": 7.5},
@@ -475,7 +475,7 @@ class DescribeShapeEntries:
     """A slide's ``shapes`` list adds shapes on top of the layout."""
 
     def it_adds_a_named_textbox_from_a_shape_entry(self):
-        from power_pptx.util import Inches
+        from pptx2.util import Inches
 
         prs = from_spec({
             "slides": [{
@@ -812,7 +812,7 @@ class DescribeSpecDeclaredOverlapSuppression:
 
     @staticmethod
     def _collisions(prs):
-        from power_pptx.lint import ShapeCollision
+        from pptx2.lint import ShapeCollision
 
         return [
             i for i in prs.slides[0].lint().issues
@@ -845,7 +845,7 @@ class DescribeSpecDeclaredOverlapSuppression:
 
     def it_reports_a_layer_order_violation_for_the_reversed_z_order(self):
         # The shape drawn *first* (underneath) claims to sit on top.
-        from power_pptx.lint import LayerOrderViolation
+        from pptx2.lint import LayerOrderViolation
 
         prs = from_spec(self._overlapping_spec(
             first={"layer_above": "card"},

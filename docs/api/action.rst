@@ -11,7 +11,7 @@ presentation or running a macro are also possible.
 |ActionSetting| objects
 -----------------------
 
-.. autoclass:: power_pptx.action.ActionSetting()
+.. autoclass:: pptx2.action.ActionSetting()
    :members:
    :inherited-members:
    :undoc-members:
@@ -20,7 +20,7 @@ presentation or running a macro are also possible.
 |Hyperlink| objects
 -----------------------
 
-.. autoclass:: power_pptx.action.Hyperlink()
+.. autoclass:: pptx2.action.Hyperlink()
    :members:
    :inherited-members:
    :undoc-members:

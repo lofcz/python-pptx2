@@ -6,12 +6,39 @@ Release History
 This project was forked from `scanny/python-pptx`_ at version 1.0.2.
 Releases prior to 1.1.0 are upstream history, preserved here verbatim and
 attributed to Steve Canny and the original contributors. Releases from
-1.1.0 onward are made under the ``power-pptx`` distribution name on
-PyPI. Starting with 2.0.0 the importable package name is ``power_pptx``
-to avoid a top-level namespace collision when ``python-pptx`` (which
-installs the ``pptx`` import name) is also present in the environment.
+1.1.0 through 2.12.x were published as ``power-pptx`` (import
+``power_pptx``) by Daniel Halwell. Starting with 2.13.0 this line is
+published as ``python-pptx2`` on PyPI and imported as ``pptx2``, so it
+can sit beside both ``python-pptx`` (``pptx``) and ``power-pptx``
+(``power_pptx``).
 
 .. _`scanny/python-pptx`: https://github.com/scanny/python-pptx
+
+
+2.13.0 (2026-08-26)
++++++++++++++++++++
+
+First release under the ``python-pptx2`` / ``pptx2`` names — a fork of
+``power-pptx`` 2.12 with native PowerPoint equations from LaTeX. The
+library still does not compile math itself — ``latex2mathml`` turns
+the fragment into MathML and ``mathml2omml`` turns that into Office
+Math, which we wrap in the ``a14:m`` marker PowerPoint actually stores.
+
+Added
+.....
+
+* **``slide.shapes.add_equation(...)``.** Same bbox / ``(left, top,
+  width, height)`` calling convention as ``add_text``, plus
+  ``latex=r"\frac{a}{b}"``. Optional ``size_pt`` / ``color`` / ``font``
+  / ``align`` / ``anchor``. The equation is editable in PowerPoint's
+  equation editor.
+* **``paragraph.add_math(latex)``.** Inline OMML between ordinary runs,
+  so a sentence can contain a formula without a second shape.
+* **``pptx2.math.latex_to_omml``** for callers that only need the
+  ``<m:oMath>`` fragment. Missing converters raise
+  ``MathBackendUnavailable`` with the install line.
+
+Install the converters with ``pip install "python-pptx2[math]"``.
 
 
 2.12.0 (2026-08-24)

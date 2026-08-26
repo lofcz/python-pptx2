@@ -24,7 +24,7 @@ and optional poster frame::
     ... )
 
     >>> movie
-    <power_pptx.shape.picture.Movie object @ 0x12345678>
+    <pptx2.shape.picture.Movie object @ 0x12345678>
 
     >>> movie.shape_type
     MSO.MEDIA
@@ -33,7 +33,7 @@ and optional poster frame::
     PP_MEDIA_TYPE.MOVIE
 
     >>> movie.media_format
-    <power_pptx.shape.picture.MediaFormat object @ 0x123456ab>
+    <pptx2.shape.picture.MediaFormat object @ 0x123456ab>
 
 
 Animation/timing resources

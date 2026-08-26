@@ -8,13 +8,13 @@ import os
 
 import pytest
 
-from power_pptx import Presentation
-from power_pptx.chart.data import CategoryChartData
-from power_pptx.chart.quick_layouts import apply_quick_layout
-from power_pptx.dml.color import RGBColor
-from power_pptx.enum.chart import XL_CHART_TYPE
-from power_pptx.enum.dml import MSO_THEME_COLOR
-from power_pptx.util import Inches
+from pptx2 import Presentation
+from pptx2.chart.data import CategoryChartData
+from pptx2.chart.quick_layouts import apply_quick_layout
+from pptx2.dml.color import RGBColor
+from pptx2.enum.chart import XL_CHART_TYPE
+from pptx2.enum.dml import MSO_THEME_COLOR
+from pptx2.util import Inches
 
 
 # ---------------------------------------------------------------------------
@@ -273,9 +273,9 @@ class DescribeEmbedFont:
         # CT_EmbeddedFontListEntry is a fixed sequence (font, regular, bold,
         # italic, boldItalic).  Adding weights out of order must still produce
         # schema-ordered children, not the call order.
-        from power_pptx.oxml import parse_xml
-        from power_pptx.oxml.ns import qn
-        from power_pptx.theme import _add_embedded_font_entry
+        from pptx2.oxml import parse_xml
+        from pptx2.oxml.ns import qn
+        from pptx2.theme import _add_embedded_font_entry
 
         pres = parse_xml(
             b'<p:presentation '

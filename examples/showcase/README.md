@@ -1,7 +1,7 @@
-# power-pptx showcase decks
+# python-pptx2 showcase decks
 
 A self-contained suite of six example decks that exercises every
-post-fork feature of `power-pptx` in a single, brand-aligned identity.
+post-fork feature of `python-pptx2` in a single, brand-aligned identity.
 Each deck is small (1–6 slides) and isolates one feature area so the
 output is easy to review side-by-side.
 

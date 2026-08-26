@@ -1,4 +1,4 @@
-"""Unit-test suite for high-level `power_pptx.animation` extensions.
+"""Unit-test suite for high-level `pptx2.animation` extensions.
 
 Covers Phase 5 motion paths, the `sequence()` context manager, and
 by-paragraph entrance animations.  The lower-level entrance/exit/
@@ -9,10 +9,10 @@ from __future__ import annotations
 
 import pytest
 
-from power_pptx import Presentation
-from power_pptx.animation import Emphasis, Entrance, MotionPath, Trigger
-from power_pptx.oxml.ns import qn
-from power_pptx.util import Inches
+from pptx2 import Presentation
+from pptx2.animation import Emphasis, Entrance, MotionPath, Trigger
+from pptx2.oxml.ns import qn
+from pptx2.util import Inches
 
 
 P_NS = "http://schemas.openxmlformats.org/presentationml/2006/main"
@@ -44,7 +44,7 @@ class DescribeSvgMotionPath:
     """`MotionPath.svg(...)` accepts SVG path syntax with a viewbox."""
 
     def it_converts_an_absolute_line_path(self, slide_with_shape):
-        from power_pptx.animation import _svg_to_ooxml_motion_path
+        from pptx2.animation import _svg_to_ooxml_motion_path
 
         out = _svg_to_ooxml_motion_path(
             "M 0 0 L 100 0", viewbox=(0, 0, 100, 100)
@@ -52,7 +52,7 @@ class DescribeSvgMotionPath:
         assert out == "M 0 0 L 1 0 E"
 
     def it_converts_relative_commands(self):
-        from power_pptx.animation import _svg_to_ooxml_motion_path
+        from pptx2.animation import _svg_to_ooxml_motion_path
 
         # m 5 5 → starts at (5,5); l 10 0 → moves to (15,5); l 0 10 → (15,15)
         out = _svg_to_ooxml_motion_path(
@@ -61,7 +61,7 @@ class DescribeSvgMotionPath:
         assert out == "M 0 0 L 0.1 0 L 0.1 0.1 E"
 
     def it_supports_h_v_z_shortcuts(self):
-        from power_pptx.animation import _svg_to_ooxml_motion_path
+        from pptx2.animation import _svg_to_ooxml_motion_path
 
         out = _svg_to_ooxml_motion_path("M 0 0 H 100 V 100 Z")
         # Z → close back to subpath origin (the M anchor).
@@ -69,7 +69,7 @@ class DescribeSvgMotionPath:
         assert out.endswith(" E")
 
     def it_supports_cubic_curve(self):
-        from power_pptx.animation import _svg_to_ooxml_motion_path
+        from pptx2.animation import _svg_to_ooxml_motion_path
 
         out = _svg_to_ooxml_motion_path(
             "M 0 0 C 0 -10 80 -10 80 0", viewbox=(0, 0, 100, 100)
@@ -78,7 +78,7 @@ class DescribeSvgMotionPath:
         assert out.endswith(" E")
 
     def it_emits_motion_path_via_class_method(self, slide_with_shape):
-        from power_pptx.animation import MotionPath
+        from pptx2.animation import MotionPath
 
         slide, shape = slide_with_shape
         MotionPath.svg(
@@ -87,19 +87,19 @@ class DescribeSvgMotionPath:
         assert _animMotion_paths(slide) == ["M 0 0 L 1 0 E"]
 
     def it_rejects_an_empty_path(self):
-        from power_pptx.animation import _svg_to_ooxml_motion_path
+        from pptx2.animation import _svg_to_ooxml_motion_path
 
         with pytest.raises(ValueError, match="non-empty"):
             _svg_to_ooxml_motion_path("")
 
     def it_rejects_a_command_before_moveto(self):
-        from power_pptx.animation import _svg_to_ooxml_motion_path
+        from pptx2.animation import _svg_to_ooxml_motion_path
 
         with pytest.raises(ValueError, match="must start with M"):
             _svg_to_ooxml_motion_path("L 1 0")
 
     def it_rejects_unsupported_commands(self):
-        from power_pptx.animation import _svg_to_ooxml_motion_path
+        from pptx2.animation import _svg_to_ooxml_motion_path
 
         with pytest.raises(ValueError, match="unsupported svg path command"):
             _svg_to_ooxml_motion_path("M 0 0 A 10 10 0 0 1 100 100")
@@ -673,7 +673,7 @@ class DescribeAnimationsIntrospection:
         # command), so the whole animation was dropped.
         import re
 
-        from power_pptx.animation import MotionPath
+        from pptx2.animation import MotionPath
 
         prs = Presentation()
         slide = prs.slides.add_slide(prs.slide_layouts[6])
