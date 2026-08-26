@@ -80,14 +80,22 @@ jobs:
   tag:
     name: Tag and create GitHub release
     needs: plan
-    if: needs.plan.outputs.should_tag == 'true'
+    # Always run (no-op when the tag exists). A skipped job here would
+    # skip ``publish-pypi`` even though that job does not need the tag.
+    if: needs.plan.result == 'success'
     runs-on: ubuntu-latest
     steps:
+      - name: Nothing to tag
+        if: needs.plan.outputs.should_tag != 'true'
+        run: echo "Tag ${{ needs.plan.outputs.tag }} already exists — skipping tag/release."
+
       - uses: actions/checkout@v4
+        if: needs.plan.outputs.should_tag == 'true'
         with:
           fetch-depth: 0
 
       - name: Extract release notes from HISTORY.rst
+        if: needs.plan.outputs.should_tag == 'true'
         run: |
           python <<'PYEOF' > release-notes.md
           import re
@@ -114,17 +122,20 @@ jobs:
           PYEOF
 
       - name: Configure git identity
+        if: needs.plan.outputs.should_tag == 'true'
         run: |
           git config user.name  "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
       - name: Create and push annotated tag
+        if: needs.plan.outputs.should_tag == 'true'
         run: |
           git tag -a "${{ needs.plan.outputs.tag }}" \
             -m "Release ${{ needs.plan.outputs.version }}"
           git push origin "${{ needs.plan.outputs.tag }}"
 
       - name: Create GitHub release
+        if: needs.plan.outputs.should_tag == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -136,11 +147,7 @@ jobs:
   build:
     name: Build distribution
     needs: [plan, tag]
-    if: >-
-      always()
-      && needs.plan.result == 'success'
-      && needs.plan.outputs.should_publish == 'true'
-      && (needs.tag.result == 'success' || needs.tag.result == 'skipped')
+    if: needs.plan.outputs.should_publish == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -169,7 +176,8 @@ jobs:
 
   publish-pypi:
     name: Publish to PyPI
-    needs: [plan, build]
+    needs: [plan, tag, build]
+    if: needs.plan.outputs.should_publish == 'true'
     runs-on: ubuntu-latest
     environment:
       name: pypi
