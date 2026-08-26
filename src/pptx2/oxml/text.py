@@ -525,6 +525,7 @@ class CT_TextParagraph(BaseOxmlElement):
     )
     r = ZeroOrMore("a:r", successors=("a:endParaRPr",))
     br = ZeroOrMore("a:br", successors=("a:endParaRPr",))
+    m = ZeroOrMore("a14:m", successors=("a:endParaRPr",))
     endParaRPr: CT_TextCharacterProperties | None = ZeroOrOne("a:endParaRPr", successors=())  # pyright: ignore[reportAssignmentType]
 
     def add_br(self) -> CT_TextLineBreak:

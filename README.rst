@@ -85,8 +85,9 @@ Optional dependencies:
 * ``cairosvg`` — install only if you want ``add_svg_picture(...)`` to
   auto-rasterise the PNG fallback.
 * ``pyyaml`` — install only if you want ``DesignTokens.from_yaml``.
-* ``python-pptx2[math]`` (``latex2mathml`` + ``mathml2omml``) — required
+* ``python-pptx2[math]`` (``latex2mathml``) — required
   for ``slide.shapes.add_equation(...)`` / ``paragraph.add_math(...)``.
+  MathML → OMML is bundled.
 * ``soffice`` (LibreOffice) on PATH — required for
   ``Presentation.render_thumbnails()``.
 * ``pdftoppm`` (Poppler) or ``pypdfium2`` — required for the

@@ -15,6 +15,25 @@ can sit beside both ``python-pptx`` (``pptx``) and ``power-pptx``
 .. _`scanny/python-pptx`: https://github.com/scanny/python-pptx
 
 
+2.14.0 (2026-08-26)
++++++++++++++++++++
+
+PowerPoint-valid native equations. The MathML → OMML step is now a
+bundled port of ``mathml2omml-plus`` (ECMA-376 §7.1) instead of the
+PyPI ``mathml2omml`` 0.0.2 toy, which wrapped every construct in
+``m:box`` and omitted ``m:fPr`` — PowerPoint then flattened fractions
+to concatenated digits (``7/10`` → ``710``). Slides now declare the
+``m`` / ``a14`` / ``mc`` host namespaces and ``mc:Ignorable="a14"``.
+
+Added
+.....
+
+* **Bundled ``pptx2.mathml2omml``** — spec-compliant ``m:f`` / ``m:rad``
+  / ``m:nary`` / ``m:sSub`` / matrices / accents. ``python-pptx2[math]``
+  now only needs ``latex2mathml``.
+* Fraction bars and other controls inherit ``size_pt`` / ``color`` via
+  ``m:ctrlPr`` as well as ``m:r``.
+
 2.13.0 (2026-08-26)
 +++++++++++++++++++
 

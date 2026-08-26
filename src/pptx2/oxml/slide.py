@@ -236,7 +236,7 @@ class CT_Slide(_BaseSlideElement):
     @staticmethod
     def _sld_xml():
         return (
-            "<p:sld %s>\n"
+            '<p:sld %s mc:Ignorable="a14">\n'
             "  <p:cSld>\n"
             "    <p:spTree>\n"
             "      <p:nvGrpSpPr>\n"
@@ -250,7 +250,7 @@ class CT_Slide(_BaseSlideElement):
             "  <p:clrMapOvr>\n"
             "    <a:masterClrMapping/>\n"
             "  </p:clrMapOvr>\n"
-            "</p:sld>" % nsdecls("a", "p", "r")
+            "</p:sld>" % nsdecls("a", "p", "r", "m", "a14", "mc", "w")
         )
 
 

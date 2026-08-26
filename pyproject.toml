@@ -44,7 +44,6 @@ requires-python = ">=3.9"
 [project.optional-dependencies]
 math = [
     "latex2mathml>=3.0",
-    "mathml2omml>=0.0.2",
 ]
 
 [project.urls]

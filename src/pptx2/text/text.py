@@ -886,10 +886,9 @@ class _Paragraph(Subshape):
     ):
         """Append a native PowerPoint equation from a LaTeX math fragment.
 
-        Requires ``latex2mathml`` and ``mathml2omml``
-        (``pip install "python-pptx2[math]"``). *display* wraps the equation
-        in ``m:oMathPara`` (a standalone line); the default is inline
-        ``m:oMath`` so it can sit between ordinary runs.
+        Requires ``latex2mathml`` (``pip install "python-pptx2[math]"``).
+        MathML → OMML is bundled (mathml2omml-plus port). *display* wraps
+        the equation in ``m:oMathPara``; the default is inline ``m:oMath``.
 
         *font* / *size_pt* / *color* are written onto each math run when
         given. Returns this paragraph so mixed text + math can be chained.

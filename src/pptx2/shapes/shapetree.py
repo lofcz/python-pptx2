@@ -995,9 +995,9 @@ class _BaseGroupShapes(_BaseShapes):
                 latex=r"E = mc^2",
             )
 
-        Requires ``latex2mathml`` and ``mathml2omml``
-        (``pip install "python-pptx2[math]"``). The equation is editable in
-        PowerPoint's equation editor.
+        Requires ``latex2mathml`` (``pip install "python-pptx2[math]"``).
+        MathML → OMML is bundled. The equation is editable in PowerPoint's
+        equation editor.
 
         Keyword args match :meth:`add_text` for *font* / *size_pt* /
         *color* / *align* / *anchor* / *margin_pt*. *display* (default

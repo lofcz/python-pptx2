@@ -2,12 +2,13 @@
 
 PowerPoint stores editable equations as Office Math (OMML) inside an
 `a14:m` marker. python-pptx2 does **not** compile LaTeX itself. It calls
-two libraries and wraps the result:
+`latex2mathml` for MathML, then a bundled port of `mathml2omml-plus`
+(ECMA-376 §7.1) for OMML, then wraps the result in `a14:m`.
 
 1. [`latex2mathml`](https://pypi.org/project/latex2mathml/) — LaTeX → MathML
-2. [`mathml2omml`](https://pypi.org/project/mathml2omml/) — MathML → OMML
+2. Bundled `pptx2.mathml2omml` — MathML → OMML (port of mathml2omml-plus)
 
-Install them with:
+Install the LaTeX front-end with:
 
 ```bash
 pip install "python-pptx2[math]"
@@ -81,6 +82,7 @@ environments) are stripped before conversion.
 
 - Not a TeX engine. Environments like `tikzpicture` will not render.
 - Not Microsoft's `MML2OMML.XSL` (that stylesheet cannot be
-  redistributed). The MathML → OMML step is the `mathml2omml` package.
+  redistributed). The MathML → OMML step is the bundled
+  `mathml2omml-plus` port.
 - Not an image. If you need a PNG of a formula, use
   `add_matplotlib_figure` with mathtext instead.

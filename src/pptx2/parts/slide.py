@@ -63,12 +63,16 @@ class BaseSlidePart(XmlPart):
         """
         element = self._element
         if not slide_has_p14_transition(element):
-            return serialize_part_xml(element)
-        from copy import deepcopy
+            xml = serialize_part_xml(element)
+        else:
+            from copy import deepcopy
 
-        copy = deepcopy(element)
-        wrap_p14_transitions(copy)
-        return serialize_part_xml(copy)
+            copy = deepcopy(element)
+            wrap_p14_transitions(copy)
+            xml = serialize_part_xml(copy)
+        from pptx2.math import prepare_slide_xml_for_math
+
+        return prepare_slide_xml_for_math(xml)
 
     def get_image(self, rId: str) -> Image:
         """Return an |Image| object containing the image related to this slide by *rId*.
