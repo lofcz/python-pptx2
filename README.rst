@@ -286,10 +286,8 @@ Documentation
 -------------
 
 **Project site:** https://github.com/lofcz/python-pptx2 — the
-Astro/React documentation site (source in ``site/``) with the
-`Getting started`_ guide, `Advanced usage`_ walkthroughs, a guide to
-`Coding agents`_ (the bundled Claude Code skill), and the full
-`API reference`_.
+Astro/React documentation site (source in ``site/``), plus the
+Sphinx docs under ``docs/``.
 
 The Sphinx documentation lives under ``docs/`` and covers both the
 inherited 1.0.2 API and every feature added by the fork.  Browse
