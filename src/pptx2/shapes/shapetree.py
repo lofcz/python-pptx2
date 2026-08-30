@@ -416,6 +416,13 @@ class _BaseShapes(ParentedElementProxy):
         shape_elms = list(self._iter_member_elms())
         return len(shape_elms)
 
+    def get_by_name(self, name: str, default: BaseShape | None = None) -> BaseShape | None:
+        """Return shape object having `name`, or `default` if not found."""
+        for shape in self:
+            if shape.name == name:
+                return shape
+        return default
+
     def lint_group_scope(self, name: str | None = None):
         """Context manager that auto-tags shapes added inside it.
 

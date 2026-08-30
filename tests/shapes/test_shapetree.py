@@ -136,6 +136,20 @@ class Describe_BaseShapes(object):
         with pytest.raises(IndexError):
             shapes[2]
 
+    def it_can_get_a_shape_by_name(self, get_by_name_fixture):
+        shapes, name, expected_shape = get_by_name_fixture
+        assert shapes.get_by_name(name) == expected_shape
+
+    def it_returns_default_when_no_shape_has_name(self, get_by_name_miss_fixture):
+        shapes, default, expected_value = get_by_name_miss_fixture
+        assert shapes.get_by_name("Nonexistent", default) is expected_value
+
+    def it_returns_first_match_when_shape_names_duplicate(self, get_by_name_dups_fixture):
+        shapes, expected_shape = get_by_name_dups_fixture
+        first, second = list(shapes)
+        assert shapes.get_by_name("Duo") == first
+        assert shapes.get_by_name("Duo") != second
+
     def it_can_clone_a_placeholder(self, clone_ph_fixture):
         shapes, placeholder_, expected_xml = clone_ph_fixture
         shapes.clone_placeholder(placeholder_)
@@ -191,6 +205,30 @@ class Describe_BaseShapes(object):
             "p:sp/p:nvSpPr/p:nvPr/p:ph{type=chart,idx=42,orient=vert,sz=half" "}"
         )
         return shapes, placeholder_, expected_xml
+
+    @pytest.fixture
+    def get_by_name_dups_fixture(self):
+        spTree = element(
+            "p:spTree/(p:sp/(p:nvSpPr/p:cNvPr{id=1,name=Duo}),"
+            "p:sp/(p:nvSpPr/p:cNvPr{id=2,name=Duo}))"
+        )
+        return _BaseShapes(spTree, None), None
+
+    @pytest.fixture
+    def get_by_name_fixture(self):
+        spTree = element(
+            "p:spTree/(p:sp/(p:nvSpPr/p:cNvPr{id=1,name=Alpha}),"
+            "p:sp/(p:nvSpPr/p:cNvPr{id=2,name=Beta}))"
+        )
+        shapes = _BaseShapes(spTree, None)
+        expected_shape = list(shapes)[1]
+        return shapes, "Beta", expected_shape
+
+    @pytest.fixture(params=[None, "foobar"])
+    def get_by_name_miss_fixture(self, request):
+        spTree = element("p:spTree/(p:sp/p:nvSpPr/p:cNvPr{id=1,name=Alpha})")
+        shapes = _BaseShapes(spTree, None)
+        return shapes, request.param, request.param
 
     @pytest.fixture
     def getitem_fixture(self, BaseShapeFactory_, shape_):
@@ -1231,6 +1269,19 @@ class DescribeSlideShapes(object):
         title_placeholder = shapes.title
         assert _shape_factory_.call_args_list == calls
         assert title_placeholder is shape_
+
+    def it_can_get_a_shape_by_name_from_slide_shapes(self):
+        from pptx2.api import Presentation as PresentationFactory
+
+        prs = PresentationFactory()
+        shapes = prs.slides.add_slide(prs.slide_layouts[6]).shapes
+        metric_box = shapes.add_textbox(Inches(1), Inches(1), Inches(2), Inches(1))
+        metric_box.name = "Metric Box"
+        spare_box = shapes.add_textbox(Inches(1), Inches(3), Inches(2), Inches(1))
+
+        assert shapes.get_by_name("Metric Box") == metric_box
+        assert shapes.get_by_name("No Such Shape") is None
+        assert shapes.get_by_name("No Such Shape", spare_box) is spare_box
 
     def it_can_add_a_movie(self, movie_fixture):
         shapes, movie_file, x, y, cx, cy = movie_fixture[:6]

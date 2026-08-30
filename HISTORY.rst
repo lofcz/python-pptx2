@@ -27,6 +27,13 @@ Added
   followed by setting ``.text``); when omitted, an empty paragraph is
   added exactly as before (upstream feature by kckaiwei,
   ``scanny/python-pptx#602``).
+* ``get_by_name(name, default=None)`` on shape collections
+  (``slide.shapes``, layout/master/notes shape trees, group shapes, and
+  placeholder collections via ``_BaseShapes``) — returns the first
+  shape whose ``name`` matches, or ``default`` when none does
+  (port of `scanny/python-pptx#798`_ by lthamm).
+
+.. _`scanny/python-pptx#798`: https://github.com/scanny/python-pptx/pull/798
 
 Fixed
 .....

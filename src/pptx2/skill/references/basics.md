@@ -360,6 +360,9 @@ for slide in prs.slides:
                     print(run.text)
 ```
 
+`slide.shapes.get_by_name("Title 1")` returns the first shape with that
+name, or `None`/a given default when no shape matches.
+
 ## Common units
 
 ```python
