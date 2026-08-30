@@ -368,6 +368,18 @@ class ST_Extension(XsdString):
     pass
 
 
+class ST_FirstSliceAng(BaseIntType):
+    """
+    String value is an integer in range 0-359, the angle in degrees clockwise
+    from 12 o'clock of the first slice of a doughnut chart. Used for the
+    `val` attribute of the `c:firstSliceAng` element.
+    """
+
+    @classmethod
+    def validate(cls, value):
+        cls.validate_int_in_range(value, 0, 359)
+
+
 class ST_FixedAngle(ST_Angle):
     """Skew angle in 60000ths of a degree, exclusive range (-90, 90) degrees.
 

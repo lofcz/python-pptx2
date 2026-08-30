@@ -235,6 +235,12 @@ class Describe_DoughnutChartXmlWriter(object):
         xml_writer, expected_xml = xml_fixture
         assert xml_writer.xml == expected_xml
 
+    def it_embodies_the_first_slice_angle_of_the_chart_data(self):
+        chart_data = make_category_chart_data(3, str, 2)
+        chart_data.first_slice_angle = 90
+        xml_writer = _DoughnutChartXmlWriter(XL_CHART_TYPE.DOUGHNUT, chart_data)
+        assert '<c:firstSliceAng val="90"/>' in xml_writer.xml
+
     # fixtures -------------------------------------------------------
 
     @pytest.fixture(

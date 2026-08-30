@@ -12,6 +12,7 @@ from pptx2.chart.xlsx import (
     XyWorkbookWriter,
 )
 from pptx2.chart.xmlwriter import ChartXmlWriter
+from pptx2.oxml.simpletypes import ST_FirstSliceAng
 from pptx2.util import lazyproperty
 
 
@@ -268,6 +269,8 @@ class CategoryChartData(_BaseChartData):
     The corresponding X value is inferred by its position in the sequence.
     """
 
+    _first_slice_angle = 0
+
     def add_category(self, label):
         """
         Return a newly created |data.Category| object having *label* and
@@ -322,6 +325,20 @@ class CategoryChartData(_BaseChartData):
         including the column heading).
         """
         return self._workbook_writer.categories_ref
+
+    @property
+    def first_slice_angle(self):
+        """
+        Read/write int in range 0..359 specifying the angle in degrees of
+        the first slice for a doughnut chart created from this chart data,
+        clockwise from 12 o'clock. The default is 0, the PowerPoint default.
+        """
+        return self._first_slice_angle
+
+    @first_slice_angle.setter
+    def first_slice_angle(self, value):
+        ST_FirstSliceAng.validate(value)
+        self._first_slice_angle = int(value)
 
     def values_ref(self, series):
         """

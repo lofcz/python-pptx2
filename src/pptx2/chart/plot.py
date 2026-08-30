@@ -220,6 +220,25 @@ class DoughnutPlot(_BasePlot):
         holeSize = self._element.get_or_add_holeSize()
         holeSize.val = value
 
+    @property
+    def first_slice_angle(self):
+        """
+        Read/write int in range 0..359 specifying the angle in degrees of
+        the first slice of this doughnut, clockwise from 12 o'clock. The
+        PowerPoint default for a new doughnut chart is 0, which is what this
+        property reports when no explicit ``<c:firstSliceAng>`` element is
+        present.
+        """
+        firstSliceAng = self._element.firstSliceAng
+        if firstSliceAng is None:
+            return 0
+        return firstSliceAng.val
+
+    @first_slice_angle.setter
+    def first_slice_angle(self, value):
+        firstSliceAng = self._element.get_or_add_firstSliceAng()
+        firstSliceAng.val = value
+
 
 class LinePlot(_BasePlot):
     """

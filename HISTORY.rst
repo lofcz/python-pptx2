@@ -34,6 +34,11 @@ Added
   (port of `scanny/python-pptx#798`_ by lthamm).
 
 .. _`scanny/python-pptx#798`: https://github.com/scanny/python-pptx/pull/798
+* ``DoughnutPlot.first_slice_angle`` — read/write angle in degrees
+  (0–359) of the first doughnut slice, mapped to the
+  ``<c:firstSliceAng>`` element. ``CategoryChartData.first_slice_angle``
+  bakes the angle into charts created with ``add_chart``; the plot
+  property also works on charts opened from a file.
 
 Fixed
 .....

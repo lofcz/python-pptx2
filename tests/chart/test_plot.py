@@ -335,6 +335,20 @@ class DescribeDoughnutPlot(object):
         doughnut_plot.hole_size = new_value
         assert doughnut_plot._element.xml == expected_xml
 
+    def it_knows_its_first_slice_angle(self, first_slice_angle_get_fixture):
+        doughnut_plot, expected_value = first_slice_angle_get_fixture
+        assert doughnut_plot.first_slice_angle == expected_value
+
+    def it_can_change_its_first_slice_angle(self, first_slice_angle_set_fixture):
+        doughnut_plot, new_value, expected_xml = first_slice_angle_set_fixture
+        doughnut_plot.first_slice_angle = new_value
+        assert doughnut_plot._element.xml == expected_xml
+
+    def it_rejects_an_out_of_range_first_slice_angle(self, out_of_range_fixture):
+        doughnut_plot, bad_value = out_of_range_fixture
+        with pytest.raises(ValueError):
+            doughnut_plot.first_slice_angle = bad_value
+
     # fixtures -------------------------------------------------------
 
     @pytest.fixture(
@@ -364,6 +378,39 @@ class DescribeDoughnutPlot(object):
         doughnut_plot = DoughnutPlot(element(doughnutChart_cxml), None)
         expected_xml = xml(expected_cxml)
         return doughnut_plot, new_value, expected_xml
+
+    @pytest.fixture(
+        params=[
+            ("c:doughnutChart", 0),
+            ("c:doughnutChart/c:firstSliceAng{val=90}", 90),
+        ]
+    )
+    def first_slice_angle_get_fixture(self, request):
+        doughnutChart_cxml, expected_value = request.param
+        doughnut_plot = DoughnutPlot(element(doughnutChart_cxml), None)
+        return doughnut_plot, expected_value
+
+    @pytest.fixture(
+        params=[
+            ("c:doughnutChart", 45, "c:doughnutChart/c:firstSliceAng{val=45}"),
+            (
+                "c:doughnutChart/c:firstSliceAng{val=0}",
+                270,
+                "c:doughnutChart/c:firstSliceAng{val=270}",
+            ),
+        ]
+    )
+    def first_slice_angle_set_fixture(self, request):
+        doughnutChart_cxml, new_value, expected_cxml = request.param
+        doughnut_plot = DoughnutPlot(element(doughnutChart_cxml), None)
+        expected_xml = xml(expected_cxml)
+        return doughnut_plot, new_value, expected_xml
+
+    @pytest.fixture(params=[-1, 360])
+    def out_of_range_fixture(self, request):
+        bad_value = request.param
+        doughnut_plot = DoughnutPlot(element("c:doughnutChart"), None)
+        return doughnut_plot, bad_value
 
 
 class DescribeLinePlot(object):

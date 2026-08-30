@@ -222,6 +222,7 @@ chart.chart_title.text_frame.text = "ARR & NDR ($M / %)"
 Knobs that previously required hand-editing in Excel:
 
 - **Doughnut hole size** — `plot.hole_size = 65` (int 10–90; default 50).
+- **Doughnut first-slice angle** — `plot.first_slice_angle = 90` (int degrees 0–359; default 0).
 - **Smoothed lines** — `plot.smooth = True` on a `LinePlot` curve-fits
   every series; reads back `True` only when all series are smoothed.
 - **Logarithmic value axis** — `chart.value_axis.log_base = 10` (float

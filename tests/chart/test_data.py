@@ -167,7 +167,25 @@ class DescribeCategoryChartData(object):
         assert categories_.add_category.call_args_list == calls
         assert chart_data._categories is categories_
 
+    def it_has_a_default_first_slice_angle_of_zero(self):
+        assert CategoryChartData().first_slice_angle == 0
+
+    def it_can_set_its_first_slice_angle(self):
+        chart_data = CategoryChartData()
+        chart_data.first_slice_angle = 90
+        assert chart_data.first_slice_angle == 90
+
+    def it_rejects_an_out_of_range_first_slice_angle(self, out_of_range_fixture):
+        bad_value = out_of_range_fixture
+        chart_data = CategoryChartData()
+        with pytest.raises(ValueError):
+            chart_data.first_slice_angle = bad_value
+
     # fixtures -------------------------------------------------------
+
+    @pytest.fixture(params=[-1, 360])
+    def out_of_range_fixture(self, request):
+        return request.param
 
     @pytest.fixture
     def add_cat_fixture(self, categories_prop_, categories_, category_):

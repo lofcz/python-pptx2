@@ -6,6 +6,7 @@ from pptx2.oxml.chart.datalabel import CT_DLbls
 from pptx2.oxml.simpletypes import (
     ST_BarDir,
     ST_BubbleScale,
+    ST_FirstSliceAng,
     ST_GapAmount,
     ST_Grouping,
     ST_HoleSize,
@@ -241,8 +242,19 @@ class CT_DoughnutChart(BaseChartElement):
     varyColors = ZeroOrOne("c:varyColors", successors=_tag_seq[1:])
     ser = ZeroOrMore("c:ser", successors=_tag_seq[2:])
     dLbls = ZeroOrOne("c:dLbls", successors=_tag_seq[3:])
+    firstSliceAng = ZeroOrOne("c:firstSliceAng", successors=_tag_seq[4:])
     holeSize = ZeroOrOne("c:holeSize", successors=_tag_seq[5:])
     del _tag_seq
+
+
+class CT_FirstSliceAng(BaseOxmlElement):
+    """
+    ``<c:firstSliceAng>`` child of a ``<c:doughnutChart>`` element,
+    specifying the angle in degrees of the first slice, clockwise from 12
+    o'clock.
+    """
+
+    val = OptionalAttribute("val", ST_FirstSliceAng, default=0)
 
 
 class CT_GapAmount(BaseOxmlElement):
@@ -362,4 +374,5 @@ class CT_ScatterChart(BaseChartElement):
 # -- avoid a circular import at package-initialization time.
 from pptx2.oxml import register_element_cls  # noqa: E402
 
+register_element_cls("c:firstSliceAng", CT_FirstSliceAng)
 register_element_cls("c:holeSize", CT_HoleSize)

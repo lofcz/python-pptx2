@@ -3,6 +3,7 @@
 Covers the public API added for "go to Excel for this" gaps:
 
 * ``DoughnutPlot.hole_size``
+* ``DoughnutPlot.first_slice_angle``
 * ``LinePlot.smooth``
 * ``ValueAxis.log_base``
 
@@ -45,6 +46,7 @@ def _doughnut_deck():
     prs = Presentation()
     s = _blank_slide(prs)
     data = _category_data(("Share", (30, 40, 30)))
+    data.first_slice_angle = 90
     gf = s.shapes.add_chart(
         XL_CHART_TYPE.DOUGHNUT, Inches(0.5), Inches(0.5), Inches(4), Inches(3), data
     )
@@ -100,6 +102,21 @@ class DescribeChartToggleSchemaValidity(object):
     def it_reads_back_the_hole_size_it_wrote(self):
         prs = _doughnut_deck()
         assert prs.slides[0].shapes[0].chart.plots[0].hole_size == 65
+
+    def it_reads_back_the_first_slice_angle_it_wrote(self):
+        buf = io.BytesIO()
+        _doughnut_deck().save(buf)
+        buf.seek(0)
+        prs = Presentation(buf)
+        plot = prs.slides[0].shapes[0].chart.plots[0]
+        assert plot.first_slice_angle == 90
+        assert plot.hole_size == 65
+
+    def it_can_change_the_first_slice_angle_of_a_created_chart(self):
+        prs = _doughnut_deck()
+        plot = prs.slides[0].shapes[0].chart.plots[0]
+        plot.first_slice_angle = 180
+        assert plot.first_slice_angle == 180
 
     def it_reads_back_the_smooth_flag_it_wrote(self):
         prs = _line_smooth_deck()

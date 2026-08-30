@@ -669,7 +669,7 @@ class _DoughnutChartXmlWriter(_BaseChartXmlWriter):
             '          <c:showBubbleSize val="0"/>\n'
             '          <c:showLeaderLines val="1"/>\n'
             "        </c:dLbls>\n"
-            '        <c:firstSliceAng val="0"/>\n'
+            '        <c:firstSliceAng val="{firstSliceAng}"/>\n'
             '        <c:holeSize val="50"/>\n'
             "      </c:doughnutChart>\n"
             "    </c:plotArea>\n"
@@ -693,13 +693,22 @@ class _DoughnutChartXmlWriter(_BaseChartXmlWriter):
             "    </a:p>\n"
             "  </c:txPr>\n"
             "</c:chartSpace>\n"
-        ).format(**{"ser_xml": self._ser_xml})
+        ).format(**{"ser_xml": self._ser_xml, "firstSliceAng": self._firstSliceAng})
 
     @property
     def _explosion_xml(self):
         if self._chart_type == XL_CHART_TYPE.DOUGHNUT_EXPLODED:
             return '          <c:explosion val="25"/>\n'
         return ""
+
+    @property
+    def _firstSliceAng(self):
+        """
+        The integer angle in degrees for the ``<c:firstSliceAng>`` element,
+        taken from the chart data object when it specifies one and 0
+        (the PowerPoint default) otherwise.
+        """
+        return getattr(self._chart_data, "first_slice_angle", 0)
 
     @property
     def _ser_xml(self):
