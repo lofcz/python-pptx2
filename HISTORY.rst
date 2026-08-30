@@ -34,6 +34,11 @@ Fixed
   image format``. Pillow reports these as format ``MPO``; they are
   mapped to the canonical ``jpg`` extension and ``image/jpeg``
   content type (port of scanny/python-pptx#1075 by riparuk).
+* ``Presentation()`` now opens ``.potx`` template files. The main-document
+  part check only accepted the presentation and macro-enabled presentation
+  content types, so a template package raised ``ValueError``; the
+  ``presentationml.template.main+xml`` type is now accepted as well (port
+  of scanny/python-pptx#1071 by 9021007).
 
 
 2.14.0 (2026-08-26)

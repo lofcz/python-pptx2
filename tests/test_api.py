@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import zipfile
 
 import pytest
 
@@ -85,3 +86,36 @@ class DescribePresentation(object):
     @pytest.fixture
     def prs_part_(self, request):
         return instance_mock(request, PresentationPart)
+
+
+class DescribePotxTemplates:
+    def it_opens_a_potx_template_file(self, tmp_path):
+        prs = Presentation()
+        prs.slides.add_slide(prs.slide_layouts[0])
+        pptx_path = tmp_path / "deck.pptx"
+        prs.save(str(pptx_path))
+
+        with zipfile.ZipFile(pptx_path) as zin:
+            items = [(item, zin.read(item.filename)) for item in zin.infolist()]
+
+        potx_path = tmp_path / "deck.potx"
+        with zipfile.ZipFile(potx_path, "w", zipfile.ZIP_DEFLATED) as zout:
+            for item, data in items:
+                if item.filename == "[Content_Types].xml":
+                    data = data.replace(
+                        b"presentationml.presentation.main+xml",
+                        b"presentationml.template.main+xml",
+                    )
+                zout.writestr(item, data)
+
+        reopened = Presentation(str(potx_path))
+        assert len(reopened.slides) == 1
+
+    def it_still_opens_a_plain_pptx_file(self, tmp_path):
+        prs = Presentation()
+        prs.slides.add_slide(prs.slide_layouts[0])
+        pptx_path = tmp_path / "deck.pptx"
+        prs.save(str(pptx_path))
+
+        reopened = Presentation(str(pptx_path))
+        assert len(reopened.slides) == 1
