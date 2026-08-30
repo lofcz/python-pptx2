@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 from typing import IO, TYPE_CHECKING, Iterable
 
 from pptx2.opc.constants import RELATIONSHIP_TYPE as RT
@@ -103,11 +104,11 @@ class PresentationPart(XmlPart):
             slide_part = self.related_part(rId)
             slide_part.partname = PackURI("/ppt/slides/slide%d.xml" % (idx + 1))
 
-    def save(self, path_or_stream: str | IO[bytes]):
+    def save(self, path_or_stream: str | os.PathLike[str] | IO[bytes]):
         """Save this presentation package to `path_or_stream`.
 
-        `path_or_stream` can be either a path to a filesystem location (a string) or a
-        file-like object.
+        `path_or_stream` can be either a path to a filesystem location (a string or
+        `pathlib.Path`) or a file-like object.
         """
         self.package.save(path_or_stream)
 

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 from typing import IO, Iterator
 
 from pptx2.opc.constants import RELATIONSHIP_TYPE as RT
@@ -29,7 +30,7 @@ class Package(OpcPackage):
             self.relate_to(core_props, RT.CORE_PROPERTIES)
             return core_props
 
-    def get_or_add_image_part(self, image_file: str | IO[bytes]):
+    def get_or_add_image_part(self, image_file: str | os.PathLike[str] | IO[bytes]):
         """
         Return an |ImagePart| object containing the image in *image_file*. If
         the image part already exists in this package, it is reused,
@@ -143,7 +144,7 @@ class _ImageParts(object):
             image_parts.append(image_part)
             yield image_part
 
-    def get_or_add_image_part(self, image_file: str | IO[bytes]) -> ImagePart:
+    def get_or_add_image_part(self, image_file: str | os.PathLike[str] | IO[bytes]) -> ImagePart:
         """Return |ImagePart| object containing the image in `image_file`.
 
         `image_file` can be either a path to an image file or a file-like object

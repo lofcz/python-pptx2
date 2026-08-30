@@ -7,6 +7,7 @@ presentations to and from a .pptx file.
 from __future__ import annotations
 
 import collections
+import os
 from typing import IO, TYPE_CHECKING, DefaultDict, Iterator, Mapping, Set, cast
 
 from pptx2.opc.constants import RELATIONSHIP_TARGET_MODE as RTM
@@ -73,11 +74,11 @@ class OpcPackage(_RelatableMixin):
     file or file-like object containing a package (.pptx file).
     """
 
-    def __init__(self, pkg_file: str | IO[bytes]):
+    def __init__(self, pkg_file: str | os.PathLike[str] | IO[bytes]):
         self._pkg_file = pkg_file
 
     @classmethod
-    def open(cls, pkg_file: str | IO[bytes]) -> Self:
+    def open(cls, pkg_file: str | os.PathLike[str] | IO[bytes]) -> Self:
         """Return an |OpcPackage| instance loaded with the contents of `pkg_file`."""
         return cls(pkg_file)._load()
 
@@ -148,10 +149,10 @@ class OpcPackage(_RelatableMixin):
                 return PackURI(candidate_partname)
         raise Exception("ProgrammingError: ran out of candidate_partnames")  # pragma: no cover
 
-    def save(self, pkg_file: str | IO[bytes]) -> None:
+    def save(self, pkg_file: str | os.PathLike[str] | IO[bytes]) -> None:
         """Save this package to `pkg_file`.
 
-        `file` can be either a path to a file (a string) or a file-like object.
+        `file` can be either a path to a file (a string or `pathlib.Path`) or a file-like object.
         """
         PackageWriter.write(pkg_file, self._rels, tuple(self.iter_parts()))
 
@@ -170,13 +171,13 @@ class OpcPackage(_RelatableMixin):
 class _PackageLoader:
     """Function-object that loads a package from disk (or other store)."""
 
-    def __init__(self, pkg_file: str | IO[bytes], package: Package):
+    def __init__(self, pkg_file: str | os.PathLike[str] | IO[bytes], package: Package):
         self._pkg_file = pkg_file
         self._package = package
 
     @classmethod
     def load(
-        cls, pkg_file: str | IO[bytes], package: Package
+        cls, pkg_file: str | os.PathLike[str] | IO[bytes], package: Package
     ) -> tuple[CT_Relationships, dict[PackURI, Part]]:
         """Return (pkg_xml_rels, parts) pair resulting from loading `pkg_file`.
 
@@ -360,11 +361,11 @@ class Part(_RelatableMixin):
         # --- this must be public to allow the part graph to be traversed ---
         return self._rels
 
-    def _blob_from_file(self, file: str | IO[bytes]) -> bytes:
-        """Return bytes of `file`, which is either a str path or a file-like object."""
-        # --- a str `file` is assumed to be a path ---
-        if isinstance(file, str):
-            with open(file, "rb") as f:
+    def _blob_from_file(self, file: str | os.PathLike[str] | IO[bytes]) -> bytes:
+        """Return bytes of `file`, which is either a path or a file-like object."""
+        # --- a path-like `file` is assumed to be a path ---
+        if isinstance(file, (str, os.PathLike)):
+            with open(os.fspath(file), "rb") as f:
                 return f.read()
 
         # --- otherwise, assume `file` is a file-like object

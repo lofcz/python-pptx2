@@ -26,7 +26,7 @@ class PackageReader(Container[bytes]):
     perhaps by unzipping a .pptx file.
     """
 
-    def __init__(self, pkg_file: str | IO[bytes]):
+    def __init__(self, pkg_file: str | os.PathLike[str] | IO[bytes]):
         self._pkg_file = pkg_file
 
     def __contains__(self, pack_uri: object) -> bool:
@@ -62,14 +62,22 @@ class PackageWriter:
     Its single API classmethod is :meth:`write`. This class is not intended to be instantiated.
     """
 
-    def __init__(self, pkg_file: str | IO[bytes], pkg_rels: _Relationships, parts: Sequence[Part]):
+    def __init__(
+        self,
+        pkg_file: str | os.PathLike[str] | IO[bytes],
+        pkg_rels: _Relationships,
+        parts: Sequence[Part],
+    ):
         self._pkg_file = pkg_file
         self._pkg_rels = pkg_rels
         self._parts = parts
 
     @classmethod
     def write(
-        cls, pkg_file: str | IO[bytes], pkg_rels: _Relationships, parts: Sequence[Part]
+        cls,
+        pkg_file: str | os.PathLike[str] | IO[bytes],
+        pkg_rels: _Relationships,
+        parts: Sequence[Part],
     ) -> None:
         """Write a physical package (.pptx file) to `pkg_file`.
 
@@ -127,21 +135,22 @@ class _PhysPkgReader(Container[PackURI]):
         )
 
     @classmethod
-    def factory(cls, pkg_file: str | IO[bytes]) -> _PhysPkgReader:
+    def factory(cls, pkg_file: str | os.PathLike[str] | IO[bytes]) -> _PhysPkgReader:
         """Return |_PhysPkgReader| subtype instance appropriage for `pkg_file`."""
-        # --- for pkg_file other than str, assume it's a stream and pass it to Zip
+        # --- for pkg_file other than a path, assume it's a stream and pass it to Zip
         # --- reader to sort out
-        if not isinstance(pkg_file, str):
+        if not isinstance(pkg_file, (str, os.PathLike)):
             return _ZipPkgReader(pkg_file)
 
         # --- otherwise we treat `pkg_file` as a path ---
-        if os.path.isdir(pkg_file):
-            return _DirPkgReader(pkg_file)
+        path = os.fspath(pkg_file)
+        if os.path.isdir(path):
+            return _DirPkgReader(path)
 
-        if zipfile.is_zipfile(pkg_file):
-            return _ZipPkgReader(pkg_file)
+        if zipfile.is_zipfile(path):
+            return _ZipPkgReader(path)
 
-        raise PackageNotFoundError("Package not found at '%s'" % pkg_file)
+        raise PackageNotFoundError("Package not found at '%s'" % path)
 
 
 class _DirPkgReader(_PhysPkgReader):
@@ -172,7 +181,7 @@ class _DirPkgReader(_PhysPkgReader):
 class _ZipPkgReader(_PhysPkgReader):
     """Implements |PhysPkgReader| interface for a zip-file OPC package."""
 
-    def __init__(self, pkg_file: str | IO[bytes]):
+    def __init__(self, pkg_file: str | os.PathLike[str] | IO[bytes]):
         self._pkg_file = pkg_file
 
     def __contains__(self, pack_uri: object) -> bool:
@@ -199,7 +208,7 @@ class _PhysPkgWriter:
     """Base class for physical package writer objects."""
 
     @classmethod
-    def factory(cls, pkg_file: str | IO[bytes]) -> _ZipPkgWriter:
+    def factory(cls, pkg_file: str | os.PathLike[str] | IO[bytes]) -> _ZipPkgWriter:
         """Return |_PhysPkgWriter| subtype instance appropriage for `pkg_file`.
 
         Currently the only subtype is `_ZipPkgWriter`, but a `_DirPkgWriter` could be implemented
@@ -217,7 +226,7 @@ class _PhysPkgWriter:
 class _ZipPkgWriter(_PhysPkgWriter):
     """Implements |PhysPkgWriter| interface for a zip-file (.pptx file) OPC package."""
 
-    def __init__(self, pkg_file: str | IO[bytes]):
+    def __init__(self, pkg_file: str | os.PathLike[str] | IO[bytes]):
         self._pkg_file = pkg_file
 
     def __enter__(self) -> _ZipPkgWriter:

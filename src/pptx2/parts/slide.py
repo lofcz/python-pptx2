@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 from typing import IO, TYPE_CHECKING, cast
 
 from pptx2.enum.shapes import PROG_ID
@@ -82,7 +83,7 @@ class BaseSlidePart(XmlPart):
         """
         return cast("ImagePart", self.related_part(rId)).image
 
-    def get_or_add_image_part(self, image_file: str | IO[bytes]):
+    def get_or_add_image_part(self, image_file: str | os.PathLike[str] | IO[bytes]):
         """Return `(image_part, rId)` pair corresponding to `image_file`.
 
         The returned |ImagePart| object contains the image in `image_file` and is

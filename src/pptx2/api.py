@@ -18,12 +18,14 @@ if TYPE_CHECKING:
     from pptx2.parts.presentation import PresentationPart
 
 
-def Presentation(pptx: str | IO[bytes] | None = None) -> presentation.Presentation:
+def Presentation(
+    pptx: str | os.PathLike[str] | IO[bytes] | None = None,
+) -> presentation.Presentation:
     """
     Return a |Presentation| object loaded from *pptx*, where *pptx* can be
-    either a path to a ``.pptx`` file (a string) or a file-like object. If
-    *pptx* is missing or ``None``, the built-in default presentation
-    "template" is loaded.
+    either a path to a ``.pptx`` file (a string or ``pathlib.Path``) or a
+    file-like object. If *pptx* is missing or ``None``, the built-in default
+    presentation "template" is loaded.
     """
     if pptx is None:
         pptx = _default_pptx_path()

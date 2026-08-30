@@ -7,6 +7,7 @@ from __future__ import annotations
 import hashlib
 import io
 import zipfile
+from pathlib import Path
 
 import pytest
 
@@ -224,6 +225,28 @@ class Describe_PhysPkgReader:
 
         _ZipPkgReader_.assert_called_once_with(pkg_file_path)
         assert phys_reader is zip_pkg_reader_
+
+    def and_it_constructs_ZipPkgReader_when_pkg_is_a_zip_file_pathlike(
+        self, _ZipPkgReader_: Mock, zip_pkg_reader_: Mock
+    ):
+        _ZipPkgReader_.return_value = zip_pkg_reader_
+        pkg_file_pathlike = Path(test_pptx_path)
+
+        phys_reader = _PhysPkgReader.factory(pkg_file_pathlike)
+
+        _ZipPkgReader_.assert_called_once_with(test_pptx_path)
+        assert phys_reader is zip_pkg_reader_
+
+    def and_it_constructs_DirPkgReader_when_pkg_is_a_dir_pathlike(self, request: FixtureRequest):
+        dir_pkg_reader_ = instance_mock(request, _DirPkgReader)
+        _DirPkgReader_ = class_mock(
+            request, "pptx2.opc.serialized._DirPkgReader", return_value=dir_pkg_reader_
+        )
+
+        phys_reader = _PhysPkgReader.factory(Path(dir_pkg_path))
+
+        _DirPkgReader_.assert_called_once_with(dir_pkg_path)
+        assert phys_reader is dir_pkg_reader_
 
     def but_it_raises_when_pkg_path_is_not_a_package(self):
         with pytest.raises(PackageNotFoundError) as e:

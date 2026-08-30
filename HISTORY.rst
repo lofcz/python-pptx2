@@ -39,6 +39,15 @@ Fixed
   content types, so a template package raised ``ValueError``; the
   ``presentationml.template.main+xml`` type is now accepted as well (port
   of scanny/python-pptx#1071 by 9021007).
+* ``os.PathLike`` inputs (e.g. ``pathlib.Path``) are now accepted
+  wherever a file path was: ``Presentation()`` open and ``save()``,
+  ``Image.from_file()``, ``shapes.add_picture()``, and picture-placeholder
+  ``insert_picture()``. Previously a ``Path`` raised ``TypeError`` from
+  ``Image.from_file()`` and was misrouted as a stream by the package
+  reader. No behavior change for ``str`` or file-like inputs (port of
+  `scanny/python-pptx#1123`_ by AlexanderWillner).
+
+.. _`scanny/python-pptx#1123`: https://github.com/scanny/python-pptx/pull/1123
 
 
 2.14.0 (2026-08-26)

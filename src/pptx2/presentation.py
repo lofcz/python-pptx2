@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import os
 from typing import IO, TYPE_CHECKING, Literal, cast
 
 from pptx2.section import Sections
@@ -109,10 +110,11 @@ class Presentation(PartElementProxy):
         # ---- the `not in` check above narrows `value` to `LintOnSaveMode` ----
         self._lint_on_save = value
 
-    def save(self, file: str | IO[bytes]):
+    def save(self, file: str | os.PathLike[str] | IO[bytes]):
         """Writes this presentation to `file`.
 
-        `file` can be either a file-path or a file-like object open for writing bytes.
+        `file` can be either a file-path (a string or `pathlib.Path`) or a
+        file-like object open for writing bytes.
 
         When :attr:`lint_on_save` is ``"warn"`` or ``"raise"``, every slide is
         linted before anything is written; in ``"raise"`` mode a
