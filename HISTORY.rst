@@ -39,6 +39,13 @@ Added
   ``<c:firstSliceAng>`` element. ``CategoryChartData.first_slice_angle``
   bakes the angle into charts created with ``add_chart``; the plot
   property also works on charts opened from a file.
+* ``prs.slides.remove(slide)`` — delete a slide from the presentation,
+  accepting either the |Slide| object or its integer slide id (upstream's
+  ``remove_slide`` signature). Purges ``p14:section`` membership and drops
+  the presentation→slide relationship so the slide part (and its notes
+  slide) fall out of the saved package. Raises ``ValueError`` for a slide
+  not in the collection. Removing the last slide yields a valid, empty
+  deck.
 
 Fixed
 .....

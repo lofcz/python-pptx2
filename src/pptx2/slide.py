@@ -942,6 +942,23 @@ class Slides(ParentedElementProxy):
             return
         sectionLst.section_lst[-1].add_sldId(slide_id)
 
+    def _remove_from_sections(self, slide_id: int) -> None:
+        """Purge `slide_id` from every section's membership list.
+
+        A `p14:section` reference to a slide that no longer exists is a
+        dangling pointer PowerPoint treats as a repair trigger, so each
+        section claiming the slide gives it up.  Sections left empty by
+        the removal are kept — an empty section is schema-valid and
+        matches what `Sections.add()` can already produce.  A no-op when
+        the deck has no sections.
+        """
+        prs_elm = self._sldIdLst.getparent()
+        sectionLst = getattr(prs_elm, "sectionLst", None)
+        if sectionLst is None:
+            return
+        for section_elm in sectionLst.section_lst:
+            section_elm.remove_sldId(slide_id)
+
     def get(self, slide_id: int, default: Slide | None = None) -> Slide | None:
         """Return the slide identified by int `slide_id` in this presentation.
 
@@ -986,6 +1003,44 @@ class Slides(ParentedElementProxy):
             self._sldIdLst.append(sldId)
         else:
             remaining[new_index].addprevious(sldId)
+
+    def remove(self, slide: "Slide | int") -> None:
+        """Remove `slide` from this collection, deleting it from the presentation.
+
+        `slide` may be a |Slide| object belonging to this collection or the
+        integer slide id of one (the form upstream python-pptx's
+        ``remove_slide()`` accepts). The slide's `p:sldId` entry is dropped
+        from `p:sldIdLst` and the relationship from the presentation part
+        to the slide part is dropped. Because package parts are serialized
+        by relationship reachability, that alone removes the slide part —
+        and anything only it refers to, such as its notes slide — from the
+        package on save. Any section membership referencing the slide is
+        purged, leaving no dangling `p14:section` reference. Removing the
+        last remaining slide leaves a valid, empty presentation.
+
+        Raises |ValueError| when `slide` is not present in this collection.
+        """
+        if isinstance(slide, Slide):
+            # Match on collection membership rather than slide id: ids are
+            # only unique within a deck, so a foreign slide's id could
+            # otherwise silently collide with this deck's own.
+            sldId = self._sldIdLst.sldId_lst[self.index(slide)]
+        else:
+            slide_id = int(slide)
+            sldId = None
+            for candidate in self._sldIdLst.sldId_lst:
+                if candidate.id == slide_id:
+                    sldId = candidate
+                    break
+            if sldId is None:
+                raise ValueError("no slide with id %d in this presentation" % slide_id)
+        # -- detach the p:sldId element *before* dropping the relationship;
+        # -- XmlPart.drop_rel only drops rels whose r:id is no longer
+        # -- referenced in this part's XML --
+        slide_id, rId = sldId.id, sldId.rId
+        self._sldIdLst.remove(sldId)
+        self.part.drop_rel(rId)
+        self._remove_from_sections(slide_id)
 
     def reorder(self, new_order: "Sequence[int | Slide]") -> None:
         """Rearrange the slides into the permutation given by `new_order`.

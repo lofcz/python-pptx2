@@ -926,6 +926,106 @@ class DescribeSlideReorderAndNotes(object):
         assert violations == []
 
 
+class DescribeSlidesRemove(object):
+    """Integration-style suite for `Slides.remove`."""
+
+    def it_can_remove_the_middle_slide(self):
+        prs = _three_slide_prs()
+        ids = [s.slide_id for s in prs.slides]
+
+        prs.slides.remove(prs.slides[1])
+
+        assert len(prs.slides) == 2
+        assert [s.slide_id for s in prs.slides] == [ids[0], ids[2]]
+
+    def it_can_remove_a_slide_by_slide_id(self):
+        prs = _three_slide_prs()
+        ids = [s.slide_id for s in prs.slides]
+
+        prs.slides.remove(ids[0])
+
+        assert len(prs.slides) == 2
+        assert [s.slide_id for s in prs.slides] == [ids[1], ids[2]]
+
+    def it_can_remove_every_slide_one_by_one_and_still_save(self):
+        import io
+
+        from pptx2.api import Presentation as PresentationFactory
+
+        prs = _three_slide_prs()
+        while len(prs.slides):
+            prs.slides.remove(prs.slides[-1])
+
+        assert len(prs.slides) == 0
+        buf = io.BytesIO()
+        prs.save(buf)
+        reopened = PresentationFactory(io.BytesIO(buf.getvalue()))
+        assert len(reopened.slides) == 0
+
+    def it_raises_on_removing_a_slide_from_another_presentation(self):
+        prs = _three_slide_prs()
+        # -- a fresh deck's first slide gets the same id (256), so this also
+        # -- proves matching is by collection membership, not by id --
+        foreign_slide = _three_slide_prs().slides[0]
+
+        with pytest.raises(ValueError):
+            prs.slides.remove(foreign_slide)
+
+    def it_raises_on_removing_an_unknown_slide_id(self):
+        prs = _three_slide_prs()
+        with pytest.raises(ValueError):
+            prs.slides.remove(9999)
+
+    def it_purges_section_membership_for_a_removed_slide(self):
+        prs = _three_slide_prs()
+        ids = [s.slide_id for s in prs.slides]
+        intro = prs.sections.add("Intro", start_slide_index=0)
+        body = prs.sections.add("Body", start_slide_index=1)
+
+        prs.slides.remove(prs.slides[1])
+
+        assert intro.slide_ids == [ids[0]]
+        assert body.slide_ids == [ids[2]]
+
+    def it_round_trips_and_reopens_after_remove(self):
+        import io
+
+        from pptx2.api import Presentation as PresentationFactory
+        from tests.integration.round_trip import assert_round_trip
+
+        def factory():
+            prs = _three_slide_prs()
+            prs.slides[1].notes = "Notes that go away with the slide."
+            prs.sections.add("Intro", start_slide_index=0)
+            prs.slides.remove(prs.slides[1])
+            return prs
+
+        assert_round_trip(factory)
+
+        buf = io.BytesIO()
+        factory().save(buf)
+        reopened = PresentationFactory(io.BytesIO(buf.getvalue()))
+        assert len(reopened.slides) == 2
+
+    def it_drops_the_slide_and_notes_parts_from_the_saved_package(self):
+        import io
+        from zipfile import ZipFile
+
+        prs = _three_slide_prs()
+        prs.slides[1].notes = "Goes away with the slide."
+        prs.slides.remove(prs.slides[1])
+
+        buf = io.BytesIO()
+        prs.save(buf)
+        with ZipFile(buf) as zf:
+            names = set(zf.namelist())
+
+        assert "ppt/slides/slide1.xml" in names
+        assert "ppt/slides/slide2.xml" not in names
+        assert "ppt/slides/slide3.xml" in names
+        assert not [n for n in names if n.startswith("ppt/notesSlides/")]
+
+
 class DescribeSlideLayout(object):
     """Unit-test suite for `pptx2.slide.SlideLayout` objects."""
 

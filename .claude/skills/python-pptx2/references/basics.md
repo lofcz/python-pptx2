@@ -415,6 +415,7 @@ for section in prs.sections:
 # Reorder slides without touching XML
 prs.slides.move(0, 2)              # send slide 0 to position 2
 prs.slides.reorder([2, 0, 1])     # full permutation (indices or Slide objects)
+prs.slides.remove(prs.slides[1])  # delete a slide (Slide object or slide id)
 
 # First-class speaker notes
 slide.notes = "Remember to thank the sponsors."   # creates the notes slide
