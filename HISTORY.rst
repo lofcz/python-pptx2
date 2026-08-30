@@ -46,6 +46,15 @@ Added
   slide) fall out of the saved package. Raises ``ValueError`` for a slide
   not in the collection. Removing the last slide yields a valid, empty
   deck.
+* ``table.rows.add_row()`` / ``table.rows.remove(row_or_idx)`` and
+  ``table.columns.add_column(width=None)`` /
+  ``table.columns.remove(col_or_idx)`` — grow and shrink an existing
+  table. A new row/column copies the height/width and cell formatting
+  of the last row/column and arrives empty and unmerged; removal keeps
+  the one-``a:tc``-per-``a:gridCol`` invariant, resizes the graphic
+  frame, and raises ``ValueError`` rather than truncate a merged cell
+  spanning multiple rows/columns. Port of scanny/python-pptx#399 by
+  Ignisor.
 
 Fixed
 .....

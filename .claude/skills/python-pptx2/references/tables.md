@@ -48,6 +48,16 @@ for r in range(1, len(table.rows)):
     table.rows[r].height = Inches(0.5)
 ```
 
+## Adding / removing rows and columns
+
+`rows.add_row()` appends a row copying the last row's height and cell
+formatting (cells arrive empty and unmerged); `columns.add_column(width=None)`
+appends a column (default width = last column's) plus one cell per row.
+`rows.remove(row_or_idx)` / `columns.remove(col_or_idx)` drop a row/column,
+keep one cell per grid column, and resize the frame — but raise `ValueError`
+when the removal would truncate a merge spanning multiple rows/columns
+(`cell.split()` first).
+
 ## Styling cells: `format` and `format_cells`
 
 `cell.format(...)` sets fill and text styling in one call, using the

@@ -752,6 +752,147 @@ class Describe_ColumnCollection(object):
         with pytest.raises(IndexError):
             columns[9]
 
+    def it_can_add_a_column_defaulting_to_the_last_column_width(self, parent_):
+        tbl = element(
+            "a:tbl/(a:tblGrid/(a:gridCol{w=100},a:gridCol{w=200}),"
+            "a:tr{h=100}/(a:tc,a:tc),a:tr{h=200}/(a:tc,a:tc))"
+        )
+        columns = _ColumnCollection(tbl, parent_)
+
+        new_column = columns.add_column()
+
+        assert len(columns) == 3
+        assert isinstance(new_column, _Column)
+        assert new_column.width == 200
+        assert new_column._gridCol is tbl.tblGrid.gridCol_lst[-1]
+        # -- every row gains a cell, keeping one a:tc per a:gridCol --
+        for tr in tbl.tr_lst:
+            assert len(tr.tc_lst) == 3
+        parent_.notify_width_changed.assert_called_once_with()
+
+    def it_can_add_a_column_with_an_explicit_width(self, parent_):
+        tbl = element("a:tbl/(a:tblGrid/a:gridCol{w=100},a:tr{h=100}/a:tc)")
+        columns = _ColumnCollection(tbl, parent_)
+
+        new_column = columns.add_column(width=Inches(2))
+
+        assert new_column.width == Inches(2)
+        assert len(columns) == 2
+        assert len(tbl.tr_lst[0].tc_lst) == 2
+
+    def it_can_add_a_column_to_a_table_with_no_columns(self, parent_):
+        tbl = element("a:tbl/(a:tblGrid,a:tr{h=100})")
+        columns = _ColumnCollection(tbl, parent_)
+
+        new_column = columns.add_column()
+
+        assert len(columns) == 1
+        assert new_column.width == Inches(1)
+        assert len(tbl.tr_lst[0].tc_lst) == 1
+        assert tbl.tr_lst[0].tc_lst[0].text == ""
+
+    def it_adds_empty_unmerged_cells_for_the_new_column(self, parent_):
+        # -- the copied rightmost cells carry merge state that must be reset --
+        tbl = element(
+            "a:tbl/(a:tblGrid/(a:gridCol{w=100},a:gridCol{w=100}),"
+            "a:tr{h=100}/(a:tc,a:tc{gridSpan=2}),a:tr{h=100}/(a:tc,a:tc{vMerge=1}))"
+        )
+        columns = _ColumnCollection(tbl, parent_)
+
+        columns.add_column()
+
+        for tr in tbl.tr_lst:
+            new_tc = tr.tc_lst[-1]
+            assert new_tc.gridSpan == 1
+            assert new_tc.rowSpan == 1
+            assert new_tc.hMerge is False
+            assert new_tc.vMerge is False
+            assert new_tc.text == ""
+
+    def it_can_remove_a_column_by_index(self, parent_):
+        tbl = element("a:tbl/(a:tblGrid/(a:gridCol{w=100},a:gridCol{w=200},a:gridCol{w=300}))")
+        columns = _ColumnCollection(tbl, parent_)
+
+        columns.remove(1)
+
+        assert len(columns) == 2
+        assert [column.width for column in columns] == [100, 300]
+        parent_.notify_width_changed.assert_called_once_with()
+
+    def it_can_remove_a_column_by_proxy_and_by_negative_index(self, parent_):
+        tbl = element(
+            "a:tbl/(a:tblGrid/(a:gridCol{w=100},a:gridCol{w=200}),a:tr{h=100}/(a:tc,a:tc))"
+        )
+        columns = _ColumnCollection(tbl, parent_)
+
+        columns.remove(columns[0])
+        assert len(columns) == 1
+        assert columns[0].width == 200
+
+        columns.remove(-1)
+        assert len(columns) == 0
+        assert len(tbl.tblGrid.gridCol_lst) == 0
+
+    def it_removes_the_corresponding_cell_from_every_row(self, parent_):
+        tbl = element(
+            "a:tbl/(a:tblGrid/(a:gridCol{w=100},a:gridCol{w=200}),"
+            "a:tr{h=100}/(a:tc,a:tc),a:tr{h=200}/(a:tc,a:tc))"
+        )
+        columns = _ColumnCollection(tbl, parent_)
+
+        columns.remove(0)
+
+        assert len(tbl.tblGrid.gridCol_lst) == 1
+        for tr in tbl.tr_lst:
+            assert len(tr.tc_lst) == 1
+
+    def it_raises_on_removing_a_column_out_of_range(self, parent_):
+        columns = _ColumnCollection(element("a:tbl/a:tblGrid/a:gridCol{w=1}"), parent_)
+        with pytest.raises(IndexError):
+            columns.remove(9)
+
+    def it_raises_ValueError_removing_a_column_from_another_table(self, parent_):
+        tbl = element("a:tbl/a:tblGrid/a:gridCol{w=1}")
+        other_gridCol = element("a:tbl/a:tblGrid/a:gridCol{w=2}").tblGrid.gridCol_lst[0]
+        columns = _ColumnCollection(tbl, parent_)
+        foreign = _Column(other_gridCol, columns)
+
+        with pytest.raises(ValueError) as e:
+            columns.remove(foreign)
+        assert "not a member of this table" in str(e.value)
+
+    def it_removes_a_column_holding_a_single_column_vertical_merge(self, parent_):
+        # -- a merge spanning several rows but only this column goes away with it --
+        tbl = element(
+            "a:tbl/(a:tblGrid/(a:gridCol{w=100},a:gridCol{w=200}),"
+            "a:tr{h=100}/(a:tc{rowSpan=2},a:tc),a:tr{h=100}/(a:tc{vMerge=1},a:tc))"
+        )
+        columns = _ColumnCollection(tbl, parent_)
+
+        columns.remove(0)
+
+        assert len(columns) == 1
+        for tr in tbl.tr_lst:
+            assert len(tr.tc_lst) == 1
+            assert tr.tc_lst[0].gridSpan == 1
+            assert tr.tc_lst[0].hMerge is False
+
+    def but_it_refuses_to_remove_a_column_participating_in_a_horizontal_merge(self, parent_):
+        tbl = element(
+            "a:tbl/(a:tblGrid/(a:gridCol{w=100},a:gridCol{w=200}),"
+            "a:tr{h=100}/(a:tc{gridSpan=2},a:tc{hMerge=1}))"
+        )
+        columns = _ColumnCollection(tbl, parent_)
+
+        with pytest.raises(ValueError) as e:
+            columns.remove(0)  # -- merge origin --
+        assert "merged cell spanning multiple columns" in str(e.value)
+        with pytest.raises(ValueError):
+            columns.remove(1)  # -- spanned cell --
+        # -- and nothing was removed --
+        assert len(columns) == 2
+        assert len(tbl.tr_lst[0].tc_lst) == 2
+
     # fixtures -------------------------------------------------------
 
     @pytest.fixture(
@@ -793,6 +934,12 @@ class Describe_ColumnCollection(object):
         tbl_cxml, expected_len = request.param
         columns = _ColumnCollection(element(tbl_cxml), None)
         return columns, expected_len
+
+    # fixture components ---------------------------------------------
+
+    @pytest.fixture
+    def parent_(self, request):
+        return instance_mock(request, Table)
 
 
 class Describe_Row(object):
@@ -882,6 +1029,130 @@ class Describe_RowCollection(object):
         with pytest.raises(IndexError):
             rows[9]
 
+    def it_can_add_a_row_copying_the_last_row(self, parent_):
+        tbl = element(
+            "a:tbl/(a:tblGrid/(a:gridCol{w=100},a:gridCol{w=200}),"
+            "a:tr{h=440}/(a:tc,a:tc),a:tr{h=220}/(a:tc,a:tc))"
+        )
+        rows = _RowCollection(tbl, parent_)
+
+        new_row = rows.add_row()
+
+        assert len(rows) == 3
+        assert isinstance(new_row, _Row)
+        assert new_row.height == 220
+        assert new_row._tr is tbl.tr_lst[-1]
+        # -- one a:tc per a:gridCol in the new row --
+        assert len(new_row._tr.tc_lst) == 2
+        parent_.notify_height_changed.assert_called_once_with()
+
+    def it_can_add_a_row_to_a_table_with_no_rows(self, parent_):
+        tbl = element("a:tbl/a:tblGrid/(a:gridCol{w=100},a:gridCol{w=100},a:gridCol{w=100})")
+        rows = _RowCollection(tbl, parent_)
+
+        new_row = rows.add_row()
+
+        assert len(rows) == 1
+        assert new_row.height == Inches(0.4)
+        assert len(new_row._tr.tc_lst) == 3
+        assert all(tc.text == "" for tc in new_row._tr.tc_lst)
+
+    def it_adds_empty_cells_that_keep_the_formatting_of_the_row_above(self, parent_):
+        tbl = element(
+            "a:tbl/(a:tblGrid/a:gridCol{w=100},"
+            'a:tr{h=100}/(a:tc/(a:txBody/(a:bodyPr,a:p/a:r/a:t"caption"),a:tcPr{anchor=b})))'
+        )
+        rows = _RowCollection(tbl, parent_)
+
+        new_row = rows.add_row()
+
+        new_cell = new_row.cells[0]
+        assert new_cell.text == ""
+        # -- formatting (here the anchor setting) survives the copy --
+        assert new_cell.vertical_anchor == MSO_ANCHOR.BOTTOM
+
+    def it_adds_unmerged_cells_even_when_the_last_row_is_merged(self, parent_):
+        # -- gridSpan/hMerge state from the template row must not carry over --
+        tbl = element(
+            "a:tbl/(a:tblGrid/(a:gridCol{w=100},a:gridCol{w=100}),"
+            "a:tr{h=100}/(a:tc{gridSpan=2},a:tc{hMerge=1}))"
+        )
+        rows = _RowCollection(tbl, parent_)
+
+        new_row = rows.add_row()
+
+        for tc in new_row._tr.tc_lst:
+            assert tc.gridSpan == 1
+            assert tc.rowSpan == 1
+            assert tc.hMerge is False
+            assert tc.vMerge is False
+            assert tc.text == ""
+
+    def it_can_remove_a_row_by_index(self, parent_):
+        tbl = element("a:tbl/(a:tr{h=100},a:tr{h=220},a:tr{h=330})")
+        rows = _RowCollection(tbl, parent_)
+
+        rows.remove(1)
+
+        assert len(rows) == 2
+        assert [row.height for row in rows] == [100, 330]
+        parent_.notify_height_changed.assert_called_once_with()
+
+    def it_can_remove_a_row_by_proxy_and_by_negative_index(self, parent_):
+        tbl = element("a:tbl/(a:tblGrid/a:gridCol{w=100},a:tr{h=100}/a:tc,a:tr{h=200}/a:tc)")
+        rows = _RowCollection(tbl, parent_)
+
+        rows.remove(rows[1])
+        assert len(rows) == 1
+        assert rows[0].height == 100
+
+        rows.remove(-1)
+        assert len(rows) == 0
+        # -- the column grid is left intact --
+        assert len(tbl.tblGrid.gridCol_lst) == 1
+
+    def it_raises_on_removing_a_row_out_of_range(self, parent_):
+        rows = _RowCollection(element("a:tbl/a:tr{h=1}"), parent_)
+        with pytest.raises(IndexError):
+            rows.remove(9)
+
+    def it_raises_ValueError_removing_a_row_from_another_table(self, parent_):
+        tbl = element("a:tbl/a:tr{h=100}")
+        other_tr = element("a:tbl/a:tr{h=200}").tr_lst[0]
+        rows = _RowCollection(tbl, parent_)
+
+        with pytest.raises(ValueError) as e:
+            rows.remove(_Row(other_tr, rows))
+        assert "not a member of this table" in str(e.value)
+
+    def it_removes_a_row_containing_only_a_horizontal_merge(self, parent_):
+        tbl = element(
+            "a:tbl/(a:tblGrid/(a:gridCol{w=100},a:gridCol{w=200}),"
+            "a:tr{h=100}/(a:tc{gridSpan=2},a:tc{hMerge=1}),a:tr{h=100}/(a:tc,a:tc))"
+        )
+        rows = _RowCollection(tbl, parent_)
+
+        rows.remove(0)
+
+        assert len(rows) == 1
+        assert len(tbl.tblGrid.gridCol_lst) == 2
+        assert len(rows[0]._tr.tc_lst) == 2
+
+    def but_it_refuses_to_remove_a_row_participating_in_a_vertical_merge(self, parent_):
+        tbl = element(
+            "a:tbl/(a:tblGrid/(a:gridCol{w=100},a:gridCol{w=200}),"
+            "a:tr{h=100}/(a:tc{rowSpan=2},a:tc),a:tr{h=100}/(a:tc{vMerge=1},a:tc))"
+        )
+        rows = _RowCollection(tbl, parent_)
+
+        with pytest.raises(ValueError) as e:
+            rows.remove(0)  # -- merge origin --
+        assert "merged cell spanning multiple rows" in str(e.value)
+        with pytest.raises(ValueError):
+            rows.remove(1)  # -- spanned cell --
+        # -- and nothing was removed --
+        assert len(rows) == 2
+
     # fixtures -------------------------------------------------------
 
     @pytest.fixture(params=["a:tbl", "a:tbl/a:tr", "a:tbl/(a:tr, a:tr, a:tr)"])
@@ -905,6 +1176,12 @@ class Describe_RowCollection(object):
         tbl_cxml, expected_len = request.param
         rows = _RowCollection(element(tbl_cxml), None)
         return rows, expected_len
+
+    # fixture components ---------------------------------------------
+
+    @pytest.fixture
+    def parent_(self, request):
+        return instance_mock(request, Table)
 
 
 class Describe_Borders(object):
@@ -1326,3 +1603,183 @@ class DescribeCT_TablePropertiesStyleId(object):
         tblPr.tableStyleId_val = None
 
         assert tblPr.find(qn("a:tableStyleId")) is None
+
+
+class DescribeTableRowColumnMutation(object):
+    """Integration suite for rows.add_row()/remove() and columns.add_column()/remove()."""
+
+    def _new_table(self):
+        from pptx2 import Presentation
+
+        prs = Presentation()
+        slide = prs.slides.add_slide(prs.slide_layouts[6])
+        table = slide.shapes.add_table(2, 2, Inches(1), Inches(1), Inches(6), Inches(2)).table
+        table.cell(0, 0).text = "A"
+        table.cell(0, 1).text = "B"
+        table.cell(1, 0).text = "C"
+        table.cell(1, 1).text = "D"
+        return prs, table
+
+    @staticmethod
+    def _assert_grid_consistent(table):
+        """Every a:tr must carry exactly one a:tc per a:gridCol."""
+        tbl = table._tbl
+        grid_count = len(tbl.tblGrid.gridCol_lst)
+        assert grid_count > 0
+        for tr in tbl.tr_lst:
+            assert len(tr.tc_lst) == grid_count
+
+    def it_resizes_the_graphic_frame_when_rows_and_columns_come_and_go(self):
+        prs, table = self._new_table()
+        frame = prs.slides[0].shapes[0]
+        height, width, row_h, col_w = (
+            frame.height,
+            frame.width,
+            table.rows[1].height,
+            table.columns[1].width,
+        )
+
+        table.rows.add_row()
+        table.columns.add_column()
+        assert frame.height == height + row_h
+        assert frame.width == width + col_w
+        self._assert_grid_consistent(table)
+
+        table.rows.remove(0)
+        table.columns.remove(0)
+        assert frame.height == height
+        assert frame.width == width
+        self._assert_grid_consistent(table)
+
+    def it_persists_mutations_across_save_and_reopen(self):
+        import io
+
+        from pptx2 import Presentation
+
+        prs, table = self._new_table()
+        last_row_height = table.rows[1].height
+        last_col_width = table.columns[1].width
+        new_row = table.rows.add_row()
+        table.columns.add_column()
+        new_row.cells[1].text = "added"
+        table.rows.remove(0)
+        table.columns.remove(0)
+
+        buf = io.BytesIO()
+        prs.save(buf)
+        buf.seek(0)
+        reopened = Presentation(buf).slides[0].shapes[0].table
+
+        assert len(reopened.rows) == 2
+        assert len(reopened.columns) == 2
+        assert reopened.rows[1].height == last_row_height
+        assert reopened.columns[1].width == last_col_width
+        assert reopened.cell(0, 0).text == "D"
+        assert reopened.cell(1, 0).text == "added"
+        self._assert_grid_consistent(reopened)
+
+    def it_round_trips_cleanly(self):
+        from tests.integration.round_trip import assert_round_trip
+
+        def factory():
+            prs, table = self._new_table()
+            table.rows.add_row()
+            table.columns.add_column()
+            table.rows.remove(1)
+            table.columns.remove(1)
+            return prs
+
+        assert_round_trip(factory)
+
+    def it_refuses_to_remove_rows_or_columns_that_would_truncate_a_merge(self):
+        prs, table = self._new_table()
+        table.cell(0, 0).merge(table.cell(1, 0))  # -- vertical merge in column 0 --
+
+        with pytest.raises(ValueError) as e:
+            table.rows.remove(0)
+        assert "merged cell spanning multiple rows" in str(e.value)
+        with pytest.raises(ValueError):
+            table.rows.remove(1)  # -- the spanned continuation row --
+
+        prs, table = self._new_table()
+        table.cell(0, 0).merge(table.cell(0, 1))  # -- horizontal merge in row 0 --
+
+        with pytest.raises(ValueError) as e:
+            table.columns.remove(0)
+        assert "merged cell spanning multiple columns" in str(e.value)
+        with pytest.raises(ValueError):
+            table.columns.remove(1)  # -- the spanned continuation column --
+
+        # -- and the table is untouched by the refused calls --
+        assert len(table.rows) == 2
+        assert len(table.columns) == 2
+        self._assert_grid_consistent(table)
+
+    def it_removes_a_single_column_vertical_merge_along_with_its_column(self):
+        prs, table = self._new_table()
+        table.cell(0, 0).merge(table.cell(1, 0))  # -- confined to column 0 --
+
+        table.columns.remove(0)
+
+        assert len(table.columns) == 1
+        self._assert_grid_consistent(table)
+        for cell in table.iter_cells():
+            assert not cell.is_spanned
+            assert not cell.is_merge_origin
+
+    def it_adds_unmerged_empty_cells_below_a_merged_header(self):
+        prs, table = self._new_table()
+        table.cell(0, 0).merge(table.cell(0, 1))  # -- horizontal header merge --
+
+        new_row = table.rows.add_row()
+
+        assert len(table.rows) == 3
+        for col_idx in range(len(new_row.cells)):
+            cell = new_row.cells[col_idx]
+            assert not cell.is_spanned
+            assert not cell.is_merge_origin
+            assert cell.text == ""
+        # -- the header merge itself survives intact --
+        assert table.cell(0, 0).is_merge_origin
+        assert table.cell(0, 1).is_spanned
+        self._assert_grid_consistent(table)
+
+    def it_emits_a_schema_valid_tbl_fragment(self):
+        """Validate the mutated `a:tbl` element against the ISO 29500 dml-main schema.
+
+        Validates the table fragment directly (rather than the whole slide part) so
+        slide-level extensions unrelated to tables cannot mask a table regression.
+        """
+        import io
+        import zipfile
+
+        from lxml import etree
+
+        from tests.schema.oxml_schema_validator import (
+            _schema_for_namespace,
+            schema_validation_available,
+        )
+
+        if not schema_validation_available():
+            pytest.skip("schema validation unavailable")
+
+        prs, table = self._new_table()
+        table.cell(0, 0).merge(table.cell(0, 1))
+        table.rows.add_row()
+        table.columns.add_column()
+        table.rows.remove(1)
+        table.columns.remove(2)
+
+        buf = io.BytesIO()
+        prs.save(buf)
+        with zipfile.ZipFile(buf) as zf:
+            slide_xml = zf.read("ppt/slides/slide1.xml")
+
+        a_ns = "http://schemas.openxmlformats.org/drawingml/2006/main"
+        tbl_el = etree.fromstring(slide_xml).xpath("//a:tbl", namespaces={"a": a_ns})[0]
+        # -- reparse the serialized fragment so it carries its own nsdecls --
+        fragment = etree.fromstring(etree.tostring(tbl_el))
+        schema = _schema_for_namespace(a_ns)
+
+        assert schema is not None
+        assert schema.validate(fragment), str(schema.error_log)

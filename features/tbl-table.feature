@@ -58,3 +58,31 @@ Feature: Table properties and methods
      Given a 2x2 Table object as table
       When I assign table.vert_banding = True
       Then table.vert_banding is True
+
+
+  Scenario: Append table row
+     Given a 2x2 Table object as table
+      When I add a row to the table
+       And I save the presentation
+      Then the saved table has 3 rows
+
+
+  Scenario: Remove table row
+     Given a 2x2 Table object as table
+      When I remove the second row of the table
+       And I save the presentation
+      Then the saved table has 1 row
+
+
+  Scenario: Append table column
+     Given a 2x2 Table object as table
+      When I add a column to the table
+       And I save the presentation
+      Then the saved table has 3 columns
+
+
+  Scenario: Remove table column
+     Given a 2x2 Table object as table
+      When I remove the second column of the table
+       And I save the presentation
+      Then the saved table has 1 column

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import copy
 from typing import TYPE_CHECKING, Any, Iterable, Iterator, Sequence, Union
 
 from pptx2._color import coerce_color
@@ -16,7 +17,7 @@ from pptx2.dml.line import LineFormat
 from pptx2.oxml.table import TcRange
 from pptx2.shapes import Subshape
 from pptx2.text.text import TextFrame
-from pptx2.util import Emu, lazyproperty
+from pptx2.util import Emu, Inches, lazyproperty
 
 if TYPE_CHECKING:
     from pptx2.dml.color import RGBColor
@@ -41,6 +42,12 @@ else:
 
 #: What `Table.format_cells` accepts for its `rows` / `cols` arguments.
 _CellSelector = Union[None, int, slice, Iterable[int]]
+
+#: Height for a row added to a table that has no rows to copy a height from.
+_DEFAULT_NEW_ROW_HEIGHT = Inches(0.4)
+
+#: Width for a column added to a table that has no columns to copy a width from.
+_DEFAULT_NEW_COL_WIDTH = Inches(1.0)
 
 
 def _resolve_selector(selector: _CellSelector, count: int, name: str) -> list[int]:
@@ -86,6 +93,87 @@ def _apply_cell_margins(
         top = right = bottom = left = coerce_length(margin)
     cell.margin_top, cell.margin_right = top, right
     cell.margin_bottom, cell.margin_left = bottom, left
+
+
+def _reset_cell(tc: CT_TableCell) -> None:
+    """Return a copied cell to a pristine, empty, unmerged state.
+
+    A duplicated cell keeps its `a:tcPr` formatting (fill, borders, insets, anchor), but its
+    text is emptied and any merge state (`gridSpan`, `rowSpan`, `hMerge`, `vMerge`) is cleared:
+    merge geometry from the copied position is meaningless at the new position and would
+    describe merges that do not exist.
+    """
+    tc.gridSpan = 1
+    tc.rowSpan = 1
+    tc.hMerge = False
+    tc.vMerge = False
+    txBody = tc.get_or_add_txBody()
+    txBody.clear_content()
+    txBody.unclear_content()
+
+
+def _tr_for_row(tr_lst: "list[CT_TableRow]", row: "_Row | int") -> CT_TableRow:
+    """Resolve `row`, an int index or |_Row| object, to its `a:tr` element.
+
+    A negative index counts from the end, following list convention.
+    """
+    if isinstance(row, int):
+        idx = row if row >= 0 else row + len(tr_lst)
+        if not 0 <= idx < len(tr_lst):
+            raise IndexError(f"row index [{row}] out of range")
+        return tr_lst[idx]
+    if isinstance(row, _Row):
+        try:
+            tr_lst.index(row._tr)
+        except ValueError:
+            raise ValueError("row is not a member of this table") from None
+        return row._tr
+    raise TypeError(f"row must be an int index or _Row object, got {type(row).__name__}")
+
+
+def _gridCol_for_column(gridCol_lst: "list[CT_TableCol]", column: "_Column | int") -> CT_TableCol:
+    """Resolve `column`, an int index or |_Column| object, to its `a:gridCol` element.
+
+    A negative index counts from the end, following list convention.
+    """
+    if isinstance(column, int):
+        idx = column if column >= 0 else column + len(gridCol_lst)
+        if not 0 <= idx < len(gridCol_lst):
+            raise IndexError(f"column index [{column}] out of range")
+        return gridCol_lst[idx]
+    if isinstance(column, _Column):
+        try:
+            gridCol_lst.index(column._gridCol)
+        except ValueError:
+            raise ValueError("column is not a member of this table") from None
+        return column._gridCol
+    raise TypeError(f"column must be an int index or _Column object, got {type(column).__name__}")
+
+
+def _row_breaks_vertical_merge(tr: CT_TableRow) -> bool:
+    """True if removing `tr` would truncate a merged cell spanning multiple rows.
+
+    A multi-row merge either originates in `tr` (a tc having `rowSpan` > 1) or continues
+    through it (a tc marked `vMerge`). Horizontal merges contained within `tr` are removed
+    together with the row and are not affected.
+    """
+    return any(tc.rowSpan > 1 or tc.vMerge for tc in tr.tc_lst)
+
+
+def _column_breaks_horizontal_merge(tbl: CT_Table, col_idx: int) -> bool:
+    """True if removing column `col_idx` would truncate a merged cell spanning columns.
+
+    A multi-column merge either originates in the column (a tc having `gridSpan` > 1) or
+    continues through it (a tc marked `hMerge`). Merges spanning several rows but only this
+    one column are removed together with the column and are not affected.
+    """
+    for tr in tbl.tr_lst:
+        if col_idx >= len(tr.tc_lst):
+            continue
+        tc = tr.tc_lst[col_idx]
+        if tc.gridSpan > 1 or tc.hMerge:
+            return True
+    return False
 
 
 class Table(object):
@@ -964,6 +1052,63 @@ class _ColumnCollection(Subshape):
         """Supports len() function (e.g. 'len(columns) == 1')."""
         return len(self._tbl.tblGrid.gridCol_lst)
 
+    def add_column(self, width: Length | None = None) -> _Column:
+        """Add a column to this table, appended after its last column.
+
+        Returns the new column as a |_Column| object, e.g. `column = table.columns.add_column()`.
+
+        `width` is the width of the new column; when omitted, the width of the current last
+        column is used (or 1 inch for a table that has no columns yet). Each row gains an
+        empty, unmerged cell that copies the formatting of the row's last cell, so the table
+        always keeps exactly one `a:tc` per `a:gridCol`. The graphic frame grows to account
+        for the added width.
+        """
+        tblGrid = self._tbl.tblGrid
+        gridCol_lst = tblGrid.gridCol_lst
+        if width is None:
+            width = gridCol_lst[-1].w if gridCol_lst else _DEFAULT_NEW_COL_WIDTH
+        gridCol = tblGrid.add_gridCol(width=width)
+        for tr in self._tbl.tr_lst:
+            if tr.tc_lst:
+                new_tc = copy.deepcopy(tr.tc_lst[-1])
+                _reset_cell(new_tc)
+                # -- insert after the last existing tc keeps the a:tc elements ahead of
+                # -- any a:extLst child, where the schema requires them --
+                tr.insert(len(tr.tc_lst), new_tc)
+            else:
+                tr.add_tc()
+        self.notify_width_changed()
+        return _Column(gridCol, self)
+
+    def remove(self, column: _Column | int) -> None:
+        """Remove `column` from this table, specified as a |_Column| object or index.
+
+        Negative indices count from the end, e.g. `table.columns.remove(-1)` removes the
+        last column. The `a:gridCol` and the corresponding `a:tc` in every row are removed
+        together, leaving the grid and every row consistent; the graphic frame shrinks to
+        account for the removed width.
+
+        Raises |ValueError| when the column participates in a merged cell spanning multiple
+        columns (either as its origin or as one of its spanned cells), since removing it
+        would truncate the merge. Split the merge with `cell.split()` first. A merge
+        spanning several rows but only this one column is removed along with the column
+        without error.
+        """
+        tblGrid = self._tbl.tblGrid
+        gridCol_lst = tblGrid.gridCol_lst
+        gridCol = _gridCol_for_column(gridCol_lst, column)
+        col_idx = gridCol_lst.index(gridCol)
+        if _column_breaks_horizontal_merge(self._tbl, col_idx):
+            raise ValueError(
+                "cannot remove a column that participates in a merged cell spanning"
+                " multiple columns; split the merge first"
+            )
+        for tr in self._tbl.tr_lst:
+            if col_idx < len(tr.tc_lst):
+                tr.remove(tr.tc_lst[col_idx])
+        tblGrid.remove(gridCol)
+        self.notify_width_changed()
+
     def notify_width_changed(self):
         """Called by a column when its width changes. Pass along to parent."""
         self._parent.notify_width_changed()
@@ -987,6 +1132,53 @@ class _RowCollection(Subshape):
     def __len__(self):
         """Supports len() function (e.g. 'len(rows) == 1')."""
         return len(self._tbl.tr_lst)
+
+    def add_row(self) -> _Row:
+        """Add a row to this table, appended after its last row.
+
+        Returns the new row as a |_Row| object, e.g. `row = table.rows.add_row()`.
+
+        The new row copies the height and cell formatting of the current last row (each new
+        cell keeps the fill, borders, and insets of the cell above it) but its cells start
+        out empty and unmerged. For a table that has no rows yet, the new row gets a height
+        of 0.4 inches and one empty cell per grid column. The graphic frame grows to account
+        for the added height.
+        """
+        tr_lst = self._tbl.tr_lst
+        if tr_lst:
+            new_tr = copy.deepcopy(tr_lst[-1])
+            for tc in new_tr.tc_lst:
+                _reset_cell(tc)
+            # -- a:tbl admits only a:tblPr, a:tblGrid, and a:tr children, in that
+            # -- order, so appending places the new row correctly --
+            self._tbl.append(new_tr)
+        else:
+            new_tr = self._tbl.add_tr(height=_DEFAULT_NEW_ROW_HEIGHT)
+            for _ in self._tbl.tblGrid.gridCol_lst:
+                new_tr.add_tc()
+        self.notify_height_changed()
+        return _Row(new_tr, self)
+
+    def remove(self, row: _Row | int) -> None:
+        """Remove `row` from this table, specified as a |_Row| object or index.
+
+        Negative indices count from the end, e.g. `table.rows.remove(-1)` removes the last
+        row. Only the `a:tr` is dropped; the column grid and the remaining rows are
+        untouched, and the graphic frame shrinks to account for the removed height.
+
+        Raises |ValueError| when the row participates in a merged cell spanning multiple
+        rows (either as its origin or as one of its spanned cells), since removing it would
+        truncate the merge. Split the merge with `cell.split()` first. Horizontal merges
+        contained within the removed row disappear along with it, without error.
+        """
+        tr = _tr_for_row(self._tbl.tr_lst, row)
+        if _row_breaks_vertical_merge(tr):
+            raise ValueError(
+                "cannot remove a row that participates in a merged cell spanning"
+                " multiple rows; split the merge first"
+            )
+        self._tbl.remove(tr)
+        self.notify_height_changed()
 
     def notify_height_changed(self):
         """Called by a row when its height changes. Pass along to parent."""
