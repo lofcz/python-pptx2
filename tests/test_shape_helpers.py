@@ -115,6 +115,70 @@ class DescribeAddText:
                 BBox.from_inches(0, 0, 4, 1), text="x", anchor="top", valign="bottom"
             )
 
+    def it_absorbs_halign_font_size_and_colour_synonyms(self, slide):
+        from pptx2.enum.text import PP_PARAGRAPH_ALIGNMENT
+
+        tx = slide.shapes.add_text(
+            BBox.from_inches(1, 1, 4, 1),
+            text="Hi",
+            halign="center",
+            font_size=20,
+            colour="#FF0000",
+        )
+        run = tx.text_frame.paragraphs[0].runs[0]
+        assert tx.text_frame.paragraphs[0].alignment == PP_PARAGRAPH_ALIGNMENT.CENTER
+        assert run.font.size == Pt(20)
+        assert str(run.font.color.rgb) == "FF0000"
+
+    def it_absorbs_matplotlib_ha_va_and_label(self, slide):
+        from pptx2.enum.text import MSO_VERTICAL_ANCHOR
+
+        tx = slide.shapes.add_text(
+            BBox.from_inches(1, 1, 4, 1), label="Hi", ha="center", va="middle"
+        )
+        assert tx.text_frame.text == "Hi"
+        assert tx.text_frame.vertical_anchor == MSO_VERTICAL_ANCHOR.MIDDLE
+
+    def it_fuzzy_matches_near_miss_kwargs(self, slide):
+        from pptx2.enum.text import PP_PARAGRAPH_ALIGNMENT
+
+        tx = slide.shapes.add_text(BBox.from_inches(1, 1, 4, 1), text="x", algn="right")
+        assert tx.text_frame.paragraphs[0].alignment == PP_PARAGRAPH_ALIGNMENT.RIGHT
+
+    def it_accepts_geometry_keywords_and_xywh_shorts(self, slide):
+        tx = slide.shapes.add_text(
+            x=Inches(1), y=Inches(2), w=Inches(3), h=Inches(1), text="xywh"
+        )
+        assert (tx.left, tx.top, tx.width, tx.height) == (
+            Inches(1), Inches(2), Inches(3), Inches(1)
+        )
+
+    def it_rejects_unknown_kwargs_with_a_didactic_error(self, slide):
+        with pytest.raises(TypeError, match="totally_bogus.*Accepted"):
+            slide.shapes.add_text(
+                BBox.from_inches(1, 1, 4, 1), text="x", totally_bogus=1
+            )
+
+    def it_rejects_partial_geometry_keywords(self, slide):
+        with pytest.raises(TypeError, match="left/top/width/height"):
+            slide.shapes.add_text(x=Inches(1), y=Inches(2), text="partial")
+
+
+class DescribeAddArrowSynonyms:
+    def it_absorbs_begin_to_colour_and_weight(self, slide):
+        arrow = slide.shapes.add_arrow(
+            begin=(Inches(1), Inches(1)),
+            to=(Inches(3), Inches(1)),
+            colour="#00FF00",
+            weight=2.5,
+        )
+        assert arrow.begin_x == Inches(1)
+        assert arrow.end_x == Inches(3)
+
+    def it_still_accepts_positional_endpoints(self, slide):
+        arrow = slide.shapes.add_arrow((Inches(0), Inches(3)), (Inches(2), Inches(3)))
+        assert arrow.begin_x == Inches(0)
+
 
 class DescribeSetTextPreservingFormat:
     def it_preserves_font_attributes_across_replacement(self, slide):

@@ -15,6 +15,25 @@ can sit beside both ``python-pptx`` (``pptx``) and ``power-pptx``
 .. _`scanny/python-pptx`: https://github.com/scanny/python-pptx
 
 
+Unreleased
+++++++++++
+
+Added
+.....
+
+* **Agent-friendly kwargs** on the one-call helpers. ``add_text()``,
+  ``add_equation()``, and ``add_arrow()`` now absorb cross-library
+  keyword spellings — matplotlib's ``ha`` / ``va`` / ``fontsize`` /
+  ``fontfamily``, CSS-flavored ``halign`` / ``text_color``, British
+  ``colour``, ``x`` / ``y`` / ``w`` / ``h`` geometry keywords,
+  ``begin`` / ``to`` arrow endpoints, and more — plus unambiguous
+  near-misses (``algn`` → ``align``). Synonyms substitute, never
+  contradict: two different values for the same logical argument still
+  raise. A genuinely unknown kwarg raises a ``TypeError`` that lists
+  every accepted argument, so a model reading the traceback
+  self-corrects in one step.
+
+
 2.17.0 (2026-08-30)
 +++++++++++++++++++
 

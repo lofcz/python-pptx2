@@ -557,24 +557,6 @@ class _BaseShapes(ParentedElementProxy):
         return BaseShapeFactory(shape_elm, self)
 
 
-def _resolve_alias(method: str, arg: str, canonical, alias):
-    """Return *canonical*, falling back to its *alias* kwarg (both nullable).
-
-    Code generators (matplotlib-trained models among them) habitually spell
-    ``font`` as ``font_family`` and ``anchor`` as ``valign``; accepting the
-    alias removes a whole class of one-keyword-away TypeErrors. Passing
-    both with different values is a genuine caller bug and still raises.
-    """
-    if canonical is not None:
-        if alias is not None and alias != canonical:
-            raise TypeError(
-                f"{method}(): pass either {arg}= or its alias, not two "
-                f"different values ({canonical!r} vs {alias!r})"
-            )
-        return canonical
-    return alias
-
-
 class _BaseGroupShapes(_BaseShapes):
     """Base class for shape-trees that can add shapes."""
 
@@ -918,53 +900,115 @@ class _BaseGroupShapes(_BaseShapes):
         *bbox_or_positional,
         text: str = "",
         font: str | None = None,
-        font_family: str | None = None,
         size_pt: float | None = None,
         bold: bool | None = None,
         italic: bool | None = None,
         color=None,
         align: str | None = None,
         anchor: str | None = None,
-        valign: str | None = None,
         margin_pt: float | tuple[float, float, float, float] | None = None,
         word_wrap: bool | None = True,
+        **kwargs,
     ) -> Shape:
         """Add a textbox carrying *text* with one-call styling.
 
-        Accepts either a :class:`~pptx2.geometry.BBox` positionally
-        or the four ``(left, top, width, height)`` lengths::
+        Accepts either a :class:`~pptx2.geometry.BBox` positionally, the
+        four ``(left, top, width, height)`` lengths positionally, *or* the
+        same four as keyword arguments (``x`` / ``y`` / ``w`` / ``h``
+        synonyms included)::
 
             slide.shapes.add_text(bbox, text="Hello", size_pt=24, bold=True,
                                   color="#0B5CFF", align="center")
             slide.shapes.add_text(Inches(1), Inches(2), Inches(4), Inches(1),
                                   text="Hello")
+            slide.shapes.add_text(x=Inches(1), y=Inches(2), w=Inches(4),
+                                  h=Inches(1), text="Hello")
 
         Keyword args:
 
+        * ``text`` — the string (``label`` / ``content`` synonyms work).
         * ``font`` — typeface name (e.g. ``"Inter"``); ``None`` inherits.
-          ``font_family`` is accepted as an alias (matplotlib habits die
-          hard).
-        * ``size_pt`` — font size in points; ``None`` inherits.
+        * ``size_pt`` — font size in points (synonyms: ``size``,
+          ``font_size``, ``fontsize``).
         * ``bold`` / ``italic`` — ``True``/``False``/``None``.
         * ``color`` — any "color-like" (``"#RRGGBB"``, ``RGBColor``,
-          ``(r, g, b)``).
+          ``(r, g, b)``); ``colour`` / ``text_color`` synonyms work.
         * ``align`` — ``"left"`` / ``"center"`` / ``"right"`` /
-          ``"justify"``; ``None`` inherits.
+          ``"justify"``; ``halign`` is a synonym.
         * ``anchor`` — vertical anchor: ``"top"`` / ``"middle"`` (also
-          ``"mid"`` / ``"center"``) / ``"bottom"``; ``None`` inherits.
-          ``valign`` is accepted as an alias.
+          ``"mid"`` / ``"center"``) / ``"bottom"``; ``valign`` is a
+          synonym.
         * ``margin_pt`` — uniform margin in points, or a 4-tuple
           ``(top, right, bottom, left)``.
         * ``word_wrap`` — defaults to ``True``.
 
+        Misspelled or cross-library kwargs are absorbed when unambiguous
+        (``font_family`` → ``font``, ``fontsize`` → ``size_pt``, ``algn``
+        → ``align`` …); anything unrecognizable raises a ``TypeError``
+        naming the accepted arguments.
+
         Returns the textbox :class:`Shape` so further mutation works as
         normal.
         """
+        from pptx2._agent_friendly import absorb_agent_kwargs
         from pptx2._textstyle import apply_margins, apply_text_style, coerce_anchor
         from pptx2.geometry import BBox
 
-        font = _resolve_alias("add_text", "font", font, font_family)
-        anchor = _resolve_alias("add_text", "anchor", anchor, valign)
+        if kwargs:
+            kwargs = absorb_agent_kwargs(
+                "add_text",
+                kwargs,
+                (
+                    "text", "font", "size_pt", "bold", "italic", "color",
+                    "align", "anchor", "margin_pt", "word_wrap",
+                    "left", "top", "width", "height",
+                ),
+            )
+            geo_names = ("left", "top", "width", "height")
+            if any(g in kwargs for g in geo_names):
+                if bbox_or_positional:
+                    raise TypeError(
+                        "add_text(): got both positional geometry and geometry "
+                        "keyword arguments; pass one form only"
+                    )
+                if not all(g in kwargs for g in geo_names):
+                    missing = [g for g in geo_names if g not in kwargs]
+                    raise TypeError(
+                        "add_text(): geometry keywords need all of "
+                        f"left/top/width/height; missing {', '.join(missing)}"
+                    )
+                bbox_or_positional = tuple(kwargs[g] for g in geo_names)
+            defaults = {
+                "text": "", "font": None, "size_pt": None, "bold": None,
+                "italic": None, "color": None, "align": None, "anchor": None,
+                "margin_pt": None, "word_wrap": True,
+            }
+            given = {
+                "text": text, "font": font, "size_pt": size_pt, "bold": bold,
+                "italic": italic, "color": color, "align": align,
+                "anchor": anchor, "margin_pt": margin_pt,
+                "word_wrap": word_wrap,
+            }
+            for name in defaults:
+                if name not in kwargs:
+                    continue
+                value = kwargs[name]
+                if given[name] != defaults[name] and given[name] != value:
+                    raise TypeError(
+                        f"add_text(): {name!r} given twice with different "
+                        f"values ({given[name]!r} vs {value!r})"
+                    )
+                given[name] = value
+            text = given["text"]
+            font = given["font"]
+            size_pt = given["size_pt"]
+            bold = given["bold"]
+            italic = given["italic"]
+            color = given["color"]
+            align = given["align"]
+            anchor = given["anchor"]
+            margin_pt = given["margin_pt"]
+            word_wrap = given["word_wrap"]
 
         if len(bbox_or_positional) == 1 and isinstance(bbox_or_positional[0], BBox):
             box = bbox_or_positional[0]
@@ -1009,21 +1053,21 @@ class _BaseGroupShapes(_BaseShapes):
     def add_equation(
         self,
         *bbox_or_positional,
-        latex: str,
+        latex: str | None = None,
         display: bool = True,
         font: str | None = None,
-        font_family: str | None = None,
         size_pt: float | None = None,
         color=None,
         align: str | None = "center",
         anchor: str | None = "middle",
-        valign: str | None = None,
         margin_pt: float | tuple[float, float, float, float] | None = None,
+        **kwargs,
     ) -> Shape:
         """Add a text box containing a native PowerPoint equation from LaTeX.
 
-        Accepts either a :class:`~pptx2.geometry.BBox` or
-        ``(left, top, width, height)``::
+        Accepts either a :class:`~pptx2.geometry.BBox`, the four
+        ``(left, top, width, height)`` lengths positionally, or the same
+        four as keyword arguments (``x`` / ``y`` / ``w`` / ``h`` included)::
 
             slide.shapes.add_equation(bbox, latex=r"\\frac{a}{b}", size_pt=28)
             slide.shapes.add_equation(
@@ -1036,16 +1080,74 @@ class _BaseGroupShapes(_BaseShapes):
         equation editor.
 
         Keyword args match :meth:`add_text` for *font* / *size_pt* /
-        *color* / *align* / *anchor* / *margin_pt* (including the
-        ``font_family`` / ``valign`` aliases). *display* (default
-        |True|) emits a display-math paragraph; set |False| for inline
-        OMML.
+        *color* / *align* / *anchor* / *margin_pt*, and *latex* accepts
+        the ``tex`` / ``formula`` / ``equation`` synonyms. Misspelled or
+        cross-library kwargs are absorbed when unambiguous (see
+        :meth:`add_text`). *display* (default |True|) emits a display-math
+        paragraph; set |False| for inline OMML.
         """
+        from pptx2._agent_friendly import absorb_agent_kwargs
         from pptx2._textstyle import apply_margins, coerce_align, coerce_anchor
         from pptx2.geometry import BBox
 
-        font = _resolve_alias("add_equation", "font", font, font_family)
-        anchor = _resolve_alias("add_equation", "anchor", anchor, valign)
+        if kwargs:
+            kwargs = absorb_agent_kwargs(
+                "add_equation",
+                kwargs,
+                (
+                    "latex", "display", "font", "size_pt", "color", "align",
+                    "anchor", "margin_pt", "left", "top", "width", "height",
+                ),
+            )
+            geo_names = ("left", "top", "width", "height")
+            if any(g in kwargs for g in geo_names):
+                if bbox_or_positional:
+                    raise TypeError(
+                        "add_equation(): got both positional geometry and "
+                        "geometry keyword arguments; pass one form only"
+                    )
+                if not all(g in kwargs for g in geo_names):
+                    missing = [g for g in geo_names if g not in kwargs]
+                    raise TypeError(
+                        "add_equation(): geometry keywords need all of "
+                        f"left/top/width/height; missing {', '.join(missing)}"
+                    )
+                bbox_or_positional = tuple(kwargs[g] for g in geo_names)
+            defaults = {
+                "latex": None, "display": True, "font": None, "size_pt": None,
+                "color": None, "align": "center", "anchor": "middle",
+                "margin_pt": None,
+            }
+            given = {
+                "latex": latex, "display": display, "font": font,
+                "size_pt": size_pt, "color": color, "align": align,
+                "anchor": anchor, "margin_pt": margin_pt,
+            }
+            for name in defaults:
+                if name not in kwargs:
+                    continue
+                value = kwargs[name]
+                if given[name] != defaults[name] and given[name] != value:
+                    raise TypeError(
+                        f"add_equation(): {name!r} given twice with different "
+                        f"values ({given[name]!r} vs {value!r})"
+                    )
+                given[name] = value
+            latex = given["latex"]
+            display = given["display"]
+            font = given["font"]
+            size_pt = given["size_pt"]
+            color = given["color"]
+            align = given["align"]
+            anchor = given["anchor"]
+            margin_pt = given["margin_pt"]
+
+        if latex is None:
+            raise TypeError(
+                "add_equation() missing required argument: 'latex' "
+                "(synonyms 'tex' / 'formula' / 'equation' accepted)"
+            )
+
 
         if len(bbox_or_positional) == 1 and isinstance(bbox_or_positional[0], BBox):
             box = bbox_or_positional[0]
@@ -1080,8 +1182,8 @@ class _BaseGroupShapes(_BaseShapes):
 
     def add_arrow(
         self,
-        start,
-        end,
+        start=None,
+        end=None,
         *,
         head: str | None = "triangle",
         tail: str | None = None,
@@ -1094,6 +1196,7 @@ class _BaseGroupShapes(_BaseShapes):
         inset_pt: float = 0.0,
         end_side: str = "auto",
         start_side: str = "auto",
+        **kwargs,
     ) -> Connector:
         """Add an arrow connector with proper arrowhead and inset routing.
 
@@ -1116,12 +1219,18 @@ class _BaseGroupShapes(_BaseShapes):
 
         ``style`` is ``"solid"`` / ``"dashed"`` / ``"dotted"``.
 
-        ``route`` is ``"straight"`` (default), ``"elbow"``, or
-        ``"curved"`` — picks the underlying
+        ``route`` is ``"straight"`` (default), ``"elbow"``, or ``"curved"``
+        — picks the underlying
         :class:`~pptx2.enum.shapes.MSO_CONNECTOR_TYPE`.
+
+        Keyword synonyms are absorbed: ``begin`` / ``from`` / ``source``
+        for ``start``, ``to`` / ``target`` for ``end``, ``stroke_color`` /
+        ``colour`` for ``color``, ``weight`` / ``line_weight`` for
+        ``weight_pt`` — see :meth:`add_text` for the full aliasing story.
 
         Returns the :class:`Connector` so callers can tweak further.
         """
+        from pptx2._agent_friendly import absorb_agent_kwargs
         from pptx2._color import coerce_color
         from pptx2.enum.dml import (
             MSO_LINE_DASH_STYLE,
@@ -1130,6 +1239,64 @@ class _BaseGroupShapes(_BaseShapes):
         )
         from pptx2.enum.shapes import MSO_CONNECTOR_TYPE
         from pptx2.util import Pt
+
+        if kwargs:
+            kwargs = absorb_agent_kwargs(
+                "add_arrow",
+                kwargs,
+                (
+                    "start", "end", "head", "tail", "head_size", "tail_size",
+                    "color", "weight_pt", "style", "route", "inset_pt",
+                    "end_side", "start_side",
+                ),
+            )
+            defaults = {
+                "head": "triangle", "tail": None, "head_size": "medium",
+                "tail_size": "medium", "color": None, "weight_pt": 1.5,
+                "style": "solid", "route": "straight", "inset_pt": 0.0,
+                "end_side": "auto", "start_side": "auto",
+            }
+            given = {
+                "head": head, "tail": tail, "head_size": head_size,
+                "tail_size": tail_size, "color": color, "weight_pt": weight_pt,
+                "style": style, "route": route, "inset_pt": inset_pt,
+                "end_side": end_side, "start_side": start_side,
+            }
+            for name in defaults:
+                if name not in kwargs:
+                    continue
+                value = kwargs[name]
+                if given[name] != defaults[name] and given[name] != value:
+                    raise TypeError(
+                        f"add_arrow(): {name!r} given twice with different "
+                        f"values ({given[name]!r} vs {value!r})"
+                    )
+                given[name] = value
+            head = given["head"]
+            tail = given["tail"]
+            head_size = given["head_size"]
+            tail_size = given["tail_size"]
+            color = given["color"]
+            weight_pt = given["weight_pt"]
+            style = given["style"]
+            route = given["route"]
+            inset_pt = given["inset_pt"]
+            end_side = given["end_side"]
+            start_side = given["start_side"]
+            # start/end synonyms (from=/to=/begin=/source=/target=)
+            if "start" in kwargs:
+                start = kwargs["start"]
+            if "end" in kwargs:
+                end = kwargs["end"]
+        if start is None or end is None:
+            raise TypeError(
+                "add_arrow() missing required argument(s): "
+                + ", ".join(
+                    name for name, value in (("start", start), ("end", end))
+                    if value is None
+                )
+                + " (synonyms begin/from/source and to/target accepted)"
+            )
 
         _CONNECTOR = {
             "straight": MSO_CONNECTOR_TYPE.STRAIGHT,
