@@ -8,9 +8,55 @@ from typing import cast
 
 import pytest
 
-from pptx2.oxml.presentation import CT_SlideIdList
+from pptx2.oxml.presentation import CT_NotesMasterIdList, CT_Presentation, CT_SlideIdList
 
 from ..unitutil.cxml import element, xml
+
+
+class DescribeCT_Presentation(object):
+    """Unit-test suite for `pptx2.oxml.presentation.CT_Presentation` objects."""
+
+    def it_adds_a_notesMasterIdLst_in_schema_sequence_order(self):
+        prs = cast(
+            CT_Presentation,
+            element("p:presentation/(p:sldMasterIdLst,p:sldIdLst,p:sldSz,p:notesSz)"),
+        )
+
+        prs.get_or_add_notesMasterIdLst()
+
+        assert prs.xml == xml(
+            "p:presentation/(p:sldMasterIdLst,p:notesMasterIdLst,p:sldIdLst,p:sldSz,p:notesSz)"
+        )
+
+
+class DescribeCT_NotesMasterIdList(object):
+    """Unit-test suite for `pptx2.oxml.presentation.CT_NotesMasterIdLst` objects."""
+
+    def it_can_add_a_notesMasterId_element_as_a_child(self):
+        # --- a `p:presentation` root always declares xmlns:r in practice
+        # --- (its `p:sldMasterId` children carry r:id attributes) ---
+        prs = cast(
+            CT_Presentation,
+            element("p:presentation/(p:sldMasterIdLst/p:sldMasterId{r:id=rId1},p:sldSz,p:notesSz)"),
+        )
+
+        prs.get_or_add_notesMasterIdLst().add_notesMasterId("rId7")
+
+        assert prs.xml == xml(
+            "p:presentation/("
+            "p:sldMasterIdLst/p:sldMasterId{r:id=rId1},"
+            "p:notesMasterIdLst/p:notesMasterId{r:id=rId7},"
+            "p:sldSz,p:notesSz)"
+        )
+
+    def but_it_updates_an_existing_notesMasterId_rather_than_duplicating_it(self):
+        notesMasterIdLst = cast(
+            CT_NotesMasterIdList, element("p:notesMasterIdLst/p:notesMasterId{r:id=rId4}")
+        )
+
+        notesMasterIdLst.add_notesMasterId("rId7")
+
+        assert notesMasterIdLst.xml == xml("p:notesMasterIdLst/p:notesMasterId{r:id=rId7}")
 
 
 class DescribeCT_SlideIdList(object):

@@ -21,6 +21,13 @@ Unreleased
 Fixed
 .....
 
+* Creating a notes master (``prs.notes_master`` on a deck without one,
+  e.g. the default template) related the new part but never wrote the
+  matching ``p:notesMasterIdLst`` / ``p:notesMasterId`` entry into
+  ``presentation.xml``, so PowerPoint could flag the saved file for
+  repair. The id list is now registered on creation and reconciled on
+  access for decks saved by older versions (port of
+  scanny/python-pptx#1128 by robbybrodie).
 * ``@lazyproperty`` now caches a getter that legitimately returns
   ``None``. The instance-cache hit test compared the cached value to
   ``None``, so a ``None``-returning getter was silently re-evaluated on

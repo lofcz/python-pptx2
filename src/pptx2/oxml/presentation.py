@@ -28,6 +28,7 @@ class CT_Presentation(BaseOxmlElement):
     get_or_add_sldSz: Callable[[], CT_SlideSize]
     get_or_add_sldIdLst: Callable[[], CT_SlideIdList]
     get_or_add_sldMasterIdLst: Callable[[], CT_SlideMasterIdList]
+    get_or_add_notesMasterIdLst: Callable[[], CT_NotesMasterIdList]
     get_or_add_embeddedFontLst: Callable[[], BaseOxmlElement]
     get_or_add_extLst: Callable[[], BaseOxmlElement]
 
@@ -36,6 +37,17 @@ class CT_Presentation(BaseOxmlElement):
             "p:sldMasterIdLst",
             successors=(
                 "p:notesMasterIdLst",
+                "p:handoutMasterIdLst",
+                "p:sldIdLst",
+                "p:sldSz",
+                "p:notesSz",
+            ),
+        )
+    )
+    notesMasterIdLst: CT_NotesMasterIdList | None = (
+        ZeroOrOne(  # pyright: ignore[reportAssignmentType]
+            "p:notesMasterIdLst",
+            successors=(
                 "p:handoutMasterIdLst",
                 "p:sldIdLst",
                 "p:sldSz",
@@ -192,6 +204,41 @@ class CT_SlideMasterIdListEntry(BaseOxmlElement):
     """
     ``<p:sldMasterId>`` element, child of ``<p:sldMasterIdLst>`` containing
     a reference to a slide master.
+    """
+
+    rId: str = RequiredAttribute("r:id", XsdString)  # pyright: ignore[reportAssignmentType]
+
+
+class CT_NotesMasterIdList(BaseOxmlElement):
+    """`p:notesMasterIdLst` element.
+
+    Child of `p:presentation` containing a reference to the notes master that belongs to the
+    presentation.
+    """
+
+    get_or_add_notesMasterId: Callable[[], CT_NotesMasterIdListEntry]
+
+    notesMasterId: CT_NotesMasterIdListEntry | None = (
+        ZeroOrOne(  # pyright: ignore[reportAssignmentType]
+            "p:notesMasterId"
+        )
+    )
+
+    def add_notesMasterId(self, rId: str) -> CT_NotesMasterIdListEntry:
+        """Return the `p:notesMasterId` child element with its r:id attribute set to `rId`.
+
+        The child is created when not present and an existing child is updated in place, so
+        repeated calls do not duplicate elements.
+        """
+        notesMasterId = self.get_or_add_notesMasterId()
+        notesMasterId.rId = rId
+        return notesMasterId
+
+
+class CT_NotesMasterIdListEntry(BaseOxmlElement):
+    """`p:notesMasterId` element.
+
+    Child of `p:notesMasterIdLst` containing an `rId` reference to the notes master part.
     """
 
     rId: str = RequiredAttribute("r:id", XsdString)  # pyright: ignore[reportAssignmentType]

@@ -70,11 +70,15 @@ class PresentationPart(XmlPart):
         The same single instance is returned on each call.
         """
         try:
-            return self.part_related_by(RT.NOTES_MASTER)
+            notes_master_part = self.part_related_by(RT.NOTES_MASTER)
         except KeyError:
             notes_master_part = NotesMasterPart.create_default(self.package)
-            self.relate_to(notes_master_part, RT.NOTES_MASTER)
-            return notes_master_part
+        rId = self.relate_to(notes_master_part, RT.NOTES_MASTER)
+        # -- an id-list entry is required or PowerPoint flags the file for
+        # -- repair; registering here also reconciles decks saved by older
+        # -- versions that carry the relationship but no `p:notesMasterId` --
+        self._element.get_or_add_notesMasterIdLst().add_notesMasterId(rId)
+        return notes_master_part
 
     @lazyproperty
     def presentation(self):

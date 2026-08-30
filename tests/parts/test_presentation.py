@@ -14,7 +14,7 @@ from pptx2.parts.slide import NotesMasterPart, SlideMasterPart, SlidePart
 from pptx2.presentation import Presentation
 from pptx2.slide import NotesMaster, Slide, SlideLayout, SlideMaster
 
-from ..unitutil.cxml import element
+from ..unitutil.cxml import element, xml
 from ..unitutil.mock import call, class_mock, instance_mock, method_mock, property_mock
 
 
@@ -42,20 +42,24 @@ class DescribePresentationPart(object):
         assert prs_part.core_properties is core_properties_
 
     def it_provides_access_to_an_existing_notes_master_part(
-        self, notes_master_part_, part_related_by_
+        self, notes_master_part_, part_related_by_, relate_to_
     ):
         """This is the first of a two-part test to cover the existing notes master case.
 
         The notes master not-present case follows.
         """
-        prs_part = PresentationPart(None, None, None, None)
+        prs_elm = element("p:presentation/p:notesMasterIdLst/p:notesMasterId{r:id=rId42}")
+        prs_part = PresentationPart(None, None, None, prs_elm)
         part_related_by_.return_value = notes_master_part_
+        relate_to_.return_value = "rId42"
 
         notes_master_part = prs_part.notes_master_part
 
         prs_part.part_related_by.assert_called_once_with(prs_part, RT.NOTES_MASTER)
+        relate_to_.assert_called_once_with(prs_part, notes_master_part_, RT.NOTES_MASTER)
         assert notes_master_part is notes_master_part_
-
+        # --- an already-registered notes master is not duplicated ---
+        assert prs_elm.xml == xml("p:presentation/p:notesMasterIdLst/p:notesMasterId{r:id=rId42}")
     def but_it_adds_a_notes_master_part_when_needed(
         self, request, package_, notes_master_part_, part_related_by_, relate_to_
     ):
@@ -66,13 +70,21 @@ class DescribePresentationPart(object):
         NotesMasterPart_ = class_mock(request, "pptx2.parts.presentation.NotesMasterPart")
         NotesMasterPart_.create_default.return_value = notes_master_part_
         part_related_by_.side_effect = KeyError
-        prs_part = PresentationPart(None, None, package_, None)
+        relate_to_.return_value = "rId42"
+        prs_elm = element("p:presentation/p:sldMasterIdLst")
+        prs_part = PresentationPart(None, None, package_, prs_elm)
 
         notes_master_part = prs_part.notes_master_part
 
         NotesMasterPart_.create_default.assert_called_once_with(package_)
         relate_to_.assert_called_once_with(prs_part, notes_master_part_, RT.NOTES_MASTER)
         assert notes_master_part is notes_master_part_
+        # --- notesMasterIdLst element was added to presentation.xml ---
+        notesMasterIdLst = prs_elm.notesMasterIdLst
+        assert notesMasterIdLst is not None
+        notesMasterId = notesMasterIdLst.notesMasterId
+        assert notesMasterId is not None
+        assert notesMasterId.rId == "rId42"
 
     def it_provides_access_to_its_notes_master(self, request, notes_master_part_):
         notes_master_ = instance_mock(request, NotesMaster)

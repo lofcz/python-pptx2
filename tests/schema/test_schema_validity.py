@@ -540,6 +540,17 @@ def _deck_lint_relationship_model() -> bytes:
     return _saved(prs)
 
 
+def _deck_notes_master() -> bytes:
+    # Regression: creating the notes master registered the relationship but
+    # never wrote the matching <p:notesMasterIdLst>/<p:notesMasterId> into
+    # presentation.xml, which makes PowerPoint flag the deck for repair.
+    # No slides: a bare deck is enough to exercise the new presentation.xml
+    # and notesMaster parts.
+    prs = Presentation()
+    prs.notes_master  # creates + relates + registers the notes master
+    return _saved(prs)
+
+
 _DECK_BUILDERS = {
     "blank": _deck_blank,
     "group_fill": _deck_group_fill,
@@ -557,6 +568,7 @@ _DECK_BUILDERS = {
     "sections": _deck_sections,
     "morph_transition": _deck_morph_transition,
     "transition_duration": _deck_transition_duration,
+    "notes_master": _deck_notes_master,
     "chart_types": _deck_chart_types,
     "radar_chart": _deck_radar_chart,
     "soft_metal_material": _deck_soft_metal_material,
@@ -588,6 +600,20 @@ class DescribeGeneratedDeckSchemaValidity:
         assert 'above="card"' in xml
         # ...and no custom-namespaced attribute snuck onto <p:cNvPr> itself.
         assert "lintGroup=" not in xml
+
+    def it_registers_the_notes_master_in_an_id_list(self):
+        # Guard against vacuous passage: the notes-master deck must actually
+        # reference the notes master part by id from presentation.xml, in the
+        # CT_Presentation sequence position the schema requires.
+        import zipfile
+
+        with zipfile.ZipFile(io.BytesIO(_deck_notes_master())) as zf:
+            xml = zf.read("ppt/presentation.xml").decode("utf-8")
+        assert "<p:notesMasterIdLst><p:notesMasterId r:id=" in xml
+        # ...between sldMasterIdLst and sldSz in the CT_Presentation sequence,
+        # ...never after the size elements.
+        assert xml.index("p:notesMasterIdLst") > xml.index("p:sldMasterIdLst")
+        assert xml.index("p:notesMasterIdLst") < xml.index("p:sldSz")
 
     def it_validates_a_slide_imported_with_an_image(self):
         # import_slide must keep r:embed references pointing at the image, and
