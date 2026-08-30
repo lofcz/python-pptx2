@@ -20,7 +20,8 @@ Usage from a test::
 
 The validator is deliberately conservative: it only checks the parts whose
 root namespace it has a schema for (PresentationML slides/layouts/masters/notes
-+ presentation.xml, DrawingML themes, and chart parts) and resolves
++ presentation.xml, DrawingML themes, chart parts, and the docProps/custom.xml
+custom-properties part) and resolves
 ``mc:AlternateContent`` to its ``mc:Fallback`` first — the ISO-pure branch a
 non-extension processor would use — so Microsoft-namespace extensions (p14
 morph, etc.) are validated through their fallback rather than reported as
@@ -51,6 +52,9 @@ _NS_SCHEMA = {
     "http://schemas.openxmlformats.org/presentationml/2006/main": "pml.xsd",
     "http://schemas.openxmlformats.org/drawingml/2006/main": "dml-main.xsd",
     "http://schemas.openxmlformats.org/drawingml/2006/chart": "dml-chart.xsd",
+    "http://schemas.openxmlformats.org/officeDocument/2006/custom-properties": (
+        "shared-documentPropertiesCustom.xsd"
+    ),
 }
 
 _MC_NS = "http://schemas.openxmlformats.org/markup-compatibility/2006"
@@ -80,7 +84,7 @@ _CHECKED_PREFIXES = (
     "ppt/charts/chart",
     "ppt/theme/theme",
 )
-_CHECKED_EXACT = ("ppt/presentation.xml",)
+_CHECKED_EXACT = ("ppt/presentation.xml", "docProps/custom.xml")
 
 _schema_cache: "dict[str, object]" = {}
 

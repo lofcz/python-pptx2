@@ -14,6 +14,7 @@ from pptx2.util import lazyproperty
 
 if TYPE_CHECKING:
     from pptx2.parts.coreprops import CorePropertiesPart
+    from pptx2.parts.customprops import CustomProperties
     from pptx2.slide import NotesMaster, Slide, SlideLayout, SlideMaster
 
 
@@ -41,6 +42,15 @@ class PresentationPart(XmlPart):
         Provides read/write access to the Dublin Core properties of this presentation.
         """
         return self.package.core_properties
+
+    @property
+    def custom_properties(self) -> CustomProperties:
+        """A |CustomProperties| object for this presentation.
+
+        Provides mapping-style read/write access to the custom document properties of this
+        presentation.
+        """
+        return self.package.custom_properties
 
     def get_slide(self, slide_id: int) -> Slide | None:
         """Return optional related |Slide| object identified by `slide_id`.

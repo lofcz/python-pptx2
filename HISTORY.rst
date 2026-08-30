@@ -55,6 +55,14 @@ Added
   frame, and raises ``ValueError`` rather than truncate a merged cell
   spanning multiple rows/columns. Port of scanny/python-pptx#399 by
   Ignisor.
+* ``prs.custom_properties`` — mapping-style read/write access to the
+  user-defined document properties in ``/docProps/custom.xml``.
+  ``get``/``set``/``delete`` with ``str``, ``int``, ``float``, and
+  ``bool`` values (stored as ``vt:lpstr``, ``vt:i4``, ``vt:r8``, and
+  ``vt:bool``); the part and its package-root relationship are created
+  lazily by the first assignment, and files that already carry a
+  custom-properties part open mapped to the new part class. Port of
+  ``scanny/python-pptx#342`` by stadlerism.
 
 Fixed
 .....

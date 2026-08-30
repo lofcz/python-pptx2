@@ -548,6 +548,16 @@ def _deck_notes_master() -> bytes:
     # and notesMaster parts.
     prs = Presentation()
     prs.notes_master  # creates + relates + registers the notes master
+
+
+def _deck_custom_properties() -> bytes:
+    # /docProps/custom.xml: one property per supported VT type (lpstr/i4/r8/bool).
+    prs = Presentation()
+    _blank_slide(prs)
+    prs.custom_properties["Sponsor"] = "Acme Corp"
+    prs.custom_properties["Revision"] = 7
+    prs.custom_properties["Score"] = 3.25
+    prs.custom_properties["Confidential"] = True
     return _saved(prs)
 
 
@@ -631,6 +641,45 @@ class DescribeGeneratedDeckSchemaValidity:
         dst = Presentation()
         dst.import_slide(src.slides[0])
         assert_schema_valid(_saved(dst))
+
+    def it_validates_custom_properties_against_the_ooxml_schema(self):
+        # The custom-properties part itself must validate against the bundled
+        # shared-documentPropertiesCustom.xsd (one property per VT type).
+        # Checked per-part (not via _DECK_BUILDERS) so unrelated pre-existing
+        # violations elsewhere in the package don't mask the result.
+        violations = [
+            (part, msg)
+            for part, msg in iter_schema_violations(_deck_custom_properties())
+            if part == "docProps/custom.xml"
+        ]
+        assert violations == [], violations
+
+    def it_actually_detects_an_invalid_custom_props_part(self):
+        # Self-test for the custom-properties schema check: strip the vt child
+        # from a property (CT_Property requires exactly one typed value child)
+        # and confirm the validator flags it — so the new schema wiring can't
+        # silently regress into always-passing.
+        import zipfile
+
+        original = _deck_custom_properties()
+        buf = io.BytesIO()
+        with zipfile.ZipFile(io.BytesIO(original)) as zin:
+            bad_custom = zin.read("docProps/custom.xml").replace(
+                b"<vt:lpstr>Acme Corp</vt:lpstr>", b""
+            )
+            with zipfile.ZipFile(buf, "w", zipfile.ZIP_DEFLATED) as zout:
+                for item in zin.infolist():
+                    data = (
+                        bad_custom
+                        if item.filename == "docProps/custom.xml"
+                        else zin.read(item.filename)
+                    )
+                    zout.writestr(item, data)
+
+        violations = list(iter_schema_violations(buf.getvalue()))
+        assert any(
+            part == "docProps/custom.xml" and "property" in msg for part, msg in violations
+        ), violations
 
     def it_reports_violations_as_part_message_pairs(self):
         # The validator's own contract: a clean deck yields no violations.

@@ -7,6 +7,8 @@ feature aren't silently corrupted by `Presentation(...).save()`.
 
 from __future__ import annotations
 
+import io
+
 import pytest
 
 from pptx2 import Presentation
@@ -242,3 +244,42 @@ class DescribeErgonomicsRoundTrip:
         for c in range(2):
             table.cell(0, c).text = "header %d" % c
         assert_round_trip(prs)
+
+
+class DescribeCustomPropertiesRoundTrip:
+    def it_round_trips_a_deck_with_custom_properties(self):
+        prs = Presentation()
+        prs.slides.add_slide(prs.slide_layouts[6])
+        prs.custom_properties["Sponsor"] = "Acme Corp"
+        prs.custom_properties["Revision"] = 7
+        prs.custom_properties["Confidential"] = True
+        assert_round_trip(prs)
+
+    def it_preserves_custom_property_values_and_types(self):
+        prs = Presentation()
+        prs.custom_properties["Sponsor"] = "Acme Corp"
+        prs.custom_properties["Revision"] = 7
+        prs.custom_properties["Score"] = 3.25
+        prs.custom_properties["Confidential"] = False
+
+        buf = io.BytesIO()
+        prs.save(buf)
+        buf.seek(0)
+        reopened = Presentation(buf)
+        props = reopened.custom_properties
+
+        assert props.keys() == ["Sponsor", "Revision", "Score", "Confidential"]
+        assert (props["Sponsor"], type(props["Sponsor"]).__name__) == ("Acme Corp", "str")
+        assert (props["Revision"], type(props["Revision"]).__name__) == (7, "int")
+        assert (props["Score"], type(props["Score"]).__name__) == (3.25, "float")
+        assert (props["Confidential"], type(props["Confidential"]).__name__) == (False, "bool")
+
+        # -- mutations on the reopened deck (update + delete) survive too --
+        props["Revision"] = 8
+        del props["Confidential"]
+        buf2 = io.BytesIO()
+        reopened.save(buf2)
+        buf2.seek(0)
+        final = Presentation(buf2).custom_properties
+        assert final.keys() == ["Sponsor", "Revision", "Score"]
+        assert final["Revision"] == 8

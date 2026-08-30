@@ -213,8 +213,10 @@ register_element_cls("c:xMode", CT_LayoutMode)
 
 
 from pptx2.oxml.coreprops import CT_CoreProperties  # noqa: E402
+from pptx2.oxml.customprops import CT_CustomProperties  # noqa: E402
 
 register_element_cls("cp:coreProperties", CT_CoreProperties)
+register_element_cls("custom:Properties", CT_CustomProperties)
 
 
 from pptx2.oxml.dml.color import (  # noqa: E402

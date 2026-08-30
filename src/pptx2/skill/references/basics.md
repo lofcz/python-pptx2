@@ -24,6 +24,13 @@ buf.seek(0)
 return buf.getvalue()
 ```
 
+## Document metadata
+
+```python
+prs.core_properties.title = "Q3 Review"
+prs.custom_properties["Sponsor"] = "Acme"        # /docProps/custom.xml; str/int/float/bool
+```
+
 ## Slide size
 
 ```python

@@ -9,6 +9,7 @@ from pptx2.opc.constants import RELATIONSHIP_TYPE as RT
 from pptx2.opc.package import OpcPackage
 from pptx2.opc.packuri import PackURI
 from pptx2.parts.coreprops import CorePropertiesPart
+from pptx2.parts.customprops import CustomProperties
 from pptx2.parts.image import Image, ImagePart
 from pptx2.parts.media import MediaPart
 from pptx2.util import lazyproperty
@@ -29,6 +30,16 @@ class Package(OpcPackage):
             core_props = CorePropertiesPart.default(self)
             self.relate_to(core_props, RT.CORE_PROPERTIES)
             return core_props
+
+    @lazyproperty
+    def custom_properties(self) -> CustomProperties:
+        """|CustomProperties| object for this package.
+
+        Provides mapping-style read/write access to the user-defined document properties in
+        `/docProps/custom.xml`. Reading from a package with no such part behaves like an empty
+        mapping; the part is created lazily by the first property assignment.
+        """
+        return CustomProperties(self)
 
     def get_or_add_image_part(self, image_file: str | os.PathLike[str] | IO[bytes]):
         """

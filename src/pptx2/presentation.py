@@ -15,6 +15,7 @@ if TYPE_CHECKING:
     from pptx2.enum.presentation import MSO_TRANSITION_TYPE
     from pptx2.lint import LintIssue
     from pptx2.oxml.presentation import CT_Presentation, CT_SlideId
+    from pptx2.parts.customprops import CustomProperties
     from pptx2.parts.presentation import PresentationPart
     from pptx2.parts.slide import SlidePart
     from pptx2.slide import NotesMaster, Slide, SlideLayouts
@@ -55,6 +56,16 @@ class Presentation(PartElementProxy):
         Provides read/write access to the Dublin Core document properties for the presentation.
         """
         return self.part.core_properties
+
+    @property
+    def custom_properties(self) -> CustomProperties:
+        """|CustomProperties| mapping for this presentation.
+
+        Provides read/write access to the user-defined document properties in
+        `/docProps/custom.xml`. Values may be str, int, float, or bool; the first assignment on a
+        package without the part creates it.
+        """
+        return self.part.custom_properties
 
     @property
     def notes_master(self) -> NotesMaster:
