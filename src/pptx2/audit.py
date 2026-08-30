@@ -41,7 +41,8 @@ __all__ = ["AuditReport", "audit"]
 
 
 # Fonts that ship with stock Windows / macOS / Office installs.  Used as
-# a (very conservative) safe-list for the font_warnings probe.
+# a (very conservative) safe-list for the font_warnings probe.  Aptos and
+# family are the Microsoft 365 default theme fonts since 2024.
 _COMMON_FONTS = frozenset(
     name.lower()
     for name in (
@@ -51,8 +52,16 @@ _COMMON_FONTS = frozenset(
         "Lucida Console", "Palatino", "Palatino Linotype", "Symbol",
         "Wingdings", "Wingdings 2", "Wingdings 3", "Webdings",
         "Inter", "Roboto", "Open Sans", "Lato", "Noto Sans",
+        "Aptos", "Aptos Display", "Aptos Narrow", "Aptos Serif", "Aptos Mono",
+        "Aptos Symbols",
     )
 )
+
+# Environment variable merged into the safe-list on every audit() call, so
+# rendering environments (sandboxes, CI) can declare their font inventory
+# once instead of every caller passing ``extra_safe_fonts``.  Comma- or
+# semicolon-separated font names.
+_SAFE_FONTS_ENV_VAR = "PPTX2_SAFE_FONTS"
 
 
 @dataclass
@@ -188,12 +197,24 @@ def audit(
     environment genuinely ships the font — e.g. ``DejaVu Sans`` in a
     sandbox whose font policy standardizes on it, or a corporate font
     you embed in every deck.
+
+    The ``PPTX2_SAFE_FONTS`` environment variable (comma- or
+    semicolon-separated font names) is merged into the safe-list on
+    every call, so an environment can declare its font inventory once
+    for all callers.
     """
+    import os
+
     from pptx2.shapes.picture import Picture
 
     safe_fonts = _COMMON_FONTS
-    if extra_safe_fonts is not None:
-        safe_fonts = _COMMON_FONTS | frozenset(f.lower() for f in extra_safe_fonts)
+    extra_names = list(extra_safe_fonts) if extra_safe_fonts else []
+    for env_raw in os.environ.get(_SAFE_FONTS_ENV_VAR, "").replace(";", ",").split(","):
+        env_name = env_raw.strip()
+        if env_name:
+            extra_names.append(env_name)
+    if extra_names:
+        safe_fonts = _COMMON_FONTS | frozenset(f.lower() for f in extra_names)
 
     report = AuditReport()
     slides = list(prs.slides)

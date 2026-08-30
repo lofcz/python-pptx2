@@ -557,6 +557,24 @@ class _BaseShapes(ParentedElementProxy):
         return BaseShapeFactory(shape_elm, self)
 
 
+def _resolve_alias(method: str, arg: str, canonical, alias):
+    """Return *canonical*, falling back to its *alias* kwarg (both nullable).
+
+    Code generators (matplotlib-trained models among them) habitually spell
+    ``font`` as ``font_family`` and ``anchor`` as ``valign``; accepting the
+    alias removes a whole class of one-keyword-away TypeErrors. Passing
+    both with different values is a genuine caller bug and still raises.
+    """
+    if canonical is not None:
+        if alias is not None and alias != canonical:
+            raise TypeError(
+                f"{method}(): pass either {arg}= or its alias, not two "
+                f"different values ({canonical!r} vs {alias!r})"
+            )
+        return canonical
+    return alias
+
+
 class _BaseGroupShapes(_BaseShapes):
     """Base class for shape-trees that can add shapes."""
 
@@ -900,12 +918,14 @@ class _BaseGroupShapes(_BaseShapes):
         *bbox_or_positional,
         text: str = "",
         font: str | None = None,
+        font_family: str | None = None,
         size_pt: float | None = None,
         bold: bool | None = None,
         italic: bool | None = None,
         color=None,
         align: str | None = None,
         anchor: str | None = None,
+        valign: str | None = None,
         margin_pt: float | tuple[float, float, float, float] | None = None,
         word_wrap: bool | None = True,
     ) -> Shape:
@@ -922,14 +942,17 @@ class _BaseGroupShapes(_BaseShapes):
         Keyword args:
 
         * ``font`` — typeface name (e.g. ``"Inter"``); ``None`` inherits.
+          ``font_family`` is accepted as an alias (matplotlib habits die
+          hard).
         * ``size_pt`` — font size in points; ``None`` inherits.
         * ``bold`` / ``italic`` — ``True``/``False``/``None``.
         * ``color`` — any "color-like" (``"#RRGGBB"``, ``RGBColor``,
           ``(r, g, b)``).
         * ``align`` — ``"left"`` / ``"center"`` / ``"right"`` /
           ``"justify"``; ``None`` inherits.
-        * ``anchor`` — vertical anchor: ``"top"`` / ``"middle"`` /
-          ``"bottom"``; ``None`` inherits.
+        * ``anchor`` — vertical anchor: ``"top"`` / ``"middle"`` (also
+          ``"mid"`` / ``"center"``) / ``"bottom"``; ``None`` inherits.
+          ``valign`` is accepted as an alias.
         * ``margin_pt`` — uniform margin in points, or a 4-tuple
           ``(top, right, bottom, left)``.
         * ``word_wrap`` — defaults to ``True``.
@@ -939,6 +962,9 @@ class _BaseGroupShapes(_BaseShapes):
         """
         from pptx2._textstyle import apply_margins, apply_text_style, coerce_anchor
         from pptx2.geometry import BBox
+
+        font = _resolve_alias("add_text", "font", font, font_family)
+        anchor = _resolve_alias("add_text", "anchor", anchor, valign)
 
         if len(bbox_or_positional) == 1 and isinstance(bbox_or_positional[0], BBox):
             box = bbox_or_positional[0]
@@ -986,10 +1012,12 @@ class _BaseGroupShapes(_BaseShapes):
         latex: str,
         display: bool = True,
         font: str | None = None,
+        font_family: str | None = None,
         size_pt: float | None = None,
         color=None,
         align: str | None = "center",
         anchor: str | None = "middle",
+        valign: str | None = None,
         margin_pt: float | tuple[float, float, float, float] | None = None,
     ) -> Shape:
         """Add a text box containing a native PowerPoint equation from LaTeX.
@@ -1008,12 +1036,16 @@ class _BaseGroupShapes(_BaseShapes):
         equation editor.
 
         Keyword args match :meth:`add_text` for *font* / *size_pt* /
-        *color* / *align* / *anchor* / *margin_pt*. *display* (default
+        *color* / *align* / *anchor* / *margin_pt* (including the
+        ``font_family`` / ``valign`` aliases). *display* (default
         |True|) emits a display-math paragraph; set |False| for inline
         OMML.
         """
         from pptx2._textstyle import apply_margins, coerce_align, coerce_anchor
         from pptx2.geometry import BBox
+
+        font = _resolve_alias("add_equation", "font", font, font_family)
+        anchor = _resolve_alias("add_equation", "anchor", anchor, valign)
 
         if len(bbox_or_positional) == 1 and isinstance(bbox_or_positional[0], BBox):
             box = bbox_or_positional[0]

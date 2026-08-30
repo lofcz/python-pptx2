@@ -86,6 +86,35 @@ class DescribeAddText:
         with pytest.raises(ValueError):
             slide.shapes.add_text(BBox.from_inches(0, 0, 4, 1), text="x", align="diagonal")
 
+    def it_accepts_font_family_as_an_alias_for_font(self, slide):
+        # -- matplotlib-trained generators habitually write font_family= --
+        tx = slide.shapes.add_text(BBox.from_inches(1, 1, 4, 1), text="Hi", font_family="Inter")
+        assert tx.text_frame.paragraphs[0].runs[0].font.name == "Inter"
+
+    def it_accepts_identical_font_and_font_family(self, slide):
+        tx = slide.shapes.add_text(
+            BBox.from_inches(1, 1, 4, 1), text="Hi", font="Inter", font_family="Inter"
+        )
+        assert tx.text_frame.paragraphs[0].runs[0].font.name == "Inter"
+
+    def it_rejects_conflicting_font_and_font_family(self, slide):
+        with pytest.raises(TypeError, match="font"):
+            slide.shapes.add_text(
+                BBox.from_inches(1, 1, 4, 1), text="Hi", font="Inter", font_family="Roboto"
+            )
+
+    def it_accepts_valign_mid_as_an_alias_for_anchor(self, slide):
+        from pptx2.enum.text import MSO_VERTICAL_ANCHOR
+
+        tx = slide.shapes.add_text(BBox.from_inches(0, 0, 4, 1), text="x", valign="mid")
+        assert tx.text_frame.vertical_anchor == MSO_VERTICAL_ANCHOR.MIDDLE
+
+    def it_rejects_conflicting_anchor_and_valign(self, slide):
+        with pytest.raises(TypeError, match="anchor"):
+            slide.shapes.add_text(
+                BBox.from_inches(0, 0, 4, 1), text="x", anchor="top", valign="bottom"
+            )
+
 
 class DescribeSetTextPreservingFormat:
     def it_preserves_font_attributes_across_replacement(self, slide):

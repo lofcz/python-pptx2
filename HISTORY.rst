@@ -15,6 +15,28 @@ can sit beside both ``python-pptx`` (``pptx``) and ``power-pptx``
 .. _`scanny/python-pptx`: https://github.com/scanny/python-pptx
 
 
+Unreleased
+++++++++++
+
+Added
+.....
+
+* ``add_text()`` / ``add_equation()`` accept ``font_family`` and
+  ``valign`` as aliases for ``font`` and ``anchor`` (with ``"mid"``
+  now a valid anchor token). Code generators trained on matplotlib
+  habitually reach for the longer spellings and died with
+  ``TypeError: unexpected keyword argument 'font_family'``; passing
+  both an alias and its canonical with *different* values still
+  raises.
+
+* The audit font-warning safe-list now recognizes the **Aptos**
+  family — the Microsoft 365 default theme fonts since 2024 — and
+  merges the ``PPTX2_SAFE_FONTS`` environment variable (comma- or
+  semicolon-separated) into the safe-list on every ``audit()`` call,
+  so a rendering environment can declare its font inventory once
+  instead of every caller passing ``extra_safe_fonts``.
+
+
 2.16.0 (2026-08-30)
 +++++++++++++++++++
 

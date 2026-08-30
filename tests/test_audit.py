@@ -78,6 +78,37 @@ class DescribeAudit:
                    for _, font in report.font_warnings)
         assert not any(font == "DejaVu Sans" for _, font in report.font_warnings)
 
+    def it_treats_aptos_the_m365_default_as_safe(self, prs):
+        slide = prs.slides.add_slide(prs.slide_layouts[6])
+        for variant in ("Aptos", "Aptos Display", "Aptos Serif", "Aptos Mono"):
+            slide.shapes.add_text(
+                BBox.from_inches(1, 1, 4, 0.6),
+                text="Hi",
+                font=variant,
+            )
+        report = audit(prs)
+        assert report.font_warnings == []
+
+    def it_merges_the_safe_fonts_environment_variable(self, prs, monkeypatch):
+        slide = prs.slides.add_slide(prs.slide_layouts[6])
+        slide.shapes.add_text(
+            BBox.from_inches(1, 1, 4, 1), text="Hi", font="DejaVu Sans"
+        )
+        slide.shapes.add_text(
+            BBox.from_inches(1, 2.5, 4, 1), text="Ho", font="Corporate Brand Face"
+        )
+        monkeypatch.setenv(
+            "PPTX2_SAFE_FONTS", "DejaVu Sans ; Corporate Brand Face"
+        )
+        report = audit(prs)
+        assert report.font_warnings == []
+        # -- the parameter still stacks on top of the environment --
+        slide.shapes.add_text(
+            BBox.from_inches(1, 4, 4, 1), text="Hmm", font="One More Face"
+        )
+        report = audit(prs, extra_safe_fonts=["One More Face"])
+        assert report.font_warnings == []
+
     def it_treats_full_bleed_only_slide_as_empty(self, prs):
         # A slide whose only shape is a slide-spanning background rect
         # should be reported as empty (it has no content).

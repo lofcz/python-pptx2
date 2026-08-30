@@ -187,6 +187,13 @@ drown in noise:
 report = audit(prs, extra_safe_fonts=["DejaVu Sans", "Noto Sans CJK JP"])
 ```
 
+Or declare the inventory once for every caller via the environment
+(merged into the safe-list on each `audit()`):
+
+```bash
+export PPTX2_SAFE_FONTS="DejaVu Sans; Noto Sans CJK JP"
+```
+
 ## Save-time hooks (via `from_spec`)
 
 If you build the deck through `pptx2.compose.from_spec`, the spec dict
