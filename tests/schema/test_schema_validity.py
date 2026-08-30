@@ -563,6 +563,7 @@ def _deck_notes_master() -> bytes:
     # and notesMaster parts.
     prs = Presentation()
     prs.notes_master  # creates + relates + registers the notes master
+    return _saved(prs)
 
 
 def _deck_custom_properties() -> bytes:
@@ -573,6 +574,7 @@ def _deck_custom_properties() -> bytes:
     prs.custom_properties["Revision"] = 7
     prs.custom_properties["Score"] = 3.25
     prs.custom_properties["Confidential"] = True
+    return _saved(prs)
 
 
 def _deck_added_slide_layouts() -> bytes:
