@@ -15,7 +15,7 @@ can sit beside both ``python-pptx`` (``pptx``) and ``power-pptx``
 .. _`scanny/python-pptx`: https://github.com/scanny/python-pptx
 
 
-2.19.0 (2026-08-30)
+2.20.0 (2026-08-30)
 +++++++++++++++++++
 
 Added
