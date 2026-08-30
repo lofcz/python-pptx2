@@ -178,6 +178,15 @@ if data["has_errors"]:
     ...                        # hand `data` straight to the model to fix
 ```
 
+`audit()` also warns on fonts outside the common Windows/macOS/Office
+safe-list. When the rendering environment genuinely ships a font (e.g.
+DejaVu Sans in a Linux sandbox), pass it instead of letting the deck
+drown in noise:
+
+```python
+report = audit(prs, extra_safe_fonts=["DejaVu Sans", "Noto Sans CJK JP"])
+```
+
 ## Save-time hooks (via `from_spec`)
 
 If you build the deck through `pptx2.compose.from_spec`, the spec dict

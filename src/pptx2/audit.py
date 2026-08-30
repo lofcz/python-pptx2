@@ -30,7 +30,7 @@ The audit is read-only — it never mutates the deck.
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Iterable
 
 if TYPE_CHECKING:
     from pptx2.api import Presentation
@@ -174,14 +174,26 @@ def audit(
     *,
     size_warn_bytes: int = 2_000_000,
     check_fonts: bool = True,
+    extra_safe_fonts: "Iterable[str] | None" = None,
 ) -> AuditReport:
     """Walk the deck and return an :class:`AuditReport` summary.
 
     Read-only — never mutates the presentation.  Each slide is linted
     in passing-defaults mode; per-slide overrides should be supplied
     via the slide-level ``slide.lint(...)`` API directly.
+
+    *extra_safe_fonts* names additional fonts to treat as safe for the
+    font-warning probe, on top of the common Windows/macOS/Office set
+    (matching is case-insensitive).  Use it where the rendering
+    environment genuinely ships the font — e.g. ``DejaVu Sans`` in a
+    sandbox whose font policy standardizes on it, or a corporate font
+    you embed in every deck.
     """
     from pptx2.shapes.picture import Picture
+
+    safe_fonts = _COMMON_FONTS
+    if extra_safe_fonts is not None:
+        safe_fonts = _COMMON_FONTS | frozenset(f.lower() for f in extra_safe_fonts)
 
     report = AuditReport()
     slides = list(prs.slides)
@@ -249,7 +261,7 @@ def audit(
                 for para in tf.paragraphs:
                     for run in para.runs:
                         name = run.font.name
-                        if name and name.lower() not in _COMMON_FONTS:
+                        if name and name.lower() not in safe_fonts:
                             report.font_warnings.append((idx, name))
 
         if content_shapes == 0:

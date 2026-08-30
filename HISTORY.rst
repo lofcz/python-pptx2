@@ -15,6 +15,21 @@ can sit beside both ``python-pptx`` (``pptx``) and ``power-pptx``
 .. _`scanny/python-pptx`: https://github.com/scanny/python-pptx
 
 
+Unreleased
+++++++++++
+
+Added
+.....
+
+* ``audit(..., extra_safe_fonts=[...])`` — the font-warning probe now
+  accepts additional fonts to treat as safe (case-insensitive), on top
+  of the built-in common Windows/macOS/Office list. For rendering
+  environments that genuinely ship a font the built-in list doesn't
+  know — e.g. a Linux sandbox whose font policy standardizes on
+  ``DejaVu Sans`` — this keeps the audit signal instead of drowning it
+  in per-slide warnings.
+
+
 2.15.0 (2026-08-30)
 +++++++++++++++++++
 

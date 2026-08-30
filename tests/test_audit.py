@@ -54,6 +54,30 @@ class DescribeAudit:
         assert any(font == "Definitely-Not-A-Real-Font-Name"
                    for _, font in report.font_warnings)
 
+    def it_accepts_extra_safe_fonts(self, prs):
+        slide = prs.slides.add_slide(prs.slide_layouts[6])
+        slide.shapes.add_text(
+            BBox.from_inches(1, 1, 4, 1),
+            text="Hi",
+            font="DejaVu Sans",
+        )
+        # -- without the override the sandbox font is flagged --
+        report = audit(prs)
+        assert any(font == "DejaVu Sans" for _, font in report.font_warnings)
+        # -- and with it (case-insensitively) the warning disappears --
+        report = audit(prs, extra_safe_fonts=["DEJAVU SANS"])
+        assert not any(font == "DejaVu Sans" for _, font in report.font_warnings)
+        # -- other unknown fonts are still flagged alongside the override --
+        slide.shapes.add_text(
+            BBox.from_inches(1, 2.5, 4, 1),
+            text="Also hi",
+            font="Definitely-Not-A-Real-Font-Name",
+        )
+        report = audit(prs, extra_safe_fonts=["DejaVu Sans"])
+        assert any(font == "Definitely-Not-A-Real-Font-Name"
+                   for _, font in report.font_warnings)
+        assert not any(font == "DejaVu Sans" for _, font in report.font_warnings)
+
     def it_treats_full_bleed_only_slide_as_empty(self, prs):
         # A slide whose only shape is a slide-spanning background rect
         # should be reported as empty (it has no content).
