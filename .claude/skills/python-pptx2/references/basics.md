@@ -121,6 +121,18 @@ run.font.underline = True
 p.add_line_break()                 # soft break, stays in the paragraph
 ```
 
+### Fields (slide numbers, dates)
+
+`p.add_field(...)` appends a live `a:fld` element whose value PowerPoint
+computes at render time; `text` is only the cached placeholder readers see:
+
+```python
+from pptx2.enum.text import MSO_TEXT_FIELD_TYPE
+
+p.add_field(MSO_TEXT_FIELD_TYPE.SLIDE_NUMBER)   # renders as e.g. "3"
+p.add_field("datetime1", text="09:34")         # or "datetime".."datetime13" tokens
+```
+
 ### Run-level type styling
 
 `font` exposes the run-property knobs that separate "looks branded" from

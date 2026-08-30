@@ -116,6 +116,12 @@ to concatenated digits (``7/10`` → ``710``). Slides now declare the
 Added
 .....
 
+* ``Paragraph.add_field()`` appends slide-number and date/time fields
+  (``a:fld``) to a paragraph, with the new ``MSO_TEXT_FIELD_TYPE``
+  enumeration covering the ``slidenum`` / ``datetime*`` tokens. Fields are
+  created with the schema-required braced GUID ``id`` and a cached-text
+  (``a:t``) placeholder PowerPoint replaces with the computed value at
+  render time; ``_Field`` exposes ``type``, ``text``, and ``font``.
 * **Bundled ``pptx2.mathml2omml``** — spec-compliant ``m:f`` / ``m:rad``
   / ``m:nary`` / ``m:sSub`` / matrices / accents. ``python-pptx2[math]``
   now only needs ``latex2mathml``.

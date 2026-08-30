@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import re
 from typing import TYPE_CHECKING, Callable, cast
+from uuid import uuid4
 
 from pptx2.enum.lang import MSO_LANGUAGE_ID
 from pptx2.enum.text import (
@@ -35,6 +36,7 @@ from pptx2.oxml.simpletypes import (
     ST_TextTypeface,
     ST_TextWrappingType,
     XsdBoolean,
+    XsdString,
 )
 from pptx2.oxml.xmlchemy import (
     BaseOxmlElement,
@@ -444,6 +446,7 @@ class CT_TextField(BaseOxmlElement):
     """`a:fld` field element, for either a slide number or date field."""
 
     get_or_add_rPr: Callable[[], CT_TextCharacterProperties]
+    get_or_add_t: Callable[[], BaseOxmlElement]
 
     rPr: CT_TextCharacterProperties | None = ZeroOrOne(  # pyright: ignore[reportAssignmentType]
         "a:rPr", successors=("a:pPr", "a:t")
@@ -452,6 +455,9 @@ class CT_TextField(BaseOxmlElement):
         "a:t", successors=()
     )
 
+    id: str = RequiredAttribute("id", XsdString)  # pyright: ignore[reportAssignmentType]
+    type: str | None = OptionalAttribute("type", XsdString)  # pyright: ignore[reportAssignmentType]
+
     @property
     def text(self) -> str:  # pyright: ignore[reportIncompatibleMethodOverride]
         """The text of the `a:t` child element."""
@@ -459,6 +465,21 @@ class CT_TextField(BaseOxmlElement):
         if t is None:
             return ""
         return t.text or ""
+
+    @text.setter
+    def text(self, value: str):  # pyright: ignore[reportIncompatibleMethodOverride]
+        t = self.get_or_add_t()
+        t.text = self._escape_ctrl_chars(value)
+
+    @staticmethod
+    def _escape_ctrl_chars(s: str) -> str:
+        """Return str after replacing each control character with a plain-text escape.
+
+        For example, a BEL character (x07) would appear as "_x0007_". Horizontal-tab
+        (x09) and line-feed (x0A) are not escaped. All other characters in the range
+        x00-x1F are escaped.
+        """
+        return re.sub(r"([\x00-\x08\x0B-\x1F])", lambda match: "_x%04X_" % ord(match.group(1)), s)
 
 
 class CT_TextFont(BaseOxmlElement):
@@ -517,7 +538,9 @@ class CT_TextParagraph(BaseOxmlElement):
     get_or_add_endParaRPr: Callable[[], CT_TextCharacterProperties]
     get_or_add_pPr: Callable[[], CT_TextParagraphProperties]
     r_lst: list[CT_RegularTextRun]
+    fld_lst: list[CT_TextField]
     _add_br: Callable[[], CT_TextLineBreak]
+    _add_fld: Callable[[], CT_TextField]
     _add_r: Callable[[], CT_RegularTextRun]
 
     pPr: CT_TextParagraphProperties | None = ZeroOrOne(  # pyright: ignore[reportAssignmentType]
@@ -525,12 +548,17 @@ class CT_TextParagraph(BaseOxmlElement):
     )
     r = ZeroOrMore("a:r", successors=("a:endParaRPr",))
     br = ZeroOrMore("a:br", successors=("a:endParaRPr",))
+    fld = ZeroOrMore("a:fld", successors=("a:endParaRPr",))
     m = ZeroOrMore("a14:m", successors=("a:endParaRPr",))
     endParaRPr: CT_TextCharacterProperties | None = ZeroOrOne("a:endParaRPr", successors=())  # pyright: ignore[reportAssignmentType]
 
     def add_br(self) -> CT_TextLineBreak:
         """Return a newly appended `a:br` element."""
         return self._add_br()
+
+    def add_fld(self) -> CT_TextField:
+        """Return a newly appended `a:fld` element carrying a fresh GUID `id` attribute."""
+        return self._add_fld()
 
     def add_r(self, text: str | None = None) -> CT_RegularTextRun:
         """Return a newly appended `a:r` element."""
@@ -581,6 +609,11 @@ class CT_TextParagraph(BaseOxmlElement):
         """str text contained in this paragraph."""
         # ---note this shadows the lxml _Element.text---
         return "".join([child.text for child in self.content_children])
+
+    def _new_fld(self) -> CT_TextField:
+        """New `a:fld` element carrying a fresh GUID `id` attribute (required by schema)."""
+        fld_xml = '<a:fld %s id="{%s}"/>' % (nsdecls("a"), str(uuid4()).upper())
+        return parse_xml(fld_xml)
 
     def _new_r(self):
         r_xml = "<a:r %s><a:t/></a:r>" % nsdecls("a")

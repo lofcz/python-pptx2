@@ -10,7 +10,12 @@ from pptx2.dml.effect import GlowFormat, ShadowFormat
 from pptx2.dml.fill import FillFormat
 from pptx2.dml.line import LineFormat
 from pptx2.enum.lang import MSO_LANGUAGE_ID
-from pptx2.enum.text import MSO_AUTO_SIZE, MSO_UNDERLINE, MSO_VERTICAL_ANCHOR
+from pptx2.enum.text import (
+    MSO_AUTO_SIZE,
+    MSO_TEXT_FIELD_TYPE,
+    MSO_UNDERLINE,
+    MSO_VERTICAL_ANCHOR,
+)
 from pptx2.exc import FontMetricsWarning
 from pptx2.opc.constants import RELATIONSHIP_TYPE as RT
 from pptx2.oxml.simpletypes import ST_TextWrappingType
@@ -31,6 +36,7 @@ if TYPE_CHECKING:
         CT_RegularTextRun,
         CT_TextBody,
         CT_TextCharacterProperties,
+        CT_TextField,
         CT_TextParagraph,
         CT_TextParagraphProperties,
         CT_TextTabStop,
@@ -45,6 +51,15 @@ if TYPE_CHECKING:
 #: default, so a fallback to Pillow's metrics warns whenever a face was actually
 #: asked for — this one included.  See `TextFrame.fit_text`.
 _DEFAULT_FIT_FAMILY = "Calibri"
+
+#: Cached `a:t` text written for a field when the author supplies none, keyed by
+#: field-type token.  These are the placeholders PowerPoint itself writes;
+#: PowerPoint replaces the cached text with the computed value (the actual slide
+#: number, current date, ...) when the slide is rendered.
+_FIELD_PLACEHOLDER_TEXT = {"slidenum": "‹#›"}
+
+#: Cached `a:t` text written for a date/time field when the author supplies none.
+_FIELD_DATETIME_PLACEHOLDER = "‹D›"
 
 
 class TextFrame(Subshape):
@@ -882,6 +897,34 @@ class _Paragraph(Subshape):
         r = self._p.add_r()
         return _Run(r, self)
 
+    def add_field(
+        self, field_type: MSO_TEXT_FIELD_TYPE | str | None = None, text: str | None = None
+    ) -> _Field:
+        """Append and return a new text field (`a:fld`) to this paragraph.
+
+        A field is a run-like element whose displayed text PowerPoint computes when the slide
+        is rendered, e.g. the slide number or the current date. *field_type* is an
+        |MSO_TEXT_FIELD_TYPE| member or one of its token strings (e.g. ``"slidenum"``) and is
+        written to the field's ``type`` attribute. *text* is the "cached" text stored in the
+        field's `a:t` child — what :attr:`text` reports and what readers that do not compute
+        fields display; PowerPoint replaces it with the computed value at render time.
+
+        When *field_type* is given and *text* is |None|, a per-type placeholder is cached
+        (``"‹#›"`` for a slide number, ``"‹D›"`` for a date/time field). When *field_type* is
+        |None|, a bare field is added whose ``type`` and cached text can be set afterwards on
+        the returned |_Field| object.
+        """
+        fld = self._p.add_fld()
+        field = _Field(fld, self)
+        if field_type is not None:
+            field.type = field_type
+            if text is None:
+                token = fld.type
+                text = _FIELD_PLACEHOLDER_TEXT.get(token, _FIELD_DATETIME_PLACEHOLDER)
+        if text is not None:
+            fld.text = text
+        return field
+
     def add_math(
         self,
         latex: str,
@@ -1276,3 +1319,84 @@ class _Run(Subshape):
     @text.setter
     def text(self, text: str):
         self._r.text = text
+
+
+def _field_type_token(field_type: MSO_TEXT_FIELD_TYPE | str) -> str:
+    """Return the XML token (e.g. ``"slidenum"``) for *field_type*.
+
+    *field_type* may be an |MSO_TEXT_FIELD_TYPE| member or one of its token strings. Raises
+    |ValueError| for any other value so a typo'd token doesn't silently produce a field
+    PowerPoint won't render.
+    """
+    if isinstance(field_type, MSO_TEXT_FIELD_TYPE):
+        return field_type.xml_value
+    try:
+        return MSO_TEXT_FIELD_TYPE.from_xml(field_type).xml_value
+    except ValueError:
+        valid = ", ".join(repr(member.xml_value) for member in MSO_TEXT_FIELD_TYPE)
+        raise ValueError(
+            "field_type must be an MSO_TEXT_FIELD_TYPE member or one of (%s), got %r"
+            % (valid, field_type)
+        ) from None
+
+
+class _Field(Subshape):
+    """Text field object. Corresponds to `a:fld` child element in a paragraph.
+
+    A field is a run-like element whose displayed text PowerPoint computes when the slide is
+    rendered, e.g. the slide number or the current date. Its `a:t` child element holds the
+    "cached" text, which is what :attr:`_Paragraph.text` concatenates into paragraph text.
+    Not intended to be constructed directly; use :meth:`_Paragraph.add_field`.
+    """
+
+    def __init__(self, fld: CT_TextField, parent: ProvidesPart):
+        super(_Field, self).__init__(parent)
+        self._fld = fld
+
+    @property
+    def font(self) -> Font:
+        """|Font| instance containing character properties for this field's text.
+
+        Character properties can be, and perhaps most often are, inherited from parent objects
+        such as the paragraph and slide layout the field is contained in. Only those
+        specifically overridden at the field level are contained in the font object.
+        """
+        rPr = self._fld.get_or_add_rPr()
+        return Font(rPr)
+
+    @property
+    def text(self):
+        """Read/write. A unicode string containing the cached text of this field.
+
+        This is the text of the field's `a:t` child element — the value cached when the field
+        was authored, not the value PowerPoint computes when the slide is rendered. Assignment
+        replaces it. Any control characters other than tab or newline are escaped as a hex
+        representation, e.g. "_x001B_" for ESC.
+        """
+        return self._fld.text
+
+    @text.setter
+    def text(self, text: str):
+        self._fld.text = text
+
+    @property
+    def type(self) -> MSO_TEXT_FIELD_TYPE | str | None:
+        """Read/write. The kind of value this field displays.
+
+        A member of |MSO_TEXT_FIELD_TYPE|, or |None| when the field has no ``type`` attribute.
+        A ``type`` token this library does not recognize is returned as the raw string.
+        """
+        token = self._fld.type
+        if token is None:
+            return None
+        try:
+            return MSO_TEXT_FIELD_TYPE.from_xml(token)
+        except ValueError:
+            return token
+
+    @type.setter
+    def type(self, value: MSO_TEXT_FIELD_TYPE | str | None):
+        if value is None:
+            self._fld.type = None
+        else:
+            self._fld.type = _field_type_token(value)

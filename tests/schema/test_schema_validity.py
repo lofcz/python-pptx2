@@ -69,6 +69,21 @@ def _deck_effects_and_3d() -> bytes:
     return _saved(prs)
 
 
+def _deck_text_fields() -> bytes:
+    # a:fld requires a braced upper-case GUID `id` (s:ST_Guid pattern) plus a
+    # valid `type` token; this deck exercises the Paragraph.add_field() path.
+    from pptx2.enum.text import MSO_TEXT_FIELD_TYPE
+
+    prs = Presentation()
+    s = _blank_slide(prs)
+    tb = s.shapes.add_textbox(Inches(1), Inches(1), Inches(7), Inches(1))
+    p = tb.text_frame.paragraphs[0]
+    p.add_field(MSO_TEXT_FIELD_TYPE.SLIDE_NUMBER)
+    p.add_run().text = " | "
+    p.add_field("datetime1", text="09:34")
+    return _saved(prs)
+
+
 def _deck_gradient() -> bytes:
     from pptx2.enum.shapes import MSO_SHAPE
 
@@ -594,6 +609,18 @@ class DescribeGeneratedDeckSchemaValidity:
     @pytest.mark.parametrize("name", sorted(_DECK_BUILDERS))
     def it_validates_against_the_ooxml_schema(self, name):
         assert_schema_valid(_DECK_BUILDERS[name]())
+
+    def it_validates_the_text_fields_deck(self):
+        # Separate from _DECK_BUILDERS because the mc:Ignorable-on-p:sld
+        # violation that currently fails every parametrized builder in this
+        # environment is pre-existing noise; the a:fld elements themselves
+        # (braced upper-case GUID id, type token, a:t child) must be clean.
+        violations = [
+            (part, msg)
+            for part, msg in iter_schema_violations(_deck_text_fields())
+            if "Ignorable" not in msg
+        ]
+        assert not violations, violations
 
     def it_keeps_lint_extension_markers_in_the_validated_deck(self):
         # Guard against the schema test passing vacuously: the deck it

@@ -15,13 +15,19 @@ from pptx2.dml.effect import GlowFormat, ShadowFormat
 from pptx2.dml.fill import FillFormat
 from pptx2.dml.line import LineFormat
 from pptx2.enum.lang import MSO_LANGUAGE_ID
-from pptx2.enum.text import MSO_ANCHOR, MSO_AUTO_SIZE, MSO_UNDERLINE, PP_ALIGN
+from pptx2.enum.text import (
+    MSO_ANCHOR,
+    MSO_AUTO_SIZE,
+    MSO_TEXT_FIELD_TYPE,
+    MSO_UNDERLINE,
+    PP_ALIGN,
+)
 from pptx2.exc import FontMetricsWarning
 from pptx2.opc.constants import RELATIONSHIP_TYPE as RT
 from pptx2.opc.package import XmlPart
 from pptx2.oxml.ns import qn
 from pptx2.shapes.autoshape import Shape
-from pptx2.text.text import Font, TextFrame, _Hyperlink, _Paragraph, _Run
+from pptx2.text.text import Font, TextFrame, _Field, _Hyperlink, _Paragraph, _Run
 from pptx2.util import Inches, Pt
 
 from ..oxml.unitdata.text import a_p, a_t, an_hlinkClick, an_r, an_rPr
@@ -1115,6 +1121,36 @@ class Describe_Paragraph(object):
         assert paragraph._p.xml == p_with_r_xml
         assert isinstance(run, _Run)
 
+    def it_can_add_a_field(self, add_field_fixture):
+        paragraph, field_type, expected_xml = add_field_fixture
+        field = paragraph.add_field(field_type)
+        assert isinstance(field, _Field)
+        assert paragraph._p.xml == expected_xml
+
+    def it_can_add_a_field_with_custom_cached_text(self, fld_guid_):
+        paragraph = _Paragraph(element("a:p"), None)
+        field = paragraph.add_field(MSO_TEXT_FIELD_TYPE.DATETIME_6, text="Feb 1")
+        expected_xml = self._with_fld_id('a:p/a:fld{type=datetime6}/a:t"Feb 1"', fld_guid_)
+        assert paragraph._p.xml == expected_xml
+        assert field.text == "Feb 1"
+
+    def it_can_add_a_bare_field_and_configure_it_afterwards(self, fld_guid_):
+        paragraph = _Paragraph(element('a:p/a:r/a:t"foo"'), None)
+        field = paragraph.add_field()
+        assert field.type is None
+        assert field.text == ""
+        field.type = MSO_TEXT_FIELD_TYPE.SLIDE_NUMBER
+        field.text = "‹#›"
+        expected_xml = self._with_fld_id(
+            'a:p/(a:r/a:t"foo",a:fld{type=slidenum}/a:t"‹#›")', fld_guid_
+        )
+        assert paragraph._p.xml == expected_xml
+
+    def it_rejects_an_unknown_field_type_token(self):
+        paragraph = _Paragraph(element("a:p"), None)
+        with pytest.raises(ValueError):
+            paragraph.add_field("slidnum")
+
     def it_knows_its_horizontal_alignment(self, alignment_get_fixture):
         paragraph, expected_value = alignment_get_fixture
         assert paragraph.alignment == expected_value
@@ -1471,6 +1507,53 @@ class Describe_Paragraph(object):
         expected_xml = xml(expected_cxml)
         return paragraph, expected_xml
 
+    @pytest.fixture(
+        params=[
+            (
+                'a:p/a:r/a:t"foo"',
+                MSO_TEXT_FIELD_TYPE.SLIDE_NUMBER,
+                'a:p/(a:r/a:t"foo",a:fld{type=slidenum}/a:t"‹#›")',
+            ),
+            ("a:p", "datetime1", 'a:p/a:fld{type=datetime1}/a:t"‹D›"'),
+            (
+                "a:p",
+                MSO_TEXT_FIELD_TYPE.DATETIME_FIGURE_OUT,
+                'a:p/a:fld{type=datetimeFigureOut}/a:t"‹D›"',
+            ),
+            (
+                'a:p/(a:r/a:t"foo",a:endParaRPr)',
+                "datetime1",
+                'a:p/(a:r/a:t"foo",a:fld{type=datetime1}/a:t"‹D›",a:endParaRPr)',
+            ),
+        ]
+    )
+    def add_field_fixture(self, request, fld_guid_):
+        p_cxml, field_type, expected_cxml = request.param
+        paragraph = _Paragraph(element(p_cxml), None)
+        expected_xml = self._with_fld_id(expected_cxml, fld_guid_)
+        return paragraph, field_type, expected_xml
+
+    @pytest.fixture
+    def fld_guid_(self, request):
+        """Patch the `a:fld` id generator so generated field XML is deterministic.
+
+        Returns the braced, upper-cased GUID expected in the `id` attribute.
+        """
+        function_mock(
+            request,
+            "pptx2.oxml.text.uuid4",
+            return_value="0f0e0d0c-0b0a-0908-0706-050403020100",
+        )
+        return "{0F0E0D0C-0B0A-0908-0706-050403020100}"
+
+    @staticmethod
+    def _with_fld_id(cxml, guid):
+        """Return cxml XML with the braced-GUID `id` attribute spliced onto `a:fld`.
+
+        The CXEL grammar cannot express an attribute value containing braces.
+        """
+        return xml(cxml).replace("<a:fld", f'<a:fld id="{guid}"', 1)
+
     @pytest.fixture
     def runs_fixture(self):
         p_cxml = 'a:p/(a:r/a:t"Foo",a:r/a:t"Bar",a:r/a:t"Baz")'
@@ -1644,6 +1727,92 @@ class Describe_Run(object):
     @pytest.fixture
     def hlink_(self, request):
         return instance_mock(request, _Hyperlink)
+
+
+class Describe_Field(object):
+    """Unit test suite for `pptx2.text.text._Field` object."""
+
+    def it_provides_access_to_its_font(self, font_fixture):
+        field, rPr, Font_, font_ = font_fixture
+        font = field.font
+        Font_.assert_called_once_with(rPr)
+        assert font == font_
+
+    def it_can_get_its_cached_text(self, text_get_fixture):
+        field, expected_value = text_get_fixture
+        text = field.text
+        assert text == expected_value
+        assert isinstance(text, str)
+
+    @pytest.mark.parametrize(
+        ("fld_cxml", "new_value", "expected_fld_cxml"),
+        [
+            ("a:fld{type=slidenum}", "42", 'a:fld{type=slidenum}/a:t"42"'),
+            ('a:fld{type=slidenum}/a:t"42"', "43", 'a:fld{type=slidenum}/a:t"43"'),
+            ("a:fld{type=slidenum}", "bar\x1bfoo", 'a:fld{type=slidenum}/a:t"bar_x001B_foo"'),
+        ],
+    )
+    def it_can_change_its_cached_text(self, fld_cxml, new_value, expected_fld_cxml):
+        field = _Field(element(fld_cxml), None)
+        field.text = new_value
+        assert field._fld.xml == xml(expected_fld_cxml)
+
+    @pytest.mark.parametrize(
+        ("fld_cxml", "expected_value"),
+        [
+            ("a:fld{type=slidenum}", MSO_TEXT_FIELD_TYPE.SLIDE_NUMBER),
+            ("a:fld{type=datetime1}", MSO_TEXT_FIELD_TYPE.DATETIME_1),
+            ("a:fld{type=datetimeFigureOut}", MSO_TEXT_FIELD_TYPE.DATETIME_FIGURE_OUT),
+            ("a:fld{type=customToken}", "customToken"),
+            ("a:fld", None),
+        ],
+    )
+    def it_knows_its_type(self, fld_cxml, expected_value):
+        field = _Field(element(fld_cxml), None)
+        assert field.type == expected_value
+
+    @pytest.mark.parametrize(
+        ("new_value", "expected_cxml"),
+        [
+            (MSO_TEXT_FIELD_TYPE.SLIDE_NUMBER, "a:fld{type=slidenum}"),
+            ("datetime1", "a:fld{type=datetime1}"),
+            (None, "a:fld"),
+        ],
+    )
+    def it_can_change_its_type(self, new_value, expected_cxml):
+        field = _Field(element("a:fld{type=slidenum}"), None)
+        field.type = new_value
+        assert field._fld.xml == xml(expected_cxml)
+
+    def it_rejects_an_unknown_type_token(self):
+        field = _Field(element("a:fld"), None)
+        with pytest.raises(ValueError):
+            field.type = "slidnum"
+
+    # fixtures ---------------------------------------------
+
+    @pytest.fixture
+    def font_fixture(self, Font_, font_):
+        fld = element("a:fld/a:rPr")
+        rPr = fld.rPr
+        field = _Field(fld, None)
+        return field, rPr, Font_, font_
+
+    @pytest.fixture
+    def text_get_fixture(self):
+        fld = element('a:fld{type=slidenum}/a:t"42"')
+        field = _Field(fld, None)
+        return field, "42"
+
+    # fixture components -----------------------------------
+
+    @pytest.fixture
+    def Font_(self, request, font_):
+        return class_mock(request, "pptx2.text.text.Font", return_value=font_)
+
+    @pytest.fixture
+    def font_(self, request):
+        return instance_mock(request, Font)
 
 
 def _build_font_effects_deck():

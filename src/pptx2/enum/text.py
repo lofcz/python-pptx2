@@ -228,3 +228,75 @@ class PP_PARAGRAPH_ALIGNMENT(BaseXmlEnum):
 
 
 PP_ALIGN = PP_PARAGRAPH_ALIGNMENT
+
+
+class MSO_TEXT_FIELD_TYPE(BaseXmlEnum):
+    """Specifies the kind of value a text field (`a:fld`) displays.
+
+    Used with :meth:`.Paragraph.add_field` to add a run-like field element to a paragraph.
+    The field's displayed text (the actual slide number, the current date, ...) is computed by
+    PowerPoint when the slide is rendered; the `a:t` child element holds only the "cached"
+    placeholder text readers that do not compute fields will show.
+
+    Example::
+
+        from pptx2.enum.text import MSO_TEXT_FIELD_TYPE
+
+        paragraph.add_field(MSO_TEXT_FIELD_TYPE.SLIDE_NUMBER)
+
+    The XML tokens are the ST_TextFieldType values DrawingML defines ("slidenum", "datetime",
+    "datetime1" through "datetime13") plus "datetimeFigureOut", the token PowerPoint writes for
+    an automatically updated date.
+    """
+
+    SLIDE_NUMBER = (1, "slidenum", "The number of the slide the field appears on.")
+    """The number of the slide the field appears on."""
+
+    DATETIME = (2, "datetime", "The date and time in the containing document's default format.")
+    """The date and time in the containing document's default format."""
+
+    DATETIME_1 = (3, "datetime1", "Predefined date/time format 1 (locale-dependent rendering).")
+    """Predefined date/time format 1 (locale-dependent rendering)."""
+
+    DATETIME_2 = (4, "datetime2", "Predefined date/time format 2 (locale-dependent rendering).")
+    """Predefined date/time format 2 (locale-dependent rendering)."""
+
+    DATETIME_3 = (5, "datetime3", "Predefined date/time format 3 (locale-dependent rendering).")
+    """Predefined date/time format 3 (locale-dependent rendering)."""
+
+    DATETIME_4 = (6, "datetime4", "Predefined date/time format 4 (locale-dependent rendering).")
+    """Predefined date/time format 4 (locale-dependent rendering)."""
+
+    DATETIME_5 = (7, "datetime5", "Predefined date/time format 5 (locale-dependent rendering).")
+    """Predefined date/time format 5 (locale-dependent rendering)."""
+
+    DATETIME_6 = (8, "datetime6", "Predefined date/time format 6 (locale-dependent rendering).")
+    """Predefined date/time format 6 (locale-dependent rendering)."""
+
+    DATETIME_7 = (9, "datetime7", "Predefined date/time format 7 (locale-dependent rendering).")
+    """Predefined date/time format 7 (locale-dependent rendering)."""
+
+    DATETIME_8 = (10, "datetime8", "Predefined date/time format 8 (locale-dependent rendering).")
+    """Predefined date/time format 8 (locale-dependent rendering)."""
+
+    DATETIME_9 = (11, "datetime9", "Predefined date/time format 9 (locale-dependent rendering).")
+    """Predefined date/time format 9 (locale-dependent rendering)."""
+
+    DATETIME_10 = (12, "datetime10", "Predefined date/time format 10 (locale-dependent rendering).")
+    """Predefined date/time format 10 (locale-dependent rendering)."""
+
+    DATETIME_11 = (13, "datetime11", "Predefined date/time format 11 (locale-dependent rendering).")
+    """Predefined date/time format 11 (locale-dependent rendering)."""
+
+    DATETIME_12 = (14, "datetime12", "Predefined date/time format 12 (locale-dependent rendering).")
+    """Predefined date/time format 12 (locale-dependent rendering)."""
+
+    DATETIME_13 = (15, "datetime13", "Predefined date/time format 13 (locale-dependent rendering).")
+    """Predefined date/time format 13 (locale-dependent rendering)."""
+
+    DATETIME_FIGURE_OUT = (
+        16,
+        "datetimeFigureOut",
+        "The current date, in the format PowerPoint figures out automatically.",
+    )
+    """The current date, in the format PowerPoint figures out automatically."""

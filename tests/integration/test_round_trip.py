@@ -245,6 +245,45 @@ class DescribeErgonomicsRoundTrip:
             table.cell(0, c).text = "header %d" % c
         assert_round_trip(prs)
 
+    def it_round_trips_a_deck_with_text_fields(self):
+        from pptx2.enum.text import MSO_TEXT_FIELD_TYPE
+
+        prs = Presentation()
+        slide = prs.slides.add_slide(prs.slide_layouts[6])
+        box = slide.shapes.add_textbox(Inches(1), Inches(1), Inches(8), Inches(1))
+        p = box.text_frame.paragraphs[0]
+        p.add_field(MSO_TEXT_FIELD_TYPE.SLIDE_NUMBER)
+        p.add_field("datetime1", text="09:34")
+        p.add_field()  # --bare field, configured via its proxy--
+        assert_round_trip(prs)
+
+    def it_round_trips_fields_without_flattening_them_to_runs(self):
+        import io
+        import re
+
+        from pptx2.enum.text import MSO_TEXT_FIELD_TYPE
+
+        prs = Presentation()
+        slide = prs.slides.add_slide(prs.slide_layouts[6])
+        box = slide.shapes.add_textbox(Inches(1), Inches(1), Inches(8), Inches(1))
+        p = box.text_frame.paragraphs[0]
+        p.add_field(MSO_TEXT_FIELD_TYPE.SLIDE_NUMBER)
+        p.add_field("datetime1", text="09:34")
+
+        buf = io.BytesIO()
+        prs.save(buf)
+        buf.seek(0)
+        reopened = Presentation(buf)
+        tf = reopened.slides[0].shapes[0].text_frame
+        flds = tf._txBody.xpath(".//a:fld")
+        assert len(flds) == 2
+        assert [fld.get("type") for fld in flds] == ["slidenum", "datetime1"]
+        assert all(re.match(r"^\{[0-9A-F-]{36}\}$", fld.get("id")) for fld in flds)
+        assert flds[0].xpath("./a:t")[0].text == "‹#›"
+        assert flds[1].xpath("./a:t")[0].text == "09:34"
+        # --the cached field text feeds the read path, runs stay runs--
+        assert tf.paragraphs[0].text == "‹#›09:34"
+
 
 class DescribeCustomPropertiesRoundTrip:
     def it_round_trips_a_deck_with_custom_properties(self):
