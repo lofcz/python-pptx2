@@ -130,6 +130,68 @@ def _resolve_mce(doc):
     return doc
 
 
+def _strip_mce_ignorables(doc):
+    """Drop markup an ISO-pure processor must ignore, in place.
+
+    ISO/IEC 29500-3 (Markup Compatibility): a processor that does not
+    understand a namespace listed in ``mc:Ignorable`` MUST ignore every
+    element and attribute in that namespace — and the ``mc:*`` compatibility
+    attributes themselves are outside the base schemas.  The bundled XSDs are
+    exactly such an "MCE-unaware" consumer, so before strict validation this
+    removes:
+
+    * every attribute in the ``mc`` compatibility namespace (``mc:Ignorable``,
+      ``mc:MustUnderstand``, ``mc:ProcessConflicts``, ``mc:PreserveIgnorable``);
+    * every element and attribute in any namespace declared ignorable via
+      ``mc:Ignorable`` (e.g. the ``a14`` equation host namespace 2.14.0+
+      slides declare so PowerPoint tolerates their ``a14:m`` runs).
+
+    Without this, every generated slide fails validation on the
+    ``mc:Ignorable`` attribute alone, deafening the gate to real violations.
+    """
+    # -- 1. collect the namespaces declared ignorable anywhere in the part --
+    ignorable_ns = set()
+    for el in doc.iter():
+        declared = el.get("{%s}Ignorable" % _MC_NS)
+        if not declared:
+            continue
+        for prefix in declared.split():
+            # nsmap is the full in-scope prefix map at this element, so it
+            # resolves prefixes declared on ancestors as well.
+            uri = el.nsmap.get(prefix)
+            if uri is not None:
+                ignorable_ns.add(uri)
+
+    # -- 2. drop elements in ignorable namespaces (root cannot be ignorable:
+    # --    a part whose root is outside the base schema has no schema here) --
+    if ignorable_ns:
+        root = doc.getroottree().getroot()
+        for el in list(doc.iter()):
+            if el is root:
+                continue
+            if etree.QName(el).namespace in ignorable_ns:
+                parent = el.getparent()
+                if parent is not None:
+                    parent.remove(el)
+
+    # -- 3. drop mc:* compatibility attributes and ignorable-ns attributes --
+    mc_attrs = [
+        "{%s}Ignorable" % _MC_NS,
+        "{%s}MustUnderstand" % _MC_NS,
+        "{%s}ProcessConflicts" % _MC_NS,
+        "{%s}PreserveIgnorable" % _MC_NS,
+    ]
+    for el in doc.iter():
+        for attr in list(el.attrib):
+            if attr in mc_attrs:
+                del el.attrib[attr]
+                continue
+            brace = attr.find("}")
+            if brace != -1 and attr[1:brace] in ignorable_ns:
+                del el.attrib[attr]
+    return doc
+
+
 def _should_check(partname: str) -> bool:
     return partname in _CHECKED_EXACT or partname.startswith(_CHECKED_PREFIXES)
 
@@ -440,6 +502,7 @@ def iter_schema_violations(
             schema = _schema_for_namespace(etree.QName(doc).namespace)
             if schema is None:
                 continue
+            _strip_mce_ignorables(doc)
             _resolve_mce(doc)
             if not schema.validate(doc):
                 for err in schema.error_log:  # type: ignore[attr-defined]
