@@ -28,6 +28,12 @@ Fixed
   guarantee. The check is now key presence in the host object's
   ``__dict__`` (upstream fix by Afonso Januário,
   ``fix/lazyproperty-none-value-caching``).
+* MPO-encoded JPEG images (multi-picture object files common from
+  cameras, ``.mpo``) are accepted by ``add_picture()`` and
+  ``Image.from_file()`` instead of raising ``ValueError: unsupported
+  image format``. Pillow reports these as format ``MPO``; they are
+  mapped to the canonical ``jpg`` extension and ``image/jpeg``
+  content type (port of scanny/python-pptx#1075 by riparuk).
 
 
 2.14.0 (2026-08-26)

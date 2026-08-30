@@ -5,10 +5,12 @@ from __future__ import annotations
 import io
 
 import pytest
+from PIL import Image as PIL_Image
 
+from pptx2 import Presentation
 from pptx2.package import Package
 from pptx2.parts.image import Image, ImagePart
-from pptx2.util import Emu
+from pptx2.util import Emu, Inches
 
 from ..unitutil.file import absjoin, test_file_dir
 from ..unitutil.mock import (
@@ -125,6 +127,24 @@ class DescribeImage(object):
         image, expected_value = ext_fixture
         assert image.ext == expected_value
 
+    def it_accepts_mpo_encoded_jpeg_images(self, tmp_path):
+        first = PIL_Image.new("RGB", (2, 2), "red")
+        second = PIL_Image.new("RGB", (2, 2), "blue")
+        mpo_path = tmp_path / "photo.mpo"
+        first.save(mpo_path, format="MPO", save_all=True, append_images=[second])
+
+        image = Image.from_file(str(mpo_path))
+
+        assert image.ext == "jpg"
+        assert image.content_type == "image/jpeg"
+        assert image.size == (2, 2)
+
+        prs = Presentation()
+        slide = prs.slides.add_slide(prs.slide_layouts[6])
+        picture = slide.shapes.add_picture(str(mpo_path), Inches(1), Inches(1))
+
+        assert picture.image.content_type == "image/jpeg"
+
     def it_knows_its_dpi(self, dpi_fixture):
         image, expected_value = dpi_fixture
         assert image.dpi == expected_value
@@ -157,6 +177,7 @@ class DescribeImage(object):
             ("BMP", "image/bmp"),
             ("GIF", "image/gif"),
             ("JPEG", "image/jpeg"),
+            ("MPO", "image/jpeg"),
             ("PNG", "image/png"),
             ("TIFF", "image/tiff"),
             ("WMF", "image/x-wmf"),
@@ -188,6 +209,7 @@ class DescribeImage(object):
             ("BMP", "bmp"),
             ("GIF", "gif"),
             ("JPEG", "jpg"),
+            ("MPO", "jpg"),
             ("PNG", "png"),
             ("TIFF", "tiff"),
             ("WMF", "wmf"),
