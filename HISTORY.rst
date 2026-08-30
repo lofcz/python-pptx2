@@ -15,6 +15,21 @@ can sit beside both ``python-pptx`` (``pptx``) and ``power-pptx``
 .. _`scanny/python-pptx`: https://github.com/scanny/python-pptx
 
 
+Unreleased
+++++++++++
+
+Fixed
+.....
+
+* ``@lazyproperty`` now caches a getter that legitimately returns
+  ``None``. The instance-cache hit test compared the cached value to
+  ``None``, so a ``None``-returning getter was silently re-evaluated on
+  every access, contradicting the decorator's documented evaluate-once
+  guarantee. The check is now key presence in the host object's
+  ``__dict__`` (upstream fix by Afonso Januário,
+  ``fix/lazyproperty-none-value-caching``).
+
+
 2.14.0 (2026-08-26)
 +++++++++++++++++++
 

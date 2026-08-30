@@ -6,7 +6,41 @@ from decimal import Decimal
 
 import pytest
 
-from pptx2.util import Centipoints, Cm, Emu, Inches, Length, Mm, Pt, _coerce_emu
+from pptx2.util import Centipoints, Cm, Emu, Inches, Length, Mm, Pt, _coerce_emu, lazyproperty
+
+
+class DescribeLazyproperty(object):
+    def it_only_calls_the_decorated_method_once(self):
+        class Obj(object):
+            def __init__(self):
+                self.call_count = 0
+
+            @lazyproperty
+            def fget(self):
+                self.call_count += 1
+                return self.call_count
+
+        obj = Obj()
+
+        assert obj.fget == 1
+        assert obj.fget == 1
+        assert obj.call_count == 1
+
+    def it_caches_a_None_return_value_too(self):
+        class Obj(object):
+            def __init__(self):
+                self.call_count = 0
+
+            @lazyproperty
+            def fget(self):
+                self.call_count += 1
+                return None
+
+        obj = Obj()
+
+        assert obj.fget is None
+        assert obj.fget is None
+        assert obj.call_count == 1
 
 
 class DescribeLength(object):
