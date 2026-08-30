@@ -32,6 +32,7 @@ import math
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, Sequence
 
+from pptx2._agent_friendly import agent_friendly
 from pptx2.enum.shapes import MSO_SHAPE
 from pptx2.geometry import BBox
 from pptx2.util import Emu, Inches, Pt
@@ -245,6 +246,14 @@ def _card(
 # ----------------------------------------------------------------------------- pipelines
 
 
+@agent_friendly(
+    {
+        "text_color": ("color", "colour", "fg_color", "text_colour"),
+        "accent": ("accent_color", "primary", "primary_color"),
+        "fill": ("fill_color", "background", "bg"),
+    }
+
+)
 def horizontal_pipeline(
     slide,
     bbox: BBox,
@@ -312,6 +321,14 @@ def horizontal_pipeline(
     return PipelineResult(cards=cards, arrows=arrows)
 
 
+@agent_friendly(
+    {
+        "text_color": ("color", "colour", "fg_color", "text_colour"),
+        "accent": ("accent_color", "primary", "primary_color"),
+        "fill": ("fill_color", "background", "bg"),
+    }
+
+)
 def vertical_pipeline(
     slide,
     bbox: BBox,
@@ -371,6 +388,15 @@ def vertical_pipeline(
 # ----------------------------------------------------------------------------- hub
 
 
+@agent_friendly(
+    {
+        "text_color": ("color", "colour", "fg_color", "text_colour"),
+        "accent": ("accent_color", "primary", "primary_color"),
+        "fill": ("fill_color", "background", "bg"),
+        "spokes": ("items", "stages", "nodes"),
+        "centre": ("center", "hub", "hub_label", "title"),
+    }
+)
 def hub_and_spoke(
     slide,
     bbox: BBox,
@@ -479,6 +505,14 @@ def hub_and_spoke(
 # ----------------------------------------------------------------------------- cycle
 
 
+@agent_friendly(
+    {
+        "text_color": ("color", "colour", "fg_color", "text_colour"),
+        "accent": ("accent_color", "primary", "primary_color"),
+        "fill": ("fill_color", "background", "bg"),
+    }
+
+)
 def cycle(
     slide,
     bbox: BBox,
@@ -553,6 +587,15 @@ def cycle(
 # ----------------------------------------------------------------------------- decision tree
 
 
+@agent_friendly(
+    {
+        "text_color": ("color", "colour", "fg_color", "text_colour"),
+        "accent": ("accent_color", "primary", "primary_color"),
+        "fill": ("fill_color", "background", "bg"),
+        "branches": ("items", "nodes", "children", "steps"),
+        "root": ("root_label", "title", "center"),
+    }
+)
 def decision_tree(
     slide,
     bbox: BBox,
@@ -675,6 +718,14 @@ def decision_tree(
 # ----------------------------------------------------------------------------- columns
 
 
+@agent_friendly(
+    {
+        "text_color": ("color", "colour", "fg_color", "text_colour"),
+        "accent": ("accent_color", "primary", "primary_color"),
+        "fill": ("fill_color", "background", "bg"),
+        "columns": ("items", "cols", "sections"),
+    }
+)
 def comparison_columns(
     slide,
     bbox: BBox,

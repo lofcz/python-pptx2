@@ -452,9 +452,13 @@ end. `move` raises `IndexError` out of range; `reorder` raises
 
 ### Forgiving keyword arguments
 
-The one-call helpers (`add_text`, `add_equation`, `add_arrow`) absorb
-cross-library and near-miss kwargs, so the `font_family=` / `halign=` /
-`fontsize=` / `colour` / `x,y,w,h` / `begin,to` habits of other
-ecosystems just work. Synonyms substitute, never contradict (two
-different values for the same logical argument still raise), and a
-truly unknown kwarg raises a `TypeError` listing every accepted name.
+Every shape helper (`add_text`, `add_shape`, `add_picture`,
+`add_table`, `add_chart`, `add_textbox`, `add_connector`, `add_movie`,
+`add_arrow`, `add_equation`, ...) and the diagram recipes
+(`horizontal_pipeline`, `hub_and_spoke`, ...) absorb cross-library and
+near-miss kwargs: `font_family=`, `halign=`/`valign=`, `fontsize=`,
+`colour`, `x,y,w,h` geometry keywords, `shape_type=`, `image=`,
+`columns=`, `data=`, `begin=`/`to=`, `items=`/`nodes=` ... Synonyms
+substitute, never contradict (two different values for the same
+logical argument still raise), and a truly unknown kwarg raises a
+`TypeError` listing every accepted name.

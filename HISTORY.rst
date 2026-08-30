@@ -15,6 +15,26 @@ can sit beside both ``python-pptx`` (``pptx``) and ``power-pptx``
 .. _`scanny/python-pptx`: https://github.com/scanny/python-pptx
 
 
+Unreleased
+++++++++++
+
+Added
+.....
+
+* **Agent-friendly kwargs, everywhere.** The alias/fuzzy normalization
+  introduced for ``add_text`` now covers the whole shape-creation
+  surface via a reusable ``@agent_friendly`` decorator: ``add_shape``
+  (``shape_type=``), ``add_picture`` / ``add_svg_picture`` /
+  ``add_movie`` (``image=`` / ``video=``), ``add_table``
+  (``columns=``), ``add_chart`` (``data=``, ``width=``/``height=`` for
+  ``cx``/``cy``), ``add_textbox``, ``add_connector`` (``x1/y1/x2/y2``),
+  ``add_group_shape``, ``add_ole_object``, and the six diagram recipes
+  (``items=`` / ``stages=`` / ``nodes=`` / ``colour=`` ...). All of
+  them accept ``x``/``y``/``w``/``h`` geometry keywords, substitute
+  synonyms without allowing contradictions, and raise ``TypeErrors``
+  that list every accepted argument.
+
+
 2.18.0 (2026-08-30)
 +++++++++++++++++++
 

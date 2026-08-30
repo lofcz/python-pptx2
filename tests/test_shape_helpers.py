@@ -180,6 +180,66 @@ class DescribeAddArrowSynonyms:
         assert arrow.begin_x == Inches(0)
 
 
+class DescribeAgentFriendlyShapeApi:
+    """Every shapes.add_* absorbs cross-library kwargs, not just add_text."""
+
+    def it_add_shape_takes_shape_type_and_xywh(self, slide):
+        rect = slide.shapes.add_shape(
+            shape_type=MSO_SHAPE.RECTANGLE,
+            x=Inches(1), y=Inches(1), w=Inches(2), h=Inches(1),
+        )
+        assert (rect.left, rect.top) == (Inches(1), Inches(1))
+
+    def it_add_picture_takes_image_and_xywh(self, slide, tmp_path):
+        import struct, zlib
+
+        def _png(path):
+            def chunk(tag, data):
+                c = struct.pack(">I", len(data)) + tag + data
+                return c + struct.pack(">I", zlib.crc32(tag + data) & 0xFFFFFFFF)
+            ihdr = struct.pack(">IIBBBBB", 1, 1, 8, 2, 0, 0, 0)
+            raw = b"\x00\xff\x00\x00"
+            blob = (b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", ihdr)
+                    + chunk(b"IDAT", zlib.compress(raw)) + chunk(b"IEND", b""))
+            path.write_bytes(blob)
+
+        pic_path = tmp_path / "dot.png"
+        _png(pic_path)
+        pic = slide.shapes.add_picture(
+            image=str(pic_path), x=Inches(1), y=Inches(1), w=Inches(1), h=Inches(1)
+        )
+        assert pic.left == Inches(1)
+
+    def it_add_table_takes_columns_and_xywh(self, slide):
+        gf = slide.shapes.add_table(
+            rows=2, columns=3, x=Inches(1), y=Inches(1), w=Inches(6), h=Inches(2)
+        )
+        assert len(gf.table.columns) == 3
+
+    def it_add_textbox_takes_xywh(self, slide):
+        tb = slide.shapes.add_textbox(x=Inches(2), y=Inches(2), w=Inches(3), h=Inches(1))
+        assert tb.top == Inches(2)
+
+    def it_add_connector_takes_x1y1x2y2(self, slide):
+        cxn = slide.shapes.add_connector(
+            MSO_CONNECTOR_TYPE.STRAIGHT,
+            x1=Inches(0), y1=Inches(0), x2=Inches(2), y2=Inches(2),
+        )
+        assert cxn.begin_x == Inches(0)
+
+    def it_unknown_kwarg_error_lists_accepted_names(self, slide):
+        with pytest.raises(TypeError, match="Accepted"):
+            slide.shapes.add_textbox(Inches(0), Inches(0), Inches(1), Inches(1), bogus=1)
+
+    def it_diagram_recipes_absorb_item_and_colour_synonyms(self, slide):
+        from pptx2 import BBox
+        from pptx2.diagrams import horizontal_pipeline
+
+        horizontal_pipeline(
+            slide, BBox.from_inches(0.5, 1, 12, 1.5), items=["a", "b"], colour="#0D0D0D"
+        )
+
+
 class DescribeSetTextPreservingFormat:
     def it_preserves_font_attributes_across_replacement(self, slide):
         tx = slide.shapes.add_text(

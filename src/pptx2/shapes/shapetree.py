@@ -34,6 +34,7 @@ from pptx2.shapes.placeholder import (
     TablePlaceholder,
 )
 from pptx2.shared import ParentedElementProxy
+from pptx2._agent_friendly import agent_friendly
 from pptx2.util import Emu, _coerce_emu, lazyproperty
 
 if TYPE_CHECKING:
@@ -567,6 +568,7 @@ class _BaseGroupShapes(_BaseShapes):
         super(_BaseGroupShapes, self).__init__(grpSp, parent)
         self._grpSp = grpSp
 
+    @agent_friendly({"cx": ("width", "w"), "cy": ("height", "h"), "chart_data": ("data", "chartdata"), "chart_type": ("type", "charttype")})
     def add_chart(
         self,
         chart_type: XL_CHART_TYPE,
@@ -601,6 +603,7 @@ class _BaseGroupShapes(_BaseShapes):
         _apply_horizontal_bar_default(shape, chart_type)
         return cast("Chart", shape)
 
+    @agent_friendly({"connector_type": ("type", "kind", "connector"), "begin_x": ("x1", "start_x"), "begin_y": ("y1", "start_y"), "end_x": ("x2", "to_x"), "end_y": ("y2", "to_y")})
     def add_connector(
         self,
         connector_type: MSO_CONNECTOR_TYPE,
@@ -621,6 +624,7 @@ class _BaseGroupShapes(_BaseShapes):
         self._recalculate_extents()
         return cast(Connector, self._shape_factory(cxnSp))
 
+    @agent_friendly({"shapes": ("items", "members")})
     def add_group_shape(self, shapes: Iterable[BaseShape] = ()) -> GroupShape:
         """Return a |GroupShape| object newly appended to this shape tree.
 
@@ -639,6 +643,7 @@ class _BaseGroupShapes(_BaseShapes):
             grpSp.recalculate_extents()
         return cast(GroupShape, self._shape_factory(grpSp))
 
+    @agent_friendly
     def add_ole_object(
         self,
         object_file: str | IO[bytes],
@@ -700,6 +705,7 @@ class _BaseGroupShapes(_BaseShapes):
         self._recalculate_extents()
         return cast(GraphicFrame, self._shape_factory(graphicFrame))
 
+    @agent_friendly
     def add_picture(
         self,
         image_file: str | os.PathLike[str] | IO[bytes],
@@ -762,6 +768,7 @@ class _BaseGroupShapes(_BaseShapes):
             picture.top = Emu(ct + new_top)
         return picture
 
+    @agent_friendly({"svg_file": ("svg", "svg_path", "svg_source")})
     def add_svg_picture(
         self,
         svg_file,
@@ -825,6 +832,7 @@ class _BaseGroupShapes(_BaseShapes):
         self._recalculate_extents()
         return cast(Picture, self._shape_factory(pic))
 
+    @agent_friendly({"autoshape_type_id": ("shape_type", "autoshape_type", "shape", "preset_shape")})
     def add_shape(
         self,
         autoshape_type_id: MSO_SHAPE,
@@ -863,6 +871,7 @@ class _BaseGroupShapes(_BaseShapes):
             shape.top = Emu(ct + new_top)
         return shape
 
+    @agent_friendly
     def add_textbox(
         self,
         left: Length,
@@ -1498,6 +1507,7 @@ class _BaseGroupShapes(_BaseShapes):
         sp = self._spTree.add_textbox(id_, name, x, y, cx, cy)
         return sp
 
+    @agent_friendly({"cols": ("columns", "num_cols", "col_count"), "rows": ("num_rows", "row_count")})
     def add_table(
         self,
         rows: int,
@@ -1549,6 +1559,7 @@ class _BaseGroupShapes(_BaseShapes):
             tbl.vert_banding = False
         return shape
 
+    @agent_friendly({"movie_file": ("video", "video_file", "movie", "path", "file")})
     def add_movie(
         self,
         movie_file: str | IO[bytes],
