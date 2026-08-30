@@ -428,3 +428,12 @@ class DescribeSlideHelpers:
     def it_rejects_unknown_near_type_in_find_empty_region(self, slide):
         with pytest.raises(TypeError):
             slide.find_empty_region(near="not-a-shape")
+
+
+class DescribeCssHexShorthand:
+    def it_expands_three_digit_hex(self, slide):
+        rect = slide.shapes.add_shape(
+            MSO_SHAPE.RECTANGLE, Inches(0), Inches(0), Inches(2), Inches(1)
+        )
+        rect.fill_hex("#888")
+        assert str(rect.fill.fore_color.rgb) == "888888"

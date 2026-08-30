@@ -41,6 +41,9 @@ def coerce_color(value: Any) -> RGBColor:
         return value
     if isinstance(value, str):
         s = value.lstrip("#")
+        if len(s) == 3:
+            # CSS shorthand: '#888' -> '#888888' (a common generator habit)
+            s = "".join(ch * 2 for ch in s)
         if len(s) != 6:
             raise ValueError(
                 "color hex string must be 6 digits "

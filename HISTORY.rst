@@ -21,6 +21,9 @@ can sit beside both ``python-pptx`` (``pptx``) and ``power-pptx``
 Added
 .....
 
+* CSS three-digit hex shorthand (``#888`` → ``#888888``) is accepted
+  anywhere a color hex string is.
+
 * **Agent-friendly kwargs, everywhere.** The alias/fuzzy normalization
   introduced for ``add_text`` now covers the whole shape-creation
   surface via a reusable ``@agent_friendly`` decorator: ``add_shape``
