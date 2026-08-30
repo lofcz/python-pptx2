@@ -15,8 +15,16 @@ can sit beside both ``python-pptx`` (``pptx``) and ``power-pptx``
 .. _`scanny/python-pptx`: https://github.com/scanny/python-pptx
 
 
-Unreleased
-++++++++++
+2.15.0 (2026-08-30)
++++++++++++++++++++
+
+Twelve ports from the upstream ``scanny/python-pptx`` pull-request
+backlog, triaged against this fork's existing surface: four correctness
+fixes (notes-master registration, ``.potx`` opening, MPO images,
+``PathLike`` inputs) and eight features (``add_paragraph(text=...)``,
+``get_by_name()`` on shape collections, doughnut first-slice angle,
+``Slides.remove()``, table row/column add & remove, custom document
+properties, slide-number/date fields, slide-layout authoring).
 
 Added
 .....
