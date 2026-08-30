@@ -47,6 +47,26 @@ class DescribeTextFrame(object):
         text_frame.add_paragraph()
         assert text_frame._txBody.xml == expected_xml
 
+    def it_adds_an_empty_paragraph_when_no_text_is_given(self):
+        text_frame = TextFrame(element("p:txBody/a:bodyPr"), None)
+        p = text_frame.add_paragraph()
+        assert p.text == ""
+        assert len(p.runs) == 0
+
+    def it_can_add_a_paragraph_with_text_to_itself(self, add_paragraph_text_fixture):
+        text_frame, expected_xml, text_to_add = add_paragraph_text_fixture
+        p = text_frame.add_paragraph(text_to_add)
+        assert text_frame._txBody.xml == expected_xml
+        assert p.text == text_to_add
+        assert len(p.runs) == 1
+
+    def it_can_add_a_paragraph_with_unicode_text_to_itself(self):
+        text_frame = TextFrame(element("p:txBody/a:bodyPr"), None)
+        text_to_add = "Schrödinger's cat builds a ☃ — Δt·ΣQ"
+        p = text_frame.add_paragraph(text_to_add)
+        assert p.text == text_to_add
+        assert len(p.runs) == 1
+
     def it_knows_its_autosize_setting(self, autosize_get_fixture):
         text_frame, expected_value = autosize_get_fixture
         assert text_frame.auto_size == expected_value
@@ -300,6 +320,19 @@ class DescribeTextFrame(object):
         text_frame = TextFrame(element(txBody_cxml), None)
         expected_xml = xml(expected_cxml)
         return text_frame, expected_xml
+
+    @pytest.fixture(
+        params=[
+            ("p:txBody/a:bodyPr", 'p:txBody/(a:bodyPr,a:p/a:r/a:t"foobar")'),
+            ("p:txBody/(a:bodyPr,a:p)", 'p:txBody/(a:bodyPr,a:p,a:p/a:r/a:t"foobar")'),
+        ]
+    )
+    def add_paragraph_text_fixture(self, request):
+        txBody_cxml, expected_cxml = request.param
+        text_frame = TextFrame(element(txBody_cxml), None)
+        test_text = "foobar"
+        expected_xml = xml(expected_cxml)
+        return text_frame, expected_xml, test_text
 
     @pytest.fixture(
         params=[

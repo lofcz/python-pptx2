@@ -70,6 +70,8 @@ p2.text = "Subtitle goes here"
 p2.font.size = Pt(18)
 ```
 
+`add_paragraph()` also accepts the text directly: `p2 = tf.add_paragraph("Subtitle")`.
+
 ### One call instead of per-run styling
 
 Setting `font.*` on every paragraph is the single most common source of

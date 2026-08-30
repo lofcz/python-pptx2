@@ -18,6 +18,16 @@ can sit beside both ``python-pptx`` (``pptx``) and ``power-pptx``
 Unreleased
 ++++++++++
 
+Added
+.....
+
+* ``TextFrame.add_paragraph()`` accepts an optional ``text`` argument.
+  When given, the new paragraph carries that text as a single run
+  (``add_paragraph("Hello")`` is equivalent to ``add_paragraph()``
+  followed by setting ``.text``); when omitted, an empty paragraph is
+  added exactly as before (upstream feature by kckaiwei,
+  ``scanny/python-pptx#602``).
+
 Fixed
 .....
 

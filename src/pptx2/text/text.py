@@ -59,13 +59,20 @@ class TextFrame(Subshape):
         self._element = self._txBody = txBody
         self._parent = parent
 
-    def add_paragraph(self):
+    def add_paragraph(self, text: str | None = None):
         """
         Return new |_Paragraph| instance appended to the sequence of
         paragraphs contained in this text frame.
+
+        When `text` is supplied, the text of the new paragraph is set to that string
+        (as a single run), exactly as assignment to |_Paragraph.text| would do.
+        Otherwise the new paragraph is empty.
         """
         p = self._txBody.add_p()
-        return _Paragraph(p, self)
+        new_p = _Paragraph(p, self)
+        if text:
+            new_p.text = text
+        return new_p
 
     @property
     def auto_size(self) -> MSO_AUTO_SIZE | None:
