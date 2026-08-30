@@ -35,8 +35,10 @@ from ..unitutil.file import absjoin, test_file_dir
 from ..unitutil.mock import (
     call,
     class_mock,
+    function_mock,
     initializer_mock,
     instance_mock,
+    loose_mock,
     method_mock,
 )
 
@@ -532,6 +534,15 @@ class DescribeSlidePart(object):
 class DescribeSlideLayoutPart(object):
     """Unit-test suite for `pptx2.parts.slide.SlideLayoutPart` objects."""
 
+    def it_can_create_a_new_slide_layout_part(self, package_):
+        partname = PackURI("/ppt/slideLayouts/slideLayout12.xml")
+
+        slide_layout_part = SlideLayoutPart.new(partname, package_)
+
+        assert slide_layout_part.partname == partname
+        assert slide_layout_part.content_type == CT.PML_SLIDE_LAYOUT
+        assert slide_layout_part._element.xpath("p:cSld/p:spTree")
+
     def it_provides_access_to_its_slide_master(self, request):
         slide_master_ = instance_mock(request, SlideMaster)
         slide_master_part_ = instance_mock(request, SlideMasterPart, slide_master=slide_master_)
@@ -558,9 +569,72 @@ class DescribeSlideLayoutPart(object):
         SlideLayout_.assert_called_once_with(sldLayout, slide_layout_part)
         assert slide_layout is slide_layout_
 
+    # fixture components ---------------------------------------------
+
+    @pytest.fixture
+    def package_(self, request):
+        return instance_mock(request, Package)
+
 
 class DescribeSlideMasterPart(object):
     """Unit-test suite for `pptx2.parts.slide.SlideMasterPart` objects."""
+
+    def it_can_add_a_blank_layout(self, request, package_, relate_to_):
+        partname = PackURI("/ppt/slideLayouts/slideLayout12.xml")
+        package_.next_partname.return_value = partname
+        slide_layout_ = instance_mock(request, SlideLayout)
+        slide_layout_part_ = instance_mock(request, SlideLayoutPart, slide_layout=slide_layout_)
+        SlideLayoutPart_ = class_mock(request, "pptx2.parts.slide.SlideLayoutPart")
+        SlideLayoutPart_.new.return_value = slide_layout_part_
+        slide_master_part = SlideMasterPart(None, None, package_, None)
+
+        rId, slide_layout = slide_master_part.add_layout()
+
+        package_.next_partname.assert_called_once_with("/ppt/slideLayouts/slideLayout%d.xml")
+        SlideLayoutPart_.new.assert_called_once_with(partname, package_)
+        relate_to_.assert_called_once_with(slide_master_part, slide_layout_part_, RT.SLIDE_LAYOUT)
+        slide_layout_part_.relate_to.assert_called_once_with(slide_master_part, RT.SLIDE_MASTER)
+        assert (rId, slide_layout) == (relate_to_.return_value, slide_layout_)
+
+    def it_can_clone_a_layout(self, request, package_, relate_to_, slide_layout_):
+        partname = PackURI("/ppt/slideLayouts/slideLayout13.xml")
+        package_.next_partname.return_value = partname
+        src_layout_part_ = instance_mock(request, SlideLayoutPart)
+        slide_layout_.part = src_layout_part_
+        image_part_ = instance_mock(request, ImagePart)
+        rel_ = loose_mock(request, is_external=False, reltype=RT.IMAGE, rId="rId1")
+        rel_.target_part = image_part_
+        src_layout_part_.rels.values.return_value = [rel_]
+        slide_layout_2_ = instance_mock(request, SlideLayout)
+        dst_layout_part_ = loose_mock(request, slide_layout=slide_layout_2_)
+        _clone_xml_part_ = function_mock(
+            request, "pptx2.parts.slide._clone_xml_part", return_value=dst_layout_part_
+        )
+        _remap_rids_ = function_mock(request, "pptx2.parts.slide._remap_rids")
+        slide_master_part = SlideMasterPart(None, None, package_, None)
+
+        rId, slide_layout = slide_master_part.clone_layout(slide_layout_)
+
+        _clone_xml_part_.assert_called_once_with(src_layout_part_, partname, package_)
+        assert call(image_part_, RT.IMAGE) in dst_layout_part_.relate_to.call_args_list
+        _remap_rids_.assert_called_once_with(
+            dst_layout_part_._element, {"rId1": dst_layout_part_.relate_to.return_value}
+        )
+        dst_layout_part_.relate_to.assert_any_call(slide_master_part, RT.SLIDE_MASTER)
+        relate_to_.assert_called_once_with(slide_master_part, dst_layout_part_, RT.SLIDE_LAYOUT)
+        assert (rId, slide_layout) == (relate_to_.return_value, slide_layout_2_)
+
+    def it_allocates_presentation_unique_layout_ids(self, request, package_):
+        next_layout_hierarchy_id_ = function_mock(
+            request,
+            "pptx2.parts.slide.next_layout_hierarchy_id",
+            return_value=2147483650,
+        )
+        slide_master_part = SlideMasterPart(None, None, package_, None)
+
+        assert slide_master_part.next_layout_id == 2147483650
+
+        next_layout_hierarchy_id_.assert_called_once_with(package_.presentation_part)
 
     def it_provides_access_to_its_slide_master(self, request):
         slide_master_ = instance_mock(request, SlideMaster)
@@ -587,3 +661,18 @@ class DescribeSlideMasterPart(object):
 
         related_part_.assert_called_once_with(slide_master_part, "rId42")
         assert slide_layout is slide_layout_
+
+    # fixture components ---------------------------------------------
+
+    @pytest.fixture
+    def package_(self, request):
+        return instance_mock(request, Package)
+
+    @pytest.fixture
+    def relate_to_(self, request):
+        return method_mock(request, SlideMasterPart, "relate_to", autospec=True)
+
+    @pytest.fixture
+    def slide_layout_(self, request):
+        return instance_mock(request, SlideLayout)
+

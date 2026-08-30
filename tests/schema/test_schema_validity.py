@@ -573,6 +573,35 @@ def _deck_custom_properties() -> bytes:
     prs.custom_properties["Revision"] = 7
     prs.custom_properties["Score"] = 3.25
     prs.custom_properties["Confidential"] = True
+
+
+def _deck_added_slide_layouts() -> bytes:
+    """A deck with a programmatically added layout, a cloned layout, and slides
+    based on both — new slideLayout parts and sldLayoutId entries must validate."""
+    import io
+
+    from pptx2.enum.shapes import PP_PLACEHOLDER
+    from pptx2.media import SPEAKER_IMAGE_BYTES
+
+    prs = Presentation()
+    layout = prs.slide_layouts.add_layout("Schema Layout")
+    layout.shapes.add_placeholder(PP_PLACEHOLDER.TITLE)
+    layout.shapes.add_placeholder(PP_PLACEHOLDER.BODY)
+    slide = prs.slides.add_slide(layout)
+    slide.shapes.title.text = "Added layout"
+
+    clone = prs.slide_layouts.clone(prs.slide_layouts[5])
+    prs.slides.add_slide(clone)
+
+    # A cloned layout carrying an image relationship (rIds must remap cleanly).
+    pictured = prs.slide_layouts[6]
+    _, rId = pictured.part.get_or_add_image_part(io.BytesIO(SPEAKER_IMAGE_BYTES))
+    shapes = pictured.shapes
+    shapes._spTree.add_pic(
+        shapes._next_shape_id, "Layout Picture", "", rId, Inches(1), Inches(1), Inches(2), Inches(2)
+    )
+    prs.slide_layouts.clone(pictured)
+
     return _saved(prs)
 
 
@@ -707,6 +736,19 @@ class DescribeGeneratedDeckSchemaValidity:
         assert any(
             part == "docProps/custom.xml" and "property" in msg for part, msg in violations
         ), violations
+    def it_adds_no_violations_when_layouts_are_added_or_cloned(self):
+        # The fork's slide template carries mc:Ignorable="a14", which the
+        # bundled strict XSDs reject on every slide (pre-existing; the whole
+        # parametrized deck suite shares it). Adding and cloning slide layouts
+        # must not introduce any violation beyond that known quirk — the new
+        # slideLayout parts, sldLayoutId entries, and remapped image
+        # relationships all have to stay schema-valid.
+        violations = [
+            (partname, message)
+            for partname, message in iter_schema_violations(_deck_added_slide_layouts())
+            if "Ignorable" not in message
+        ]
+        assert violations == []
 
     def it_reports_violations_as_part_message_pairs(self):
         # The validator's own contract: a clean deck yields no violations.

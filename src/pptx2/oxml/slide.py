@@ -261,6 +261,31 @@ class CT_SlideLayout(_BaseSlideElement):
     cSld: CT_CommonSlideData = OneAndOnlyOne("p:cSld")  # pyright: ignore[reportAssignmentType]
     del _tag_seq
 
+    @classmethod
+    def new(cls) -> CT_SlideLayout:
+        """Return new `p:sldLayout` element configured as base slide shape."""
+        return cast(CT_SlideLayout, parse_xml(cls._sld_xml()))
+
+    @staticmethod
+    def _sld_xml():
+        return (
+            "<p:sldLayout %s>\n"
+            "  <p:cSld>\n"
+            "    <p:spTree>\n"
+            "      <p:nvGrpSpPr>\n"
+            '        <p:cNvPr id="1" name=""/>\n'
+            "        <p:cNvGrpSpPr/>\n"
+            "        <p:nvPr/>\n"
+            "      </p:nvGrpSpPr>\n"
+            "      <p:grpSpPr/>\n"
+            "    </p:spTree>\n"
+            "  </p:cSld>\n"
+            "  <p:clrMapOvr>\n"
+            "    <a:masterClrMapping/>\n"
+            "  </p:clrMapOvr>\n"
+            "</p:sldLayout>" % nsdecls("a", "r", "p")
+        )
+
 
 class CT_SlideLayoutIdList(BaseOxmlElement):
     """`p:sldLayoutIdLst` element, child of `p:sldMaster`.
@@ -268,9 +293,49 @@ class CT_SlideLayoutIdList(BaseOxmlElement):
     Contains references to the slide layouts that inherit from the slide master.
     """
 
+    _add_sldLayoutId: Callable[..., CT_SlideLayoutIdListEntry]
+
     sldLayoutId_lst: list[CT_SlideLayoutIdListEntry]
 
     sldLayoutId = ZeroOrMore("p:sldLayoutId")
+
+    def add_sldLayoutId(self, rId: str, id_: int | None = None) -> CT_SlideLayoutIdListEntry:
+        """Create and return a reference to a new `p:sldLayoutId` child element.
+
+        The new `p:sldLayoutId` element has its r:id attribute set to `rId` and its id attribute
+        set to `id_`, or the next available layout id in this list when `id_` is omitted.
+        """
+        return self._add_sldLayoutId(rId=rId, id=self._next_id if id_ is None else id_)
+
+    @property
+    def _next_id(self) -> int:
+        """The next available layout ID as an `int`.
+
+        Valid layout IDs start at 2147483648 (ST_SlideLayoutId minimum). The next integer value
+        greater than the max value in use is chosen, which minimizes the chance of reusing the
+        id of a deleted layout.
+        """
+        MIN_SLIDE_LAYOUT_ID = 2147483648
+        MAX_SLIDE_LAYOUT_ID = 2147483647 + 2147483648
+
+        used_ids = [int(s) for s in cast("list[str]", self.xpath("./p:sldLayoutId/@id"))]
+        simple_next = max([MIN_SLIDE_LAYOUT_ID - 1] + used_ids) + 1
+        if simple_next <= MAX_SLIDE_LAYOUT_ID:
+            return simple_next
+
+        # -- fall back to search for next unused from bottom --
+        valid_used_ids = sorted(
+            id for id in used_ids if (MIN_SLIDE_LAYOUT_ID <= id <= MAX_SLIDE_LAYOUT_ID)
+        )
+        return (
+            next(
+                candidate_id
+                for candidate_id, used_id in enumerate(valid_used_ids, start=MIN_SLIDE_LAYOUT_ID)
+                if candidate_id != used_id
+            )
+            if valid_used_ids
+            else MIN_SLIDE_LAYOUT_ID
+        )
 
 
 class CT_SlideLayoutIdListEntry(BaseOxmlElement):
@@ -279,6 +344,7 @@ class CT_SlideLayoutIdListEntry(BaseOxmlElement):
     Contains a reference to a slide layout.
     """
 
+    id: int | None = OptionalAttribute("id", XsdUnsignedInt)  # pyright: ignore[reportAssignmentType]
     rId: str = RequiredAttribute("r:id", XsdString)  # pyright: ignore[reportAssignmentType]
 
 

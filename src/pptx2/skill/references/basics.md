@@ -55,6 +55,11 @@ Layouts are master-dependent; use `prs.slide_master.slide_layouts` if you
 want to be explicit, or iterate `for L in prs.slide_layouts: print(L.name)`
 to discover what the template ships.
 
+Grow the set at runtime: `prs.slide_layouts.add_layout("Name")` appends a
+blank layout (add placeholders via `layout.shapes.add_placeholder(...)`),
+and `prs.slide_layouts.clone(existing)` duplicates a layout — shapes,
+placeholders, and images carried over — under a non-colliding name.
+
 ## Text boxes
 
 ```python

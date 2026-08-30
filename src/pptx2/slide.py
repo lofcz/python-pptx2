@@ -1171,6 +1171,45 @@ class SlideLayouts(ParentedElementProxy):
         """Support len() built-in function, e.g. `len(slides) == 4`."""
         return len(self._sldLayoutIdLst)
 
+    def add_layout(self, name: str | None = "Layout %s") -> SlideLayout:
+        """Return a newly added blank slide layout.
+
+        The new layout appears at the end of this collection and inherits from this layouts'
+        slide master. It contains no shapes; add placeholders to it through
+        `layout.shapes.add_placeholder(...)`.
+
+        `name` is assigned to the new layout when provided; a `%s` in `name` is substituted
+        with the numeric portion of the new master-to-layout relationship id, so the default
+        `"Layout %s"` might yield `"Layout 13"`. Pass |None| to leave the layout unnamed.
+        """
+        rId, layout = self.part.add_layout()
+        self._sldLayoutIdLst.add_sldLayoutId(rId, self.part.next_layout_id)
+        id_ = int(rId[3:]) if rId.startswith("rId") and rId[3:].isdigit() else 0
+        if name:
+            layout.name = name % id_ if "%s" in name else name
+        return layout
+
+    def clone(self, slide_layout: SlideLayout, name: str | None = None) -> SlideLayout:
+        """Return a clone of `slide_layout` appended to this collection.
+
+        The source layout's XML is deep-copied, so the clone has the same shapes and
+        placeholders and renders identically, while later edits to either layout leave the
+        other untouched. Dependent parts the layout refers to (images, media, hyperlinks) are
+        shared with the source through fresh relationships.
+
+        `name` defaults to a non-colliding variant of the source layout's name ("Title Only"
+        becomes "Title Only 2", then "Title Only 3", and so on).
+
+        Raises `ValueError` when `slide_layout` belongs to a different presentation; use
+        `Presentation.import_slide()` to bring slides (and their layouts) across packages.
+        """
+        if slide_layout.part.package is not self.part.package:
+            raise ValueError("slide_layout must belong to the same presentation")
+        rId, layout = self.part.clone_layout(slide_layout)
+        self._sldLayoutIdLst.add_sldLayoutId(rId, self.part.next_layout_id)
+        layout.name = self._non_colliding_name(slide_layout.name if name is None else name)
+        return layout
+
     def get_by_name(self, name: str, default: SlideLayout | None = None) -> SlideLayout | None:
         """Return SlideLayout object having `name`, or `default` if not found."""
         for slide_layout in self:
@@ -1210,6 +1249,16 @@ class SlideLayouts(ParentedElementProxy):
         # --this removes layout from package, along with everything (only) it refers to,
         # --including images (not used elsewhere) and hyperlinks
         slide_layout.slide_master.part.drop_rel(target_sldLayoutId.rId)
+
+    def _non_colliding_name(self, base: str) -> str:
+        """Return `base`, or `base N` for the smallest N making it unique in this collection."""
+        names = {layout.name for layout in self}
+        if base not in names:
+            return base
+        n = 2
+        while "%s %d" % (base, n) in names:
+            n += 1
+        return "%s %d" % (base, n)
 
 
 class SlideMaster(_BaseMaster):

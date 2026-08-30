@@ -5,6 +5,7 @@ from __future__ import annotations
 import os
 from typing import IO, TYPE_CHECKING, cast
 
+from pptx2._slide_importer import _clone_xml_part, _remap_rids, next_layout_hierarchy_id
 from pptx2.enum.shapes import PROG_ID
 from pptx2.opc.constants import CONTENT_TYPE as CT
 from pptx2.opc.constants import RELATIONSHIP_TYPE as RT
@@ -16,6 +17,7 @@ from pptx2.oxml.slide import (
     CT_NotesMaster,
     CT_NotesSlide,
     CT_Slide,
+    CT_SlideLayout,
     slide_has_p14_transition,
     unwrap_p14_transitions,
     wrap_p14_transitions,
@@ -322,6 +324,16 @@ class SlideLayoutPart(BaseSlidePart):
     Corresponds to package files ``ppt/slideLayouts/slideLayout[1-9][0-9]*.xml``.
     """
 
+    @classmethod
+    def new(cls, partname: PackURI, package):
+        """Return newly-created blank slide layout part.
+
+        The new slide-layout part has `partname` and no relationships; the caller is responsible
+        for relating it to its slide master and registering it in the master's
+        `p:sldLayoutIdLst`.
+        """
+        return cls(partname, CT.PML_SLIDE_LAYOUT, package, CT_SlideLayout.new())
+
     @lazyproperty
     def slide_layout(self):
         """
@@ -341,6 +353,55 @@ class SlideMasterPart(BaseSlidePart):
     Corresponds to package files ppt/slideMasters/slideMaster[1-9][0-9]*.xml.
     """
 
+    def add_layout(self) -> tuple[str, SlideLayout]:
+        """Return (rId, layout) pair of a newly created blank layout.
+
+        The new layout part is related to this master both ways but is not yet registered in
+        the master's `p:sldLayoutIdLst`; the caller (SlideLayouts.add_layout) is responsible
+        for that registration.
+        """
+        partname = self._next_slideLayout_partname
+        slide_layout_part = SlideLayoutPart.new(partname, self.package)
+        rId = self.relate_to(slide_layout_part, RT.SLIDE_LAYOUT)
+        slide_layout_part.relate_to(self, RT.SLIDE_MASTER)
+        return rId, slide_layout_part.slide_layout
+
+    def clone_layout(self, slide_layout: SlideLayout) -> tuple[str, SlideLayout]:
+        """Return (rId, layout) pair for a clone of `slide_layout` added to this master.
+
+        The source layout's XML is deep-copied and its relationships are recreated against the
+        same dependent parts (images, media, external hyperlinks and the like stay shared with
+        the source layout), with the embedded r:id references remapped to the fresh
+        relationship ids. As with add_layout(), the caller registers the clone in the master's
+        `p:sldLayoutIdLst`.
+        """
+        src_layout_part = cast(SlideLayoutPart, slide_layout.part)
+        partname = self._next_slideLayout_partname
+        dst_layout_part = _clone_xml_part(src_layout_part, partname, self.package)
+
+        id_map: dict[str, str] = {}
+        for rel in src_layout_part.rels.values():
+            if rel.is_external:
+                id_map[rel.rId] = dst_layout_part.relate_to(
+                    rel.target_ref, rel.reltype, is_external=True
+                )
+            elif rel.reltype != RT.SLIDE_MASTER:
+                id_map[rel.rId] = dst_layout_part.relate_to(rel.target_part, rel.reltype)
+        _remap_rids(dst_layout_part._element, id_map)  # pyright: ignore[reportPrivateUsage]
+
+        dst_layout_part.relate_to(self, RT.SLIDE_MASTER)
+        rId = self.relate_to(dst_layout_part, RT.SLIDE_LAYOUT)
+        return rId, dst_layout_part.slide_layout
+
+    @property
+    def next_layout_id(self) -> int:
+        """A fresh presentation-unique `p:sldLayoutId` id for a layout of this master.
+
+        Ids are allocated max+1 across the whole presentation (masters and layouts share one id
+        space starting at 2147483648); duplicates are a PowerPoint repair trigger.
+        """
+        return next_layout_hierarchy_id(self.package.presentation_part)
+
     def related_slide_layout(self, rId: str) -> SlideLayout:
         """Return |SlideLayout| related to this slide-master by key `rId`."""
         return self.related_part(rId).slide_layout
@@ -351,6 +412,11 @@ class SlideMasterPart(BaseSlidePart):
         The |SlideMaster| object representing this part.
         """
         return SlideMaster(self._element, self)
+
+    @property
+    def _next_slideLayout_partname(self) -> PackURI:
+        """Return |PackURI| instance containing next available slideLayout partname."""
+        return self.package.next_partname("/ppt/slideLayouts/slideLayout%d.xml")
 
     @property
     def theme(self):

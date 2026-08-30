@@ -14,7 +14,7 @@ from pptx2.oxml.ns import qn
 from pptx2.oxml.shapes.autoshape import CT_Shape
 from pptx2.oxml.shapes.graphfrm import CT_GraphicalObjectFrame
 from pptx2.oxml.shapes.picture import CT_Picture
-from pptx2.oxml.simpletypes import ST_Direction
+from pptx2.oxml.simpletypes import ST_Direction, ST_PlaceholderSize
 from pptx2.shapes.autoshape import AutoShapeType, Shape
 from pptx2.shapes.base import BaseShape
 from pptx2.shapes.connector import Connector
@@ -1488,6 +1488,39 @@ class LayoutShapes(_BaseShapes):
     The first shape in the sequence is the backmost in z-order and the last shape is topmost.
     Supports indexed access, len(), index(), and iteration.
     """
+
+    def add_placeholder(
+        self,
+        ph_type: PP_PLACEHOLDER,
+        orient: str = ST_Direction.HORZ,
+        sz: str = ST_PlaceholderSize.FULL,
+        idx: int | None = None,
+    ) -> LayoutPlaceholder:
+        """Return newly added placeholder appended to this shape tree.
+
+        The placeholder is appended with the specified type, orientation (`orient`, e.g.
+        "horz" or "vert") and size (`sz`, e.g. "full"). By default its placeholder `idx` — the
+        inheritance key through which a layout placeholder inherits formatting from the
+        matching master placeholder — matches the first same-type placeholder on the slide
+        master, falling back to the new shape id when the master has none. Pass `idx` to
+        choose the idx explicitly.
+        """
+        id_ = self._next_shape_id
+        ph_name = self._next_ph_name(ph_type, id_, orient)
+        if idx is None:
+            idx = self._master_ph_idx(ph_type, id_)
+        sp = self._spTree.add_placeholder(id_, ph_name, ph_type, orient, sz, idx)
+
+        return cast(LayoutPlaceholder, self._shape_factory(sp))
+
+    def _master_ph_idx(self, ph_type: PP_PLACEHOLDER, default: int) -> int:
+        """Idx of the first same-type placeholder on this layout's master, or `default`."""
+        slide_master = getattr(self._parent, "slide_master", None)
+        if slide_master is not None:
+            for master_ph in slide_master.placeholders:
+                if master_ph.element.ph_type == ph_type:
+                    return master_ph.element.ph_idx
+        return default
 
     def _shape_factory(self, shape_elm: ShapeElement) -> BaseShape:
         """Return an instance of the appropriate shape proxy class for `shape_elm`."""

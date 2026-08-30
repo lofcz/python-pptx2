@@ -63,6 +63,15 @@ Added
   lazily by the first assignment, and files that already carry a
   custom-properties part open mapped to the new part class. Port of
   ``scanny/python-pptx#342`` by stadlerism.
+* ``SlideLayouts.add_layout()`` appends a blank slide layout to a slide
+  master, named ``"Layout %s"`` by default (the ``%s`` is substituted with
+  the new master-to-layout relationship id). ``SlideLayouts.clone()``
+  deep-copies an existing layout of the same presentation — placeholders,
+  shapes, and referenced images included — under a non-colliding name, and
+  ``LayoutShapes.add_placeholder()`` adds a placeholder to a layout,
+  defaulting its idx to the matching master placeholder so inheritance and
+  ``slide.shapes.title`` keep working.
+
 
 Fixed
 .....

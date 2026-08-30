@@ -1217,6 +1217,90 @@ class DescribeSlideLayouts(object):
         with pytest.raises(IndexError):
             slide_layouts[1]
 
+    def it_can_add_a_new_slide_layout(self, part_prop_, slide_master_part_, slide_layout_):
+        part_prop_.return_value = slide_master_part_
+        slide_master_part_.add_layout.return_value = ("rId42", slide_layout_)
+        slide_master_part_.next_layout_id = 2147483650
+        sldLayoutIdLst = element("p:sldLayoutIdLst/p:sldLayoutId{id=2147483649,r:id=rId1}")
+        slide_layouts = SlideLayouts(sldLayoutIdLst, None)
+
+        layout = slide_layouts.add_layout()
+
+        slide_master_part_.add_layout.assert_called_once_with()
+        assert layout is slide_layout_
+        assert layout.name == "Layout 42"
+        assert sldLayoutIdLst.xml == xml(
+            "p:sldLayoutIdLst/("
+            "p:sldLayoutId{id=2147483649,r:id=rId1},"
+            "p:sldLayoutId{id=2147483650,r:id=rId42})"
+        )
+
+    def it_applies_a_name_without_placeholder_verbatim(
+        self, part_prop_, slide_master_part_, slide_layout_
+    ):
+        part_prop_.return_value = slide_master_part_
+        slide_master_part_.add_layout.return_value = ("rId42", slide_layout_)
+        slide_master_part_.next_layout_id = 2147483650
+        slide_layouts = SlideLayouts(element("p:sldLayoutIdLst"), None)
+
+        layout = slide_layouts.add_layout("Custom Layout")
+
+        assert layout is slide_layout_
+        assert layout.name == "Custom Layout"
+
+    def it_can_clone_a_slide_layout(
+        self, _iter_, part_prop_, slide_master_part_, slide_layout_, slide_layout_2_, package_
+    ):
+        part_prop_.return_value = slide_master_part_
+        slide_master_part_.clone_layout.return_value = ("rId43", slide_layout_2_)
+        slide_master_part_.next_layout_id = 2147483651
+        slide_master_part_.package = package_
+        slide_layout_.part.package = package_
+        slide_layout_.name = "Title Only"
+        _iter_.return_value = iter((slide_layout_,))
+        sldLayoutIdLst = element("p:sldLayoutIdLst/p:sldLayoutId{id=2147483649,r:id=rId1}")
+        slide_layouts = SlideLayouts(sldLayoutIdLst, None)
+
+        clone = slide_layouts.clone(slide_layout_)
+
+        slide_master_part_.clone_layout.assert_called_once_with(slide_layout_)
+        assert clone is slide_layout_2_
+        assert clone.name == "Title Only 2"
+        assert sldLayoutIdLst.xml == xml(
+            "p:sldLayoutIdLst/("
+            "p:sldLayoutId{id=2147483649,r:id=rId1},"
+            "p:sldLayoutId{id=2147483651,r:id=rId43})"
+        )
+
+    def it_applies_an_explicit_clone_name_verbatim(
+        self, _iter_, part_prop_, slide_master_part_, slide_layout_, slide_layout_2_, package_
+    ):
+        part_prop_.return_value = slide_master_part_
+        slide_master_part_.clone_layout.return_value = ("rId43", slide_layout_2_)
+        slide_master_part_.next_layout_id = 2147483651
+        slide_master_part_.package = package_
+        slide_layout_.part.package = package_
+        _iter_.return_value = iter(())
+        slide_layouts = SlideLayouts(element("p:sldLayoutIdLst"), None)
+
+        clone = slide_layouts.clone(slide_layout_, name="My Copy")
+
+        assert clone is slide_layout_2_
+        assert clone.name == "My Copy"
+
+    def but_it_raises_on_cloning_a_layout_from_another_presentation(
+        self, part_prop_, slide_master_part_, slide_layout_
+    ):
+        part_prop_.return_value = slide_master_part_
+        slide_master_part_.package = object()
+        slide_layout_.part.package = object()
+        slide_layouts = SlideLayouts(element("p:sldLayoutIdLst"), None)
+
+        with pytest.raises(ValueError) as e:
+            slide_layouts.clone(slide_layout_)
+
+        assert str(e.value) == "slide_layout must belong to the same presentation"
+
     def it_can_find_a_slide_layout_by_name(self, _iter_, slide_layout_, slide_layout_2_):
         _iter_.return_value = iter((slide_layout_, slide_layout_2_))
         slide_layout_2_.name = "pick me!"
@@ -1308,6 +1392,10 @@ class DescribeSlideLayouts(object):
     @pytest.fixture
     def _iter_(self, request):
         return method_mock(request, SlideLayouts, "__iter__")
+
+    @pytest.fixture
+    def package_(self):
+        return object()
 
     @pytest.fixture
     def part_prop_(self, request):

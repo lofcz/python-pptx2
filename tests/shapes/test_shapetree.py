@@ -67,6 +67,7 @@ from ..unitutil.mock import (
     function_mock,
     initializer_mock,
     instance_mock,
+    loose_mock,
     method_mock,
     property_mock,
 )
@@ -1494,6 +1495,41 @@ class DescribeLayoutShapes(object):
         placeholder = shapes._shape_factory(sp)
         _LayoutShapeFactory_.assert_called_once_with(sp, shapes)
         assert placeholder is placeholder_
+
+    def it_can_add_a_placeholder(self, _LayoutShapeFactory_, placeholder_):
+        spTree = element("p:spTree")
+        shapes = LayoutShapes(spTree, None)
+
+        placeholder = shapes.add_placeholder(PP_PLACEHOLDER.TITLE)
+
+        assert placeholder is placeholder_
+        ph = spTree.xpath("p:sp/p:nvSpPr/p:nvPr/p:ph")[0]
+        assert (ph.get("type"), ph.get("idx")) == ("title", "1")
+
+    def it_defaults_the_idx_to_the_masters_matching_placeholder(
+        self, request, _LayoutShapeFactory_, placeholder_
+    ):
+        master_ph_ = loose_mock(request)
+        master_ph_.element.ph_type = PP_PLACEHOLDER.TITLE
+        master_ph_.element.ph_idx = 0
+        slide_layout_ = instance_mock(request, SlideLayout)
+        slide_layout_.slide_master.placeholders = [master_ph_]
+        spTree = element("p:spTree")
+        shapes = LayoutShapes(spTree, slide_layout_)
+
+        shapes.add_placeholder(PP_PLACEHOLDER.TITLE)
+
+        sp = spTree.xpath("p:sp")[0]
+        assert (sp.ph_type, sp.ph_idx) == (PP_PLACEHOLDER.TITLE, 0)
+
+    def it_can_choose_the_placeholder_idx_explicitly(self, _LayoutShapeFactory_, placeholder_):
+        spTree = element("p:spTree")
+        shapes = LayoutShapes(spTree, None)
+
+        shapes.add_placeholder(PP_PLACEHOLDER.BODY, idx=9)
+
+        ph = spTree.xpath("p:sp/p:nvSpPr/p:nvPr/p:ph")[0]
+        assert (ph.get("type"), ph.get("idx")) == ("body", "9")
 
     # fixtures -------------------------------------------------------
 

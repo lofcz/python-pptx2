@@ -93,6 +93,37 @@ def import_slide(
     return importer.run()
 
 
+def next_layout_hierarchy_id(prs_part: PresentationPart) -> int:
+    """Return a fresh unique id for a `p:sldMasterId` / `p:sldLayoutId` entry.
+
+    These share one id space starting at 2147483648 (ST_SlideMasterId /
+    ST_SlideLayoutId minimum); duplicates across the presentation are a
+    repair trigger, so scan every master's layout-id list plus the
+    presentation's master-id list for the current maximum. Used both when
+    cloning masters (import_slide) and when adding or cloning slide layouts.
+    """
+    used = [2147483647]
+    prs_element = prs_part._element  # pyright: ignore[reportPrivateUsage]
+    used += [int(v) for v in prs_element.xpath("p:sldMasterIdLst/p:sldMasterId/@id")]
+    for dst_master_part in _iter_master_parts(prs_part):
+        used += [
+            int(v)
+            for v in dst_master_part._element.xpath(  # pyright: ignore[reportPrivateUsage]
+                "p:sldLayoutIdLst/p:sldLayoutId/@id"
+            )
+        ]
+    return max(used) + 1
+
+
+def _iter_master_parts(prs_part: PresentationPart):
+    """Yield each SlideMasterPart referenced from *prs_part*'s `p:sldMasterIdLst`."""
+    prs_element = prs_part._element  # pyright: ignore[reportPrivateUsage]
+    if prs_element.sldMasterIdLst is None:
+        return
+    for entry in prs_element.sldMasterIdLst.sldMasterId_lst:
+        yield prs_part.related_part(entry.rId)
+
+
 # ---------------------------------------------------------------------------
 # Internal implementation
 # ---------------------------------------------------------------------------
@@ -169,13 +200,9 @@ class _SlideImporter:
                 return dst_master_part
         return None
 
-    def _iter_dst_masters(self):  # type: ignore[return]
+    def _iter_dst_masters(self):
         """Yield each SlideMasterPart already in the destination presentation."""
-        prs_element = self._dst_prs_part._element  # pyright: ignore[reportPrivateUsage]
-        if prs_element.sldMasterIdLst is None:
-            return
-        for entry in prs_element.sldMasterIdLst.sldMasterId_lst:
-            yield self._dst_prs_part.related_part(entry.rId)
+        yield from _iter_master_parts(self._dst_prs_part)
 
     def _find_or_clone_layout_in_master(
         self, src_layout_part: SlideLayoutPart, dst_master_part: SlideMasterPart
@@ -325,22 +352,9 @@ class _SlideImporter:
     def _next_hierarchy_id(self) -> int:
         """Return a fresh unique id for a `p:sldMasterId` / `p:sldLayoutId` entry.
 
-        These share one id space starting at 2147483648 (ST_SlideMasterId /
-        ST_SlideLayoutId minimum); duplicates across the presentation are a
-        repair trigger, so scan every master's layout-id list plus the
-        presentation's master-id list for the current maximum.
+        See :func:`next_layout_hierarchy_id`.
         """
-        used = [2147483647]
-        prs_element = self._dst_prs_part._element  # pyright: ignore[reportPrivateUsage]
-        used += [int(v) for v in prs_element.xpath("p:sldMasterIdLst/p:sldMasterId/@id")]
-        for dst_master_part in self._iter_dst_masters():
-            used += [
-                int(v)
-                for v in dst_master_part._element.xpath(  # pyright: ignore[reportPrivateUsage]
-                    "p:sldLayoutIdLst/p:sldLayoutId/@id"
-                )
-            ]
-        return max(used) + 1
+        return next_layout_hierarchy_id(self._dst_prs_part)
 
     # ------------------------------------------------------------------
     # Slide copy
