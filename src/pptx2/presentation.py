@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 import os
+from contextlib import contextmanager
 from typing import IO, TYPE_CHECKING, Literal, cast
 
 from pptx2.section import Sections
@@ -12,6 +13,7 @@ from pptx2.slide import SlideMasters, Slides
 from pptx2.util import lazyproperty
 
 if TYPE_CHECKING:
+    from collections.abc import Iterator
     from datetime import datetime
 
     from pptx2.compose.deck_compose import ImportReport
@@ -124,6 +126,56 @@ class Presentation(PartElementProxy):
         # ---- the `not in` check above narrows `value` to `LintOnSaveMode` ----
         self._lint_on_save = value
 
+    @contextmanager
+    def batch(self) -> "Iterator[Presentation]":
+        """Validate this deck once at block exit instead of once per mutating call.
+
+        paper-pptx addition. Opt-in; per-edit validation stays the default.
+
+            with prs.batch():
+                for slide in prs.slides:
+                    slide.shapes[0].text_frame.text = "..."
+
+        Paper's own mutating APIs each run a package transaction that serializes and
+        reopens the whole deck before committing. Inside this block those transactions
+        nest, and only the outermost validates — one whole-deck check per block rather
+        than one per call. Measured 2.8-3.0x on 25-200 slide decks.
+
+        **It also validates operations that had no validation at all.** The mutation
+        surface inherited from python-pptx — `text_frame.text`, `add_textbox`,
+        `add_picture`, :meth:`Slides.add_slide` and the rest — runs no transaction of its
+        own. Inside a block the enclosing transaction covers them, so a sequence that
+        previously succeeded and saved an unreadable deck now refuses. That is the
+        intended improvement, not a regression, but it does mean working code can start
+        refusing once wrapped.
+
+        Costs and limits, all of which argue for scoping a block to a unit of work you
+        would be willing to redo:
+
+        - **Entry is not free.** Block entry snapshots every reachable part. An empty
+          block costs about what one unbatched edit costs, so a block around a single
+          edit breaks even and the gain starts at two.
+        - **Rollback granularity is the block.** A refusal discards *every* edit in it,
+          not just the offending one.
+        - **Only the end state is checked.** A deck that is momentarily invalid inside the
+          block but valid at exit commits normally.
+        - **Saving inside a block is refused** (|BoundaryViolationError|), because the
+          package has not been validated yet and the edits may still roll back. Save after
+          the block closes.
+        - **Blocks on two different decks must exit in reverse order** of entry, or
+          ``RuntimeError``.
+        - **Digitally signed decks refuse at block entry**, before any edit runs.
+        - :meth:`import_slide` and :meth:`append_deck` return their report before the
+          import has been proven reopenable; that proof moves to block exit.
+
+        An exception raised by the caller inside the block rolls the package back and
+        propagates unchanged.
+        """
+        from pptx2._transaction import PackageTransaction
+
+        with PackageTransaction(self.part.package, self):
+            yield self
+
     def save(self, file: str | os.PathLike[str] | IO[bytes]):
         """Writes this presentation to `file`.
 
@@ -133,7 +185,21 @@ class Presentation(PartElementProxy):
         When :attr:`lint_on_save` is ``"warn"`` or ``"raise"``, every slide is
         linted before anything is written; in ``"raise"`` mode a
         :class:`~pptx2.exc.LintError` propagates and no file is written.
+
+        Refuses with |BoundaryViolationError| while a :meth:`batch` block is open on this
+        package: those edits have not been validated yet and may still roll back, so
+        writing them out would publish a package the block is not prepared to stand
+        behind. Save once the block has closed.
         """
+        from pptx2._transaction import package_has_open_transaction
+        from pptx2.errors import BoundaryViolationError
+
+        if package_has_open_transaction(self.part.package):
+            raise BoundaryViolationError(
+                "cannot save inside an open batch block: the package is not validated "
+                "until the block exits and these edits may still roll back; save after "
+                "the block closes"
+            )
         # ---- the default ("off") does no lint work whatsoever ----
         if self._lint_on_save != "off":
             _lint_before_save(self, self._lint_on_save)

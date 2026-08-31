@@ -197,23 +197,21 @@ class DescribePresentationPart(object):
 
         assert slide == expected_value
 
-    def it_knows_the_next_slide_partname_to_help(self, package_):
-        package_.iter_parts.return_value = iter(())
+    def it_delegates_the_next_slide_partname_to_the_package(self, request, package_):
+        """paper-pptx: the allocator must pick a name nothing else holds.
+
+        Upstream derived it from the slide count, which is only free while slides can
+        never be removed. `Slides.delete` breaks that, so allocation now goes through
+        `OpcPackage.next_partname`, which searches for an unused name.
+        """
+        package_.next_partname.return_value = PackURI("/ppt/slides/slide2.xml")
         prs_elm = element("p:presentation/p:sldIdLst/(p:sldId,p:sldId)")
         prs_part = PresentationPart(None, None, package_, prs_elm)
 
-        assert prs_part._next_slide_partname == PackURI("/ppt/slides/slide3.xml")
+        partname = prs_part._next_slide_partname
 
-    def and_it_skips_slide_partnames_already_present_in_the_package(self, request, package_):
-        # An unregistered slide part (e.g. left by a cross-deck import) must
-        # not be overwritten by the next added slide.
-        taken = instance_mock(request, Part)
-        taken.partname = PackURI("/ppt/slides/slide3.xml")
-        package_.iter_parts.return_value = iter((taken,))
-        prs_elm = element("p:presentation/p:sldIdLst/(p:sldId,p:sldId)")
-        prs_part = PresentationPart(None, None, package_, prs_elm)
-
-        assert prs_part._next_slide_partname == PackURI("/ppt/slides/slide4.xml")
+        package_.next_partname.assert_called_once_with("/ppt/slides/slide%d.xml")
+        assert partname == PackURI("/ppt/slides/slide2.xml")
 
     # fixture components ---------------------------------------------
 

@@ -7,7 +7,7 @@ own ``__version__`` in ``pptx2/__init__.py``.
 
 from __future__ import annotations
 
-__paper_version__ = "0.1.2"
+__paper_version__ = "0.1.3"
 
 
 def assert_distribution_identity() -> None:

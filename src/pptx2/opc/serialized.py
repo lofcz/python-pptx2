@@ -94,10 +94,36 @@ class PackageWriter:
 
     def _write(self) -> None:
         """Write physical package (.pptx file)."""
+        self._refuse_duplicate_partnames()
         with _PhysPkgWriter.factory(self._pkg_file) as phys_writer:
             self._write_content_types_stream(phys_writer)
             self._write_pkg_rels(phys_writer)
             self._write_parts(phys_writer)
+
+    def _refuse_duplicate_partnames(self) -> None:
+        """Raise |PackageLimitError| when two parts share a partname.
+
+        paper-pptx addition. Such a package serializes without complaint into a zip
+        carrying duplicate member names; readers then keep whichever copy they see last,
+        so a part is lost with no error anywhere. Duplicate detection otherwise exists
+        only on the reading side, which is too late — the damaged file is already on
+        disk.
+        """
+        from pptx2.errors import PackageLimitError
+
+        seen: set[str] = set()
+        duplicated: set[str] = set()
+        for part in self._parts:
+            partname = str(part.partname)
+            if partname in seen:
+                duplicated.add(partname)
+            seen.add(partname)
+        if duplicated:
+            raise PackageLimitError(
+                "package has %d part(s) sharing a partname with another part, which "
+                "would write duplicate zip members and silently drop content: %s"
+                % (len(duplicated), ", ".join(sorted(duplicated)))
+            )
 
     def _write_content_types_stream(self, phys_writer: _PhysPkgWriter) -> None:
         """Write `[Content_Types].xml` part to the physical package.
