@@ -186,17 +186,18 @@ class Presentation(PartElementProxy):
         linted before anything is written; in ``"raise"`` mode a
         :class:`~pptx2.exc.LintError` propagates and no file is written.
 
-        Refuses with |BoundaryViolationError| while a :meth:`batch` block is open on this
-        package: those edits have not been validated yet and may still roll back, so
-        writing them out would publish a package the block is not prepared to stand
-        behind. Save once the block has closed.
+        A file-path destination is written atomically, resolving symlinks, so a failure part-way
+        through leaves any existing file untouched. A file-like destination is written straight
+        through once the whole package has serialized successfully. See
+        :meth:`pptx2.opc.package.OpcPackage.save` for what atomic replacement costs.
 
-        A file-path destination is written atomically, resolving symlinks, so a failure
-        part-way through leaves any existing file untouched. A file-like destination is
-        written straight through once the whole package has serialized successfully. See
-        :meth:`pptx2.opc.package.OpcPackage.save` for the write contract, and
-        :func:`pptx2.package.patch_save` for the narrow-save alternative that restores
-        the original bytes of every part that did not change.
+        :func:`pptx2.package.patch_save` is the narrow-save alternative: atomic too, and it restores
+        the original bytes of every part that did not change. Its no-op round trip is byte-identical
+        only for a package paper-pptx wrote; see that function for why.
+
+        Refuses with |BoundaryViolationError| while a :meth:`batch` block is open on this package:
+        those edits have not been validated yet and may still roll back, so writing them out would
+        publish a package the block is not prepared to stand behind. Save once the block has closed.
         """
         from pptx2._transaction import package_has_open_transaction
         from pptx2.errors import BoundaryViolationError

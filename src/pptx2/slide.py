@@ -1471,6 +1471,7 @@ class HeaderFooters(object):
     """
 
     def __init__(self, owner):
+        """Bind to the layout or master that owns these flags."""
         super(HeaderFooters, self).__init__()
         self._owner = owner
         self._element = owner._element
@@ -1506,6 +1507,10 @@ class HeaderFooters(object):
         self._set_flag("dt", value)
 
     def _set_flag(self, attr_name: str, value: "bool | None") -> None:
+        """Set one `p:hf` visibility flag inside a transaction.
+
+        Refuses a detached element, and any value that is not True, False, or None.
+        """
         from pptx2._ownership import require_element_attached
         from pptx2._transaction import PackageTransaction
 
@@ -1664,6 +1669,10 @@ class SlideLayouts(ParentedElementProxy):
 
         Raises ValueError when `slide_layout` is in use; a slide layout which is the basis for one
         or more slides cannot be removed.
+
+        Refuses with TargetNotFoundError when the layout belongs to another presentation, and with
+        UnsupportedStructureError when its part carries inbound relationships beyond this
+        collection's own, where dropping it would strand whatever else points at it.
         """
         from pptx2._transaction import PackageTransaction
 
