@@ -37,6 +37,30 @@ part, and owning master. Pass an enrolled destination ``target_layout`` to
 :meth:`.Presentation.import_slide` to make the choice explicit. A whole-deck append preflights
 every source slide under the same rules, so ambiguity on a later slide appends nothing.
 
+Adopt-theme placeholder reconciliation uses the same exact-first, unique-only matcher as layout
+rebind. Same-type and compatible-family fallbacks bind only when their current unclaimed candidate
+set has one member; ambiguity raises |AmbiguousTargetError| without trying a weaker tier. Supply a
+partial ``placeholder_map={source_idx: target_idx | None}`` to
+:meth:`.Presentation.import_slide` to settle selected sources explicitly while the rest reconcile
+automatically. ``None`` deliberately orphans that source placeholder, which adopt-theme bakes from
+its source-resolved appearance. The argument is rejected for keep-appearance and bake. Whole-deck
+append deliberately remains automatic-only and refuses atomically if any staged slide needs a map.
+
+An explicit ``section`` selector matches existing destination section names exactly and succeeds
+only when the name is unique. If duplicate names exist, import raises |AmbiguousTargetError|
+before writing and lists every candidate's exact GUID and section-list order; pass ``section_id``
+to select one by its exact stored ``p14:section/@id`` value. ``section`` and ``section_id`` are
+mutually exclusive, missing matches raise |TargetNotFoundError|, and IDs are not case-folded or
+brace-normalized. With neither selector, import retains adjacent enrollment: it follows the slide
+preceding the insertion point, falling back to the first destination section when no predecessor
+is enrolled. This is import targeting only; it does not expose section authoring or management.
+
+``paper-import-report`` version 3 always serializes the actual enrolled ``section`` name and
+``section_id``, using ``null`` for both when the destination has no sections. It retains version
+2's fixed ``placeholder_map_used`` representation unchanged: adopt-theme reports the complete
+resolved source-to-target mapping, including ``null`` orphan targets, in source-index order, while
+keep-appearance and bake serialize an empty list because they do not reconcile placeholders.
+
 The source presentation remains unchanged. Charts travel with their embedded workbooks, media is
 always copied across packages, and relationships that cannot be resolved refuse
 (|RelationshipPolicyError|).
