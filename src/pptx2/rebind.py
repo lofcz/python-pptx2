@@ -485,13 +485,13 @@ def _bake_placeholder(shape) -> None:
                 if effective.color_rgb.resolved and effective.color_rgb.value is not None:
                     from pptx2.dml.color import RGBColor
 
-                    run.font.color.rgb = RGBColor.from_string(effective.color_rgb.value)
+                    run.font.color.rgb = RGBColor.from_hex(effective.color_rgb.value)
                 elif effective.color_rgb.bake_color_xml is not None:
                     from pptx2.dml.color import RGBColor
                     from pptx2.oxml import parse_xml
 
                     color = parse_xml(effective.color_rgb.bake_color_xml)
-                    run.font.color.rgb = RGBColor.from_string(color.get("val"))
+                    run.font.color.rgb = RGBColor.from_hex(color.get("val"))
                     target = run._r.get_or_add_rPr().find(qn("a:solidFill"))[0]
                     for transform in color:
                         target.append(copy.deepcopy(transform))
