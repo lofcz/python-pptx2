@@ -12,13 +12,17 @@ from pptx2.slide import SlideMasters, Slides
 from pptx2.util import lazyproperty
 
 if TYPE_CHECKING:
+    from datetime import datetime
+
+    from pptx2.compose.deck_compose import ImportReport
     from pptx2.enum.presentation import MSO_TRANSITION_TYPE
     from pptx2.lint import LintIssue
     from pptx2.oxml.presentation import CT_Presentation, CT_SlideId
     from pptx2.parts.customprops import CustomProperties
     from pptx2.parts.presentation import PresentationPart
     from pptx2.parts.slide import SlidePart
-    from pptx2.slide import NotesMaster, Slide, SlideLayouts
+    from pptx2.scrub import ScrubReport
+    from pptx2.slide import NotesMaster, Slide, SlideLayout, SlideLayouts
     from pptx2.util import Length
 
 logger = logging.getLogger(__name__)
@@ -56,6 +60,54 @@ class Presentation(PartElementProxy):
         Provides read/write access to the Dublin Core document properties for the presentation.
         """
         return self.part.core_properties
+
+    def scrub(
+        self,
+        *,
+        notes: bool = False,
+        comments: bool = False,
+        metadata: bool = False,
+        hidden_slides: bool = False,
+        unused_layouts: bool = False,
+        unused_masters: bool = False,
+        unreachable_media: bool = False,
+        embedded_fonts: bool = False,
+    ) -> "ScrubReport":
+        """Remove exactly the toggled targets from this deck; return a |ScrubReport|.
+
+        paper-pptx addition — the exit gate before a deck leaves an
+        automated pipeline. Every toggle defaults to False (touch nothing). Removal is
+        relationship-graph surgery: a part leaves the package only by becoming
+        unreachable, so anything reachable from a live slide, layout, or master
+        structurally cannot be removed.
+
+        `notes`: every speaker-notes part (the notes master is retained — declared).
+        `comments`: comment parts and author registries, classic and modern types.
+        `metadata`: clears core-properties text fields (author, title, comments, …;
+        created/modified/revision survive) and removes app.xml, custom-properties, and
+        thumbnail parts. `hidden_slides`: deletes `show="0"` slides (sections and custom
+        shows maintained via the safe delete path). `unused_layouts`/`unused_masters`:
+        layouts no slide references / masters none of whose layouts serve a slide.
+        `unreachable_media`: drops media relationships no XML reference actually uses —
+        referenced media is never touched. `embedded_fonts`: the `p:embeddedFontLst` and
+        every font-data part.
+
+        The report's `parts_removed`/`parts_modified` are the exact zip-member budget of
+        the operation. All toggles False returns an empty report and changes nothing.
+        """
+        from pptx2.scrub import scrub_presentation
+
+        return scrub_presentation(
+            self,
+            notes=notes,
+            comments=comments,
+            metadata=metadata,
+            hidden_slides=hidden_slides,
+            unused_layouts=unused_layouts,
+            unused_masters=unused_masters,
+            unreachable_media=unreachable_media,
+            embedded_fonts=embedded_fonts,
+        )
 
     @property
     def custom_properties(self) -> CustomProperties:
@@ -242,46 +294,113 @@ class Presentation(PartElementProxy):
         """
         return Sections(self._element, self)
 
+    def apply_footers(
+        self,
+        *,
+        footer: str | None = None,
+        slide_number: bool = False,
+        date_format: str | None = None,
+        fixed_date: str | None = None,
+        skip_title_slides: bool = False,
+        now: "datetime | None" = None,
+    ) -> None:
+        """Apply the complete footer state to every slide ("Apply to All").
+
+        paper-pptx addition. Persists exactly what PowerPoint's
+        Insert > Header & Footer dialog does: materializes minimal `dt`/`ftr`/`sldNum`
+        placeholder shapes per slide (binding to the layout furniture by `idx`), writes
+        slide numbers and automatic dates as real `a:fld` elements whose cached text
+        consumers refresh on open, and *removes* the placeholders for unchecked elements —
+        each call sets the full three-element state, like the dialog.
+
+        `footer`: literal footer text, or None to remove the footer placeholder.
+        `slide_number`: True writes a `slidenum` field cached with the current position
+        (honoring `firstSlideNum`); consumers renumber live after any reorder.
+        `date_format`: a `datetime`..`datetime13` token for an automatically-updating date
+        field; `fixed_date`: literal date text (the dialog's "Fixed" mode); passing both
+        raises |ValueError|. `now` seeds the date field's cached text (None = wall clock);
+        the package never vouches for cached values — they are consumer-refreshed hints.
+        `skip_title_slides`: the dialog's "Don't show on title slide" — slides on a
+        `type="title"` layout get the all-removed state.
+
+        Refuses atomically (|UnsupportedStructureError|, validated deck-wide before the
+        first write) when a wanted element has no layout furniture to inherit from, or
+        when explicit `p:hf` flags on a layout/master disable it (clear those via
+        `header_footers` first — this API never flips them silently).
+        """
+        from pptx2.hf import apply_presentation_footers
+
+        apply_presentation_footers(
+            self,
+            footer=footer,
+            slide_number=slide_number,
+            date_format=date_format,
+            fixed_date=fixed_date,
+            skip_title_slides=skip_title_slides,
+            now=now,
+        )
+
+    def append_deck(
+        self, source_prs: "Presentation", *, mode: str, notes: bool = True
+    ) -> "tuple[ImportReport, ...]":
+        """Import every slide of `source_prs`, in order, at the end of this deck.
+
+        paper-pptx addition, built on :meth:`import_slide` — same `mode`
+        semantics and refusal ledger. The COMPLETE source deck validates before the first
+        write: a refusal on any source slide leaves this presentation untouched. Source
+        sections are not copied (this deck's section structure governs — declared).
+        """
+        from pptx2.compose import append_deck
+
+        return append_deck(self, source_prs, mode=mode, notes=notes)
+
     def import_slide(
         self,
-        source_slide: Slide,
-        merge_master: Literal["dedupe", "clone"] = "dedupe",
-    ) -> Slide:
-        """Copy *source_slide* into this presentation and return the new |Slide|.
+        source_prs: "Presentation",
+        slide: Slide,
+        *,
+        mode: str,
+        position: int | None = None,
+        notes: bool = True,
+        section: str | None = None,
+        target_layout: SlideLayout | None = None,
+    ) -> "ImportReport":
+        """Import `slide` from `source_prs` into this presentation; return the report.
 
-        The imported slide is appended after any existing slides.
+        paper-pptx addition. `mode` is required — there is no right
+        default, the caller chooses consciously:
 
-        Parameters
-        ----------
-        source_slide:
-            A |Slide| object from any |Presentation| instance, including this one.
-        merge_master:
-            Controls how the slide master is handled:
+        - ``"adopt_theme"``: content transplants and rebinds to a destination layout
+          (auto by layout name, then layout type; `target_layout` overrides; orphan
+          placeholders bake from their source-resolved look). The slide takes the house
+          style; every run whose resolved values changed is in `run_shifts`.
+        - ``"keep_appearance"``: the source layout+master+theme chain transplants,
+          fingerprint-deduplicated (ten slides from one source share one master).
+        - ``"bake"``: resolvable effective values become explicit local properties,
+          furniture placeholders (dt/ftr/sldNum) drop, remaining placeholders become
+          free shapes, and the slide attaches to a destination layout. Stable look
+          without importing masters.
 
-            ``'dedupe'`` *(default)*
-                Reuse an existing master in this presentation if its XML is
-                identical to the source master's XML (normalised byte-for-byte
-                compare).  Clone the master otherwise.
-
-            ``'clone'``
-                Always clone the source master, even if an identical one
-                already exists.
-
-        Returns
-        -------
-        Slide
-            The newly imported slide.
-
-        Example::
-
-            src = pptx2.Presentation("source.pptx")
-            dst = pptx2.Presentation("dest.pptx")
-            new_slide = dst.import_slide(src.slides[0])
-            dst.save("merged.pptx")
+        The source presentation is never mutated. Media always copies (never shared
+        across packages); charts deep-copy with workbooks; SmartArt carries opaquely;
+        comments drop (reported); OLE objects, controls, internal slide links, and
+        unknown relationship types refuse (`RelationshipPolicyError`) before any write.
+        `notes` copies the speaker-notes part re-linked to this deck's notes master.
+        `section` names an existing destination section to enroll in; None enrolls
+        adjacent to the insertion point when this deck has sections.
         """
-        from pptx2._slide_importer import import_slide as _import_slide
+        from pptx2.compose import import_slide
 
-        return _import_slide(source_slide.part, self.part, merge_master=merge_master)
+        return import_slide(
+            self,
+            source_prs,
+            slide,
+            mode=mode,
+            position=position,
+            notes=notes,
+            section=section,
+            target_layout=target_layout,
+        )
 
     def apply_template(
         self,

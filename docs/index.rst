@@ -124,6 +124,14 @@ API Documentation
    api/render
    api/smart_art
    api/enum/index
+   api/inspect
+   api/edit
+   api/diff
+   api/errors
+   api/hf
+   api/package
+   api/rebind
+   api/scrub
 
 
 Contributor Guide

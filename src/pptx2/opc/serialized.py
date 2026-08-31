@@ -7,6 +7,7 @@ import posixpath
 import zipfile
 from typing import IO, TYPE_CHECKING, Any, Container, Sequence
 
+from pptx2._zipguard import GuardedZipReader, enforce_compressed_size, preflight_zip
 from pptx2.exc import PackageNotFoundError
 from pptx2.opc.constants import CONTENT_TYPE as CT
 from pptx2.opc.oxml import CT_Types, serialize_part_xml
@@ -45,6 +46,11 @@ class PackageReader(Container[bytes]):
         """
         blob_reader, uri = self._blob_reader, partname.rels_uri
         return blob_reader[uri] if uri in blob_reader else None
+
+    @property
+    def partnames(self) -> set[PackURI] | None:
+        """Physical member names, or |None| for an expanded directory package."""
+        return getattr(self._blob_reader, "partnames", None)
 
     @lazyproperty
     def _blob_reader(self) -> _PhysPkgReader:
@@ -147,6 +153,8 @@ class _PhysPkgReader(Container[PackURI]):
         if os.path.isdir(path):
             return _DirPkgReader(path)
 
+        if os.path.isfile(path):
+            enforce_compressed_size(path)
         if zipfile.is_zipfile(path):
             return _ZipPkgReader(path)
 
@@ -197,11 +205,19 @@ class _ZipPkgReader(_PhysPkgReader):
             raise KeyError("no member '%s' in package" % pack_uri)
         return self._blobs[pack_uri]
 
+    @property
+    def partnames(self) -> set[PackURI]:
+        """All validated physical package member names."""
+        return set(self._blobs)
+
     @lazyproperty
     def _blobs(self) -> dict[PackURI, bytes]:
         """dict mapping partname to package part binaries."""
+        enforce_compressed_size(self._pkg_file)
+        preflight_zip(self._pkg_file)
         with zipfile.ZipFile(self._pkg_file, "r") as z:
-            return {PackURI("/%s" % name): z.read(name) for name in z.namelist()}
+            guarded = GuardedZipReader(z)
+            return {PackURI("/%s" % name): guarded.read(name) for name in guarded.order}
 
 
 class _PhysPkgWriter:
@@ -241,8 +257,15 @@ class _ZipPkgWriter(_PhysPkgWriter):
         self._zipf.close()
 
     def write(self, pack_uri: PackURI, blob: bytes) -> None:
-        """Write `blob` to zip package with membername corresponding to `pack_uri`."""
-        self._zipf.writestr(pack_uri.membername, blob)
+        """Write `blob` to zip package with membername corresponding to `pack_uri`.
+
+        Entry timestamps are pinned to the zip epoch (1980-01-01), making a
+        save byte-deterministic: saving the same package state twice yields
+        identical bytes (paper-pptx addition).
+        """
+        info = zipfile.ZipInfo(pack_uri.membername, date_time=(1980, 1, 1, 0, 0, 0))
+        info.compress_type = zipfile.ZIP_DEFLATED
+        self._zipf.writestr(info, blob)
 
     @lazyproperty
     def _zipf(self) -> zipfile.ZipFile:

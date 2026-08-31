@@ -101,8 +101,7 @@ def _resolve_anchor(anchor: str) -> tuple[str, str]:
         return ("middle", "center")
     if "-" not in raw:
         raise ValueError(
-            f"anchor must be 'center' or 'vertical-horizontal' "
-            f"(e.g. 'top-right'); got {anchor!r}"
+            f"anchor must be 'center' or 'vertical-horizontal' (e.g. 'top-right'); got {anchor!r}"
         )
     parts = [p.strip() for p in raw.split("-", 1)]
     v, h = parts[0], parts[1]
@@ -111,8 +110,7 @@ def _resolve_anchor(anchor: str) -> tuple[str, str]:
         v = "middle"
     if v not in _VERTICAL_ANCHORS or h not in _HORIZONTAL_ANCHORS:
         raise ValueError(
-            f"anchor must be one of top|middle|bottom dash "
-            f"left|center|right; got {anchor!r}"
+            f"anchor must be one of top|middle|bottom dash left|center|right; got {anchor!r}"
         )
     # Normalise "centre" → "center" on the horizontal half.
     if h == "centre":
@@ -196,9 +194,7 @@ def _container_box(shapetree, container) -> tuple[int, int, int, int]:
             return (0, 0, int(prs.slide_width), int(prs.slide_height))
         except AttributeError:
             pass
-    raise ValueError(
-        "container must be None, a slide, or a shape with .width/.height"
-    )
+    raise ValueError("container must be None, a slide, or a shape with .width/.height")
 
 
 def _container_extents(shapetree, container) -> tuple[int, int]:
@@ -344,10 +340,7 @@ def _resolve_endpoint(target, *, opposite, side: str, inset_emu: int):
 
     box = _endpoint_box(target)
     if box is None:
-        raise TypeError(
-            "arrow endpoint must be (x, y), a Shape, or a BBox; got %r"
-            % (target,)
-        )
+        raise TypeError("arrow endpoint must be (x, y), a Shape, or a BBox; got %r" % (target,))
     left, top, width, height = box
 
     if side in (None, "auto"):
@@ -378,9 +371,7 @@ def _resolve_endpoint(target, *, opposite, side: str, inset_emu: int):
         return (left + width // 2, top + inset_emu)
     if side == "bottom":
         return (left + width // 2, top + height - inset_emu)
-    raise ValueError(
-        f"side must be 'top'/'right'/'bottom'/'left'/'auto'; got {side!r}"
-    )
+    raise ValueError(f"side must be 'top'/'right'/'bottom'/'left'/'auto'; got {side!r}")
 
 
 class _BaseShapes(ParentedElementProxy):
@@ -568,7 +559,14 @@ class _BaseGroupShapes(_BaseShapes):
         super(_BaseGroupShapes, self).__init__(grpSp, parent)
         self._grpSp = grpSp
 
-    @agent_friendly({"cx": ("width", "w"), "cy": ("height", "h"), "chart_data": ("data", "chartdata"), "chart_type": ("type", "charttype")})
+    @agent_friendly(
+        {
+            "cx": ("width", "w"),
+            "cy": ("height", "h"),
+            "chart_data": ("data", "chartdata"),
+            "chart_type": ("type", "charttype"),
+        }
+    )
     def add_chart(
         self,
         chart_type: XL_CHART_TYPE,
@@ -603,7 +601,15 @@ class _BaseGroupShapes(_BaseShapes):
         _apply_horizontal_bar_default(shape, chart_type)
         return cast("Chart", shape)
 
-    @agent_friendly({"connector_type": ("type", "kind", "connector"), "begin_x": ("x1", "start_x"), "begin_y": ("y1", "start_y"), "end_x": ("x2", "to_x"), "end_y": ("y2", "to_y")})
+    @agent_friendly(
+        {
+            "connector_type": ("type", "kind", "connector"),
+            "begin_x": ("x1", "start_x"),
+            "begin_y": ("y1", "start_y"),
+            "end_x": ("x2", "to_x"),
+            "end_y": ("y2", "to_y"),
+        }
+    )
     def add_connector(
         self,
         connector_type: MSO_CONNECTOR_TYPE,
@@ -637,7 +643,8 @@ class _BaseGroupShapes(_BaseShapes):
         grpSp = self._element.add_grpSp()
         for shape in shapes:
             grpSp.insert_element_before(
-                shape._element, "p:extLst"  # pyright: ignore[reportPrivateUsage]
+                shape._element,
+                "p:extLst",  # pyright: ignore[reportPrivateUsage]
             )
         if shapes:
             grpSp.recalculate_extents()
@@ -832,7 +839,9 @@ class _BaseGroupShapes(_BaseShapes):
         self._recalculate_extents()
         return cast(Picture, self._shape_factory(pic))
 
-    @agent_friendly({"autoshape_type_id": ("shape_type", "autoshape_type", "shape", "preset_shape")})
+    @agent_friendly(
+        {"autoshape_type_id": ("shape_type", "autoshape_type", "shape", "preset_shape")}
+    )
     def add_shape(
         self,
         autoshape_type_id: MSO_SHAPE,
@@ -968,9 +977,20 @@ class _BaseGroupShapes(_BaseShapes):
                 "add_text",
                 kwargs,
                 (
-                    "text", "font", "size_pt", "bold", "italic", "color",
-                    "align", "anchor", "margin_pt", "word_wrap",
-                    "left", "top", "width", "height",
+                    "text",
+                    "font",
+                    "size_pt",
+                    "bold",
+                    "italic",
+                    "color",
+                    "align",
+                    "anchor",
+                    "margin_pt",
+                    "word_wrap",
+                    "left",
+                    "top",
+                    "width",
+                    "height",
                 ),
             )
             geo_names = ("left", "top", "width", "height")
@@ -988,14 +1008,27 @@ class _BaseGroupShapes(_BaseShapes):
                     )
                 bbox_or_positional = tuple(kwargs[g] for g in geo_names)
             defaults = {
-                "text": "", "font": None, "size_pt": None, "bold": None,
-                "italic": None, "color": None, "align": None, "anchor": None,
-                "margin_pt": None, "word_wrap": True,
+                "text": "",
+                "font": None,
+                "size_pt": None,
+                "bold": None,
+                "italic": None,
+                "color": None,
+                "align": None,
+                "anchor": None,
+                "margin_pt": None,
+                "word_wrap": True,
             }
             given = {
-                "text": text, "font": font, "size_pt": size_pt, "bold": bold,
-                "italic": italic, "color": color, "align": align,
-                "anchor": anchor, "margin_pt": margin_pt,
+                "text": text,
+                "font": font,
+                "size_pt": size_pt,
+                "bold": bold,
+                "italic": italic,
+                "color": color,
+                "align": align,
+                "anchor": anchor,
+                "margin_pt": margin_pt,
                 "word_wrap": word_wrap,
             }
             for name in defaults:
@@ -1037,9 +1070,7 @@ class _BaseGroupShapes(_BaseShapes):
 
         if margin_pt is not None:
             if isinstance(margin_pt, (tuple, list)) and len(margin_pt) != 4:
-                raise ValueError(
-                    "margin_pt tuple must have 4 elements (top, right, bottom, left)"
-                )
+                raise ValueError("margin_pt tuple must have 4 elements (top, right, bottom, left)")
             apply_margins(tf, margin_pt)
 
         if anchor is not None:
@@ -1104,8 +1135,18 @@ class _BaseGroupShapes(_BaseShapes):
                 "add_equation",
                 kwargs,
                 (
-                    "latex", "display", "font", "size_pt", "color", "align",
-                    "anchor", "margin_pt", "left", "top", "width", "height",
+                    "latex",
+                    "display",
+                    "font",
+                    "size_pt",
+                    "color",
+                    "align",
+                    "anchor",
+                    "margin_pt",
+                    "left",
+                    "top",
+                    "width",
+                    "height",
                 ),
             )
             geo_names = ("left", "top", "width", "height")
@@ -1123,14 +1164,24 @@ class _BaseGroupShapes(_BaseShapes):
                     )
                 bbox_or_positional = tuple(kwargs[g] for g in geo_names)
             defaults = {
-                "latex": None, "display": True, "font": None, "size_pt": None,
-                "color": None, "align": "center", "anchor": "middle",
+                "latex": None,
+                "display": True,
+                "font": None,
+                "size_pt": None,
+                "color": None,
+                "align": "center",
+                "anchor": "middle",
                 "margin_pt": None,
             }
             given = {
-                "latex": latex, "display": display, "font": font,
-                "size_pt": size_pt, "color": color, "align": align,
-                "anchor": anchor, "margin_pt": margin_pt,
+                "latex": latex,
+                "display": display,
+                "font": font,
+                "size_pt": size_pt,
+                "color": color,
+                "align": align,
+                "anchor": anchor,
+                "margin_pt": margin_pt,
             }
             for name in defaults:
                 if name not in kwargs:
@@ -1156,7 +1207,6 @@ class _BaseGroupShapes(_BaseShapes):
                 "add_equation() missing required argument: 'latex' "
                 "(synonyms 'tex' / 'formula' / 'equation' accepted)"
             )
-
 
         if len(bbox_or_positional) == 1 and isinstance(bbox_or_positional[0], BBox):
             box = bbox_or_positional[0]
@@ -1254,22 +1304,46 @@ class _BaseGroupShapes(_BaseShapes):
                 "add_arrow",
                 kwargs,
                 (
-                    "start", "end", "head", "tail", "head_size", "tail_size",
-                    "color", "weight_pt", "style", "route", "inset_pt",
-                    "end_side", "start_side",
+                    "start",
+                    "end",
+                    "head",
+                    "tail",
+                    "head_size",
+                    "tail_size",
+                    "color",
+                    "weight_pt",
+                    "style",
+                    "route",
+                    "inset_pt",
+                    "end_side",
+                    "start_side",
                 ),
             )
             defaults = {
-                "head": "triangle", "tail": None, "head_size": "medium",
-                "tail_size": "medium", "color": None, "weight_pt": 1.5,
-                "style": "solid", "route": "straight", "inset_pt": 0.0,
-                "end_side": "auto", "start_side": "auto",
+                "head": "triangle",
+                "tail": None,
+                "head_size": "medium",
+                "tail_size": "medium",
+                "color": None,
+                "weight_pt": 1.5,
+                "style": "solid",
+                "route": "straight",
+                "inset_pt": 0.0,
+                "end_side": "auto",
+                "start_side": "auto",
             }
             given = {
-                "head": head, "tail": tail, "head_size": head_size,
-                "tail_size": tail_size, "color": color, "weight_pt": weight_pt,
-                "style": style, "route": route, "inset_pt": inset_pt,
-                "end_side": end_side, "start_side": start_side,
+                "head": head,
+                "tail": tail,
+                "head_size": head_size,
+                "tail_size": tail_size,
+                "color": color,
+                "weight_pt": weight_pt,
+                "style": style,
+                "route": route,
+                "inset_pt": inset_pt,
+                "end_side": end_side,
+                "start_side": start_side,
             }
             for name in defaults:
                 if name not in kwargs:
@@ -1301,8 +1375,7 @@ class _BaseGroupShapes(_BaseShapes):
             raise TypeError(
                 "add_arrow() missing required argument(s): "
                 + ", ".join(
-                    name for name, value in (("start", start), ("end", end))
-                    if value is None
+                    name for name, value in (("start", start), ("end", end)) if value is None
                 )
                 + " (synonyms begin/from/source and to/target accepted)"
             )
@@ -1313,9 +1386,7 @@ class _BaseGroupShapes(_BaseShapes):
             "curved": MSO_CONNECTOR_TYPE.CURVE,
         }
         if route not in _CONNECTOR:
-            raise ValueError(
-                f"route must be one of {sorted(_CONNECTOR)}; got {route!r}"
-            )
+            raise ValueError(f"route must be one of {sorted(_CONNECTOR)}; got {route!r}")
 
         _DASH = {
             "solid": MSO_LINE_DASH_STYLE.SOLID,
@@ -1323,9 +1394,7 @@ class _BaseGroupShapes(_BaseShapes):
             "dotted": MSO_LINE_DASH_STYLE.ROUND_DOT,
         }
         if style not in _DASH:
-            raise ValueError(
-                f"style must be one of {sorted(_DASH)}; got {style!r}"
-            )
+            raise ValueError(f"style must be one of {sorted(_DASH)}; got {style!r}")
 
         _END_TYPE = {
             None: MSO_LINE_END_TYPE.NONE,
@@ -1367,15 +1436,13 @@ class _BaseGroupShapes(_BaseShapes):
         head_size_key = _norm(head_size)
         tail_size_key = _norm(tail_size)
         if head_size_key not in _END_SIZE:
-            raise ValueError(
-                f"head_size must be one of {sorted(_END_SIZE)}; got {head_size!r}"
-            )
+            raise ValueError(f"head_size must be one of {sorted(_END_SIZE)}; got {head_size!r}")
         if tail_size_key not in _END_SIZE:
-            raise ValueError(
-                f"tail_size must be one of {sorted(_END_SIZE)}; got {tail_size!r}"
-            )
+            raise ValueError(f"tail_size must be one of {sorted(_END_SIZE)}; got {tail_size!r}")
 
-        bx, by = _resolve_endpoint(start, opposite=end, side=start_side, inset_emu=int(Pt(inset_pt)))
+        bx, by = _resolve_endpoint(
+            start, opposite=end, side=start_side, inset_emu=int(Pt(inset_pt))
+        )
         ex, ey = _resolve_endpoint(end, opposite=start, side=end_side, inset_emu=int(Pt(inset_pt)))
 
         conn = self.add_connector(_CONNECTOR[route], bx, by, ex, ey)
@@ -1507,7 +1574,9 @@ class _BaseGroupShapes(_BaseShapes):
         sp = self._spTree.add_textbox(id_, name, x, y, cx, cy)
         return sp
 
-    @agent_friendly({"cols": ("columns", "num_cols", "col_count"), "rows": ("num_rows", "row_count")})
+    @agent_friendly(
+        {"cols": ("columns", "num_cols", "col_count"), "rows": ("num_rows", "row_count")}
+    )
     def add_table(
         self,
         rows: int,
@@ -1653,6 +1722,55 @@ class GroupShapes(_BaseGroupShapes):
         self._grpSp.recalculate_extents()
 
 
+def _shape_kind(shape) -> str:
+    """Return a human-readable kind for `shape`, robust to exotic shapes (paper-pptx).
+
+    `shape_type` can be |None| or raise for shapes upstream does not classify (e.g. SmartArt
+    graphic frames); error messages must never crash while being built.
+    """
+    try:
+        shape_type = shape.shape_type
+    except Exception:
+        return type(shape).__name__
+    return shape_type.name if shape_type is not None else type(shape).__name__
+
+
+def _iter_shapes_deep(shapes):
+    """Yield every shape in `shapes` and, recursively, inside its group shapes (paper-pptx).
+
+    Depth-first document order — the by-name addressing APIs are group-aware so a named
+    shape is findable wherever it sits.
+    """
+    from pptx2.shapes.group import GroupShape
+
+    for shape in shapes:
+        yield shape
+        if isinstance(shape, GroupShape):
+            for nested in _iter_shapes_deep(shape.shapes):
+                yield nested
+
+
+_R_NS_PREFIX = "{http://schemas.openxmlformats.org/officeDocument/2006/relationships}"
+
+
+def _subtree_rIds(element) -> "set[str]":
+    """Every relationship id referenced by any r-namespace attribute under `element`."""
+    rIds = set()
+    for descendant in element.iter():
+        for attr_name, attr_value in descendant.attrib.items():
+            if attr_value and attr_name.startswith(_R_NS_PREFIX):
+                rIds.add(attr_value)
+    return rIds
+
+
+def _part_references_rId(part_element, rId: str) -> bool:
+    for descendant in part_element.iter():
+        for attr_name, attr_value in descendant.attrib.items():
+            if attr_value == rId and attr_name.startswith(_R_NS_PREFIX):
+                return True
+    return False
+
+
 class SlideShapes(_BaseGroupShapes):
     """Sequence of shapes appearing on a slide.
 
@@ -1661,6 +1779,247 @@ class SlideShapes(_BaseGroupShapes):
     """
 
     parent: Slide  # pyright: ignore[reportIncompatibleMethodOverride]
+
+    def add_copy(self, shape):
+        """Return a copy of `shape` (from this or another slide) added to this slide.
+
+        paper-pptx addition. The copy gets fresh shape ids; its
+        relationships follow the pinned policy: image/media parts shared, external
+        (hyperlink) relationships copied, charts deep-copied WITH their embedded workbooks
+        and style parts. Any other relationship type refuses with |RelationshipPolicyError|
+        before anything changes. A shape from another presentation raises
+        |TargetNotFoundError|.
+        """
+        from pptx2._ownership import require_shape_attached, require_shape_tree_attached
+        from pptx2.errors import RelationshipPolicyError, TargetNotFoundError
+        from pptx2.opc.constants import RELATIONSHIP_TYPE as RT
+        from pptx2.slideops import (
+            _copy_chart_part,
+            _CopySession,
+            _rewrite_r_references,
+            _validate_chart_rels,
+        )
+
+        require_shape_tree_attached(self)
+        require_shape_attached(shape)
+        source_element = shape._element
+        source_part = shape.part
+        if source_part.package is not self.part.package:
+            raise TargetNotFoundError(
+                "shape %r belongs to a different presentation" % (shape.name,)
+            )
+
+        # -- full relationship plan before any mutation (§1.3) --
+        shareable = frozenset([RT.IMAGE, RT.MEDIA, RT.VIDEO, RT.AUDIO])
+        plan = []
+        for rId in sorted(_subtree_rIds(source_element)):
+            try:
+                rel = source_part.rels[rId]
+            except KeyError:
+                raise RelationshipPolicyError(
+                    "shape %r references relationship %s which does not exist on its part"
+                    % (shape.name, rId)
+                )
+            if rel.is_external:
+                plan.append((rId, "external", rel))
+            elif rel.reltype in shareable:
+                plan.append((rId, "share", rel))
+            elif rel.reltype == RT.CHART:
+                # -- same refusal contract as Slides.clone: a chart whose child rels the
+                # -- deep copy cannot honor refuses BEFORE anything mutates
+                _validate_chart_rels(rel.target_part)
+                plan.append((rId, "chart", rel))
+            else:
+                raise RelationshipPolicyError(
+                    "shape %r carries relationship type %s which add_copy does not support"
+                    " in v0.1" % (shape.name, rel.reltype)
+                )
+
+        import copy as _copy_module
+
+        new_element = _copy_module.deepcopy(source_element)
+        # -- fresh, unique shape ids for every nvPr in the copied subtree --
+        next_id = self._next_shape_id
+        for cNvPr in new_element.iter(qn("p:cNvPr")):
+            cNvPr.set("id", str(next_id))
+            next_id += 1
+
+        copied_sources = [source_part]
+        for _, action, rel in plan:
+            if action != "chart":
+                continue
+            copied_sources.append(rel.target_part)
+            copied_sources.extend(
+                child.target_part
+                for child in rel.target_part.rels.values()
+                if not child.is_external
+            )
+        allocated = _CopySession(self.part.package, copied_sources)
+        allocated.remap_element(new_element)
+
+        from pptx2._transaction import PackageTransaction
+
+        with PackageTransaction(self.part.package, self, shape):
+            rId_mapping = {}
+            for old_rId, action, rel in plan:
+                if action == "external":
+                    rId_mapping[old_rId] = self.part.rels.get_or_add_ext_rel(
+                        rel.reltype, rel.target_ref
+                    )
+                elif action == "share":
+                    rId_mapping[old_rId] = self.part.relate_to(rel.target_part, rel.reltype)
+                else:  # -- chart: deep copy with workbook/style parts
+                    rId_mapping[old_rId] = self.part.relate_to(
+                        _copy_chart_part(rel.target_part, allocated), rel.reltype
+                    )
+            _rewrite_r_references(new_element, rId_mapping)
+            self._spTree.append(new_element)
+            copied_shape = self._shape_factory(new_element)
+        return copied_shape
+
+    def chart_by_name(self, name: str):
+        """Return the |Chart| held by the shape on this slide named `name`.
+
+        paper-pptx addition, the chart-addressing half of safe chart-data replacement.
+        Group-aware: shapes inside groups are found too. Raises
+        |TargetNotFoundError| when no shape has that name, or when shapes with the name
+        exist but none holds a chart (the message says what was found instead). Raises
+        |AmbiguousTargetError| when more than one chart-bearing shape has the name — this
+        API never guesses between them.
+        """
+        from pptx2.errors import AmbiguousTargetError, TargetNotFoundError
+
+        named_shapes = [shape for shape in _iter_shapes_deep(self) if shape.name == name]
+        chart_shapes = [shape for shape in named_shapes if shape.has_chart]
+        if not chart_shapes:
+            if not named_shapes:
+                raise TargetNotFoundError("no shape named %r on this slide" % name)
+            raise TargetNotFoundError(
+                "shape named %r holds no chart (found: %s)"
+                % (name, ", ".join(_shape_kind(shape) for shape in named_shapes))
+            )
+        if len(chart_shapes) > 1:
+            raise AmbiguousTargetError(
+                "%d chart shapes on this slide are named %r; refusing to pick one"
+                % (len(chart_shapes), name)
+            )
+        return chart_shapes[0].chart
+
+    def delete(self, shape) -> None:
+        """Remove `shape` from this slide, with relationship hygiene.
+
+        paper-pptx addition. Relationships referenced by the removed
+        subtree are dropped unless something else in the part still references them (two
+        pictures can share one image relationship). A shape that is not a direct member of
+        this collection — including a shape inside a group — raises |TargetNotFoundError|
+        (delete the group, or ungroup first).
+        """
+        from pptx2._ownership import require_shape_tree_attached
+        from pptx2.errors import TargetNotFoundError, UnsupportedStructureError
+
+        require_shape_tree_attached(self)
+
+        element = getattr(shape, "_element", None)
+        if element is None or element.getparent() is not self._spTree:
+            raise TargetNotFoundError(
+                "shape %r is not a direct member of this shape collection (grouped shapes"
+                " must be deleted with their group)" % getattr(shape, "name", shape)
+            )
+        subtree_rIds = _subtree_rIds(element)
+        missing_rIds = sorted(rId for rId in subtree_rIds if rId not in self.part.rels)
+        if missing_rIds:
+            raise UnsupportedStructureError(
+                "shape %r references missing relationships: %s"
+                % (getattr(shape, "name", shape), ", ".join(missing_rIds))
+            )
+        from pptx2._transaction import PackageTransaction
+
+        with PackageTransaction(self.part.package, self, shape):
+            self._spTree.remove(element)
+            for rId in sorted(subtree_rIds):
+                if not _part_references_rId(self.part._element, rId):
+                    self.part.drop_rel(rId)
+
+    def move(self, shape, to_index: int) -> None:
+        """Move `shape` to 0-based `to_index` in this collection's z-order.
+
+        paper-pptx addition. Index 0 is backmost, the last index topmost —
+        the same order this collection iterates. `to_index` outside range raises
+        |ValueError|; a shape not directly in this collection raises |TargetNotFoundError|.
+        """
+        from pptx2._ownership import require_shape_tree_attached
+        from pptx2.errors import TargetNotFoundError
+
+        require_shape_tree_attached(self)
+
+        element = getattr(shape, "_element", None)
+        members = list(self._iter_member_elms())
+        if element is None or element not in members:
+            raise TargetNotFoundError(
+                "shape %r is not a direct member of this shape collection"
+                % getattr(shape, "name", shape)
+            )
+        if (
+            not isinstance(to_index, int)
+            or isinstance(to_index, bool)
+            or not 0 <= to_index < len(members)
+        ):
+            raise ValueError(
+                "to_index must be an int in range 0..%d, got %r" % (len(members) - 1, to_index)
+            )
+        from pptx2._transaction import PackageTransaction
+
+        with PackageTransaction(self.part.package, self, shape):
+            members.remove(element)
+            if to_index >= len(members):
+                members[-1].addnext(element)
+            else:
+                members[to_index].addprevious(element)
+
+    def picture_by_name(self, name: str):
+        """Return the |Picture| on this slide named `name` (group-aware).
+
+        paper-pptx addition, with the same contract as `chart_by_name`:
+        |TargetNotFoundError| when nothing (or nothing picture-shaped) has the name,
+        |AmbiguousTargetError| when several pictures do.
+        """
+        from pptx2.shapes.picture import Picture
+
+        return self._by_name_of_kind(name, "picture", lambda s: isinstance(s, Picture))
+
+    def shape_by_name(self, name: str):
+        """Return the single shape on this slide named `name` (group-aware).
+
+        paper-pptx addition: |TargetNotFoundError| / |AmbiguousTargetError|,
+        never first-match.
+        """
+        return self._by_name_of_kind(name, "shape", lambda s: True)
+
+    def table_by_name(self, name: str):
+        """Return the |Table| held by the graphic frame on this slide named `name`.
+
+        paper-pptx addition, same contract as `chart_by_name`.
+        """
+        return self._by_name_of_kind(name, "table", lambda s: s.has_table).table
+
+    def _by_name_of_kind(self, name: str, kind: str, predicate):
+        from pptx2.errors import AmbiguousTargetError, TargetNotFoundError
+
+        named_shapes = [shape for shape in _iter_shapes_deep(self) if shape.name == name]
+        matching = [shape for shape in named_shapes if predicate(shape)]
+        if not matching:
+            if not named_shapes:
+                raise TargetNotFoundError("no shape named %r on this slide" % name)
+            raise TargetNotFoundError(
+                "shape named %r is not a %s (found: %s)"
+                % (name, kind, ", ".join(_shape_kind(shape) for shape in named_shapes))
+            )
+        if len(matching) > 1:
+            raise AmbiguousTargetError(
+                "%d %s shapes on this slide are named %r; refusing to pick one"
+                % (len(matching), kind, name)
+            )
+        return matching[0]
 
     def clone_layout_placeholders(self, slide_layout: SlideLayout) -> None:
         """Add placeholder shapes based on those in `slide_layout`.

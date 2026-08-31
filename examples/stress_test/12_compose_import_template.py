@@ -15,6 +15,13 @@ from pptx2.enum.dml import MSO_THEME_COLOR
 from pptx2.enum.shapes import MSO_SHAPE
 from pptx2.util import Inches
 
+
+def _low_level_import(prs, src_slide, merge_master="dedupe"):
+    """Import via the part-level engine (keeps the old dedupe/clone knobs)."""
+    from pptx2._slide_importer import import_slide
+
+    return import_slide(src_slide.part, prs.part, merge_master=merge_master)
+
 ASSETS = Path(__file__).parent / "_assets"
 
 
@@ -69,8 +76,8 @@ def build():
     })
 
     # Import with dedupe (default-ish) and clone strategies
-    dst.import_slide(src.slides[0], merge_master="dedupe")
-    dst.import_slide(src.slides[1], merge_master="clone")
+    _low_level_import(dst, src.slides[0], merge_master="dedupe")
+    _low_level_import(dst, src.slides[1], merge_master="clone")
 
     # Re-skin against a brand template
     tpl = _template(ASSETS / "_brand_template.pptx")

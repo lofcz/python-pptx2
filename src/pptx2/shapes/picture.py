@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+import io
+from typing import IO, TYPE_CHECKING
 
 from pptx2.dml.line import LineFormat
 from pptx2.dml.picture import PictureEffects
 from pptx2.enum.shapes import MSO_SHAPE, MSO_SHAPE_TYPE, PP_MEDIA_TYPE
+from pptx2.opc.constants import RELATIONSHIP_TYPE as RT
 from pptx2.shapes.base import BaseShape
 from pptx2.shared import ParentedElementProxy
 from pptx2.util import lazyproperty
@@ -15,6 +17,24 @@ if TYPE_CHECKING:
     from pptx2.oxml.shapes.picture import CT_Picture
     from pptx2.oxml.shapes.shared import CT_LineProperties
     from pptx2.types import ProvidesPart
+
+
+def _canonical_image_ext(ext: str) -> str:
+    """Return lowercase canonical form of image extension `ext` (jpg == jpeg)."""
+    lowered = ext.lower()
+    return "jpg" if lowered == "jpeg" else lowered
+
+
+_R_NS_PREFIX = "{http://schemas.openxmlformats.org/officeDocument/2006/relationships}"
+
+
+def _part_xml_references_rId(root, rId: str) -> bool:
+    """True when any r-namespace attribute anywhere in `root` still carries `rId`."""
+    for element in root.iter():
+        for attr_name, attr_value in element.attrib.items():
+            if attr_value == rId and attr_name.startswith(_R_NS_PREFIX):
+                return True
+    return False
 
 
 class _BasePicture(BaseShape):
@@ -146,6 +166,73 @@ class Picture(_BasePicture):
     Based on the `p:pic` element.
     """
 
+    def replace_image(
+        self, image_file: str | IO[bytes], *, allow_format_change: bool = False
+    ) -> None:
+        """Replace the image behind this picture, preserving its geometry exactly.
+
+        paper-pptx addition. Position, size, rotation, masking geometry, and crop
+        (`a:srcRect`) are not touched — only the `a:blip/@r:embed` target changes. By
+        default the new image's canonical format must match the existing image part's
+        extension (jpg == jpeg); a mismatch refuses with |UnsupportedStructureError|.
+        Passing `allow_format_change=True` permits a cross-format swap: the new
+        image gets its own correctly-typed part and `[Content_Types].xml` follows
+        automatically at save (it is regenerated from live parts).
+
+        A picture with no embedded image relationship (e.g. linked-only) refuses. The new
+        image part is deduplicated package-wide by content hash; the old image part simply
+        becomes unreferenced when this picture held its last reference (an unreachable part
+        is never serialized).
+        """
+        from pptx2._ownership import require_shape_attached
+        from pptx2.errors import UnsupportedStructureError
+        from pptx2.parts.image import Image
+
+        # -- validation pass, complete before any mutation --
+        require_shape_attached(self, argument="picture")
+        if not isinstance(allow_format_change, bool):
+            raise ValueError("allow_format_change must be a bool, got %r" % (allow_format_change,))
+        old_rId = self._pic.blip_rId
+        if old_rId is None:
+            raise UnsupportedStructureError(
+                "picture %r has no embedded image relationship (r:embed); a linked-only"
+                " image cannot be replaced" % self.name
+            )
+        try:
+            old_part = self.part.related_part(old_rId)
+        except KeyError:
+            raise UnsupportedStructureError(
+                "picture %r references image relationship %s which does not exist"
+                % (self.name, old_rId)
+            )
+        try:
+            # -- image parsing is lazy: .ext is what forces PIL to sniff the bytes --
+            new_image = Image.from_file(image_file)
+            new_ext = _canonical_image_ext(new_image.ext)
+        except OSError as e:
+            raise ValueError("image_file is not a recognizable image: %s" % e)
+        old_ext = _canonical_image_ext(old_part.partname.ext)
+        if old_ext != new_ext and not allow_format_change:
+            raise UnsupportedStructureError(
+                "replacement image format %r does not match existing image part format %r;"
+                " pass allow_format_change=True to swap across formats" % (new_ext, old_ext)
+            )
+
+        # -- mutation --
+        from pptx2._transaction import PackageTransaction
+
+        with PackageTransaction(self.part.package, self):
+            image_part = self.part.package.get_or_add_image_part(io.BytesIO(new_image.blob))
+            new_rId = self.part.relate_to(image_part, RT.IMAGE)
+            if new_rId == old_rId:
+                return  # -- identical image bytes: already in place
+            self._pic.blipFill.blip.rEmbed = new_rId
+            # -- another shape on this slide may still reference old_rId (pictures added from
+            # -- identical bytes share one relationship); XmlPart.drop_rel only counts @r:id
+            # -- references, so guard with a scan over ALL r-namespace attributes.
+            if not _part_xml_references_rId(self.part._element, old_rId):
+                self.part.drop_rel(old_rId)
+
     def replace_with(self, builder, *, padding=0):
         """Delete this picture and call ``builder(slide, bbox)`` in its place.
 
@@ -178,9 +265,7 @@ class Picture(_BasePicture):
         try:
             slide = self.part.slide
         except AttributeError as exc:
-            raise ValueError(
-                "replace_with() requires the picture to be on a slide"
-            ) from exc
+            raise ValueError("replace_with() requires the picture to be on a slide") from exc
         self.delete()
         return builder(slide, bbox)
 
@@ -352,7 +437,9 @@ def _exclude_obstacle(trimmed, obstacle, *, must_contain):
             (
                 cost,
                 BBox(
-                    trimmed.left, Emu(new_top), trimmed.width,
+                    trimmed.left,
+                    Emu(new_top),
+                    trimmed.width,
                     Emu(int(trimmed.bottom) - new_top),
                 ),
             )
@@ -369,7 +456,9 @@ def _exclude_obstacle(trimmed, obstacle, *, must_contain):
             (
                 cost,
                 BBox(
-                    trimmed.left, trimmed.top, trimmed.width,
+                    trimmed.left,
+                    trimmed.top,
+                    trimmed.width,
                     Emu(new_bottom - int(trimmed.top)),
                 ),
             )
@@ -386,8 +475,10 @@ def _exclude_obstacle(trimmed, obstacle, *, must_contain):
             (
                 cost,
                 BBox(
-                    Emu(new_left), trimmed.top,
-                    Emu(int(trimmed.right) - new_left), trimmed.height,
+                    Emu(new_left),
+                    trimmed.top,
+                    Emu(int(trimmed.right) - new_left),
+                    trimmed.height,
                 ),
             )
         )
@@ -403,8 +494,10 @@ def _exclude_obstacle(trimmed, obstacle, *, must_contain):
             (
                 cost,
                 BBox(
-                    trimmed.left, trimmed.top,
-                    Emu(new_right - int(trimmed.left)), trimmed.height,
+                    trimmed.left,
+                    trimmed.top,
+                    Emu(new_right - int(trimmed.left)),
+                    trimmed.height,
                 ),
             )
         )

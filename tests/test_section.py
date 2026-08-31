@@ -9,6 +9,13 @@ import pytest
 import pptx2
 from pptx2.section import Section, Sections
 
+
+def _low_level_import(prs, src_slide):
+    """Import via the part-level engine; returns the new |Slide|."""
+    from pptx2._slide_importer import import_slide
+
+    return import_slide(src_slide.part, prs.part)
+
 # -- deterministic GUIDs so emitted XML is stable across runs --
 GUID_A = "{11111111-1111-1111-1111-111111111111}"
 GUID_B = "{22222222-2222-2222-2222-222222222222}"
@@ -234,7 +241,7 @@ class DescribeSections:
         prs.sections.add("A", start_slide_index=0, id=GUID_A)
         prs.sections.add("B", start_slide_index=1, id=GUID_B)
 
-        imported = prs.import_slide(src.slides[0])
+        imported = _low_level_import(prs, src.slides[0])
 
         assert imported.slide_id in prs.sections[1].slide_ids
         all_ids = [sid for section in prs.sections for sid in section.slide_ids]

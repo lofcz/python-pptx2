@@ -637,7 +637,7 @@ def sec_import(prs):
         ],
     })
     for sl in sub.slides:
-        prs.import_slide(sl, merge_master="dedupe")
+        prs.import_slide(sub, sl, mode="keep_appearance")
 
 
 def _introspect(prs):

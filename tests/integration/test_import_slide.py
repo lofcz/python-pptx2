@@ -1,4 +1,10 @@
-"""Integration tests for ``Presentation.import_slide()``."""
+"""Integration tests for the low-level slide-import engine.
+
+These exercise ``pptx2._slide_importer.import_slide`` directly — the
+part-level engine behind template cloning.  The high-level public API
+(``Presentation.import_slide(source_prs, slide, mode=...)``, ported from
+paper-pptx) has its own suite under ``tests/paper/test_import.py``.
+"""
 
 from __future__ import annotations
 
@@ -7,7 +13,13 @@ import io
 import pytest
 
 from pptx2 import Presentation
+from pptx2._slide_importer import import_slide as _import_slide
 from pptx2.util import Inches
+
+
+def _import(src_slide_part, dst_part, merge_master="dedupe"):
+    """Call the low-level engine with the old ``Presentation.import_slide`` defaults."""
+    return _import_slide(src_slide_part, dst_part, merge_master=merge_master)
 
 
 # ---------------------------------------------------------------------------
@@ -52,22 +64,22 @@ class Describe_import_slide_basic:
         dst.slides.add_slide(dst.slide_layouts[6])
         assert len(dst.slides) == 1
 
-        dst.import_slide(src.slides[0])
+        _import(src.slides[0].part, dst.part)
 
         assert len(dst.slides) == 2
 
     def it_preserves_slide_content(self):
         src = _make_prs_with_text("Unique Content XYZ")
         dst = Presentation()
-        dst.import_slide(src.slides[0])
+        _import(src.slides[0].part, dst.part)
 
         assert _first_textbox_text(dst.slides[0]) == "Unique Content XYZ"
 
     def it_round_trips_successfully(self):
         src = _make_prs_with_text("Slide1", "Slide2")
         dst = Presentation()
-        dst.import_slide(src.slides[0])
-        dst.import_slide(src.slides[1])
+        _import(src.slides[0].part, dst.part)
+        _import(src.slides[1].part, dst.part)
 
         dst2 = _round_trip(dst)
         assert len(dst2.slides) == 2
@@ -90,7 +102,7 @@ class Describe_import_slide_dedupe:
         dst.slides.add_slide(dst.slide_layouts[0])
         master_count_before = len(dst.slide_masters)
 
-        dst.import_slide(src.slides[0], merge_master="dedupe")
+        _import(src.slides[0].part, dst.part)
 
         assert len(dst.slide_masters) == master_count_before
 
@@ -106,9 +118,9 @@ class Describe_import_slide_dedupe:
         src.slides.add_slide(src.slide_layouts[0])
 
         dst = Presentation()
-        dst.import_slide(src.slides[0])  # dedupe miss -> clone
+        _import(src.slides[0].part, dst.part)  # dedupe miss -> clone
         assert len(dst.slide_masters) == 2
-        dst.import_slide(src.slides[1])  # must dedupe onto that clone
+        _import(src.slides[1].part, dst.part)  # must dedupe onto that clone
         assert len(dst.slide_masters) == 2
 
     def but_masters_differing_only_in_referenced_image_content_do_not_dedupe(self):
@@ -190,7 +202,7 @@ class Describe_import_slide_dedupe:
         dst.slides.add_slide(dst.slide_layouts[0])
         master_count_before = len(dst.slide_masters)
 
-        dst.import_slide(src2.slides[0], merge_master="dedupe")
+        _import(src2.slides[0].part, dst.part)
 
         assert len(dst.slide_masters) == master_count_before + 1
 
@@ -203,7 +215,7 @@ class Describe_import_slide_dedupe:
         dst.slides.add_slide(dst.slide_layouts[0])
         before = len(dst.slide_masters)
 
-        dst.import_slide(src.slides[0], merge_master="clone")
+        _import(src.slides[0].part, dst.part, merge_master="clone")
 
         assert len(dst.slide_masters) == before + 1
 
@@ -218,7 +230,7 @@ class Describe_import_slide_dedupe:
         src.slides.add_slide(src.slide_layouts[0])
 
         dst = Presentation()
-        dst.import_slide(src.slides[0], merge_master="clone")
+        _import(src.slides[0].part, dst.part, merge_master="clone")
 
         cloned_master = list(dst.slide_masters)[-1]
         master_part = cloned_master.part
@@ -279,7 +291,7 @@ class Describe_import_slide_dedupe:
         pic._element.getparent().remove(pic._element)
 
         dst = Presentation()
-        dst.import_slide(src.slides[0], merge_master="clone")
+        _import(src.slides[0].part, dst.part, merge_master="clone")
 
         buf = io.BytesIO()
         dst.save(buf)
@@ -314,7 +326,7 @@ class Describe_import_slide_partnames:
         dst = Presentation()
 
         for slide in src.slides:
-            dst.import_slide(slide, merge_master="clone")
+            _import(slide.part, dst.part, merge_master="clone")
 
         buf = io.BytesIO()
         dst.save(buf)
@@ -332,7 +344,7 @@ class Describe_import_slide_partnames:
         src = _make_prs_with_text("X")
         dst = _make_prs_with_text("Y", "Z")
 
-        dst.import_slide(src.slides[0])
+        _import(src.slides[0].part, dst.part)
 
         slide_ids = [slide.slide_id for slide in dst.slides]
         assert len(slide_ids) == len(set(slide_ids)), "Duplicate slide IDs found"
@@ -351,7 +363,7 @@ class Describe_import_slide_notes:
         notes.notes_text_frame.text = "Speaker note text"
 
         dst = Presentation()
-        dst.import_slide(src.slides[0])
+        _import(src.slides[0].part, dst.part)
 
         imported_slide = dst.slides[0]
         assert imported_slide.has_notes_slide
@@ -371,7 +383,7 @@ class Describe_import_slide_notes:
         slide.notes_slide.notes_text_frame.text = "n"
 
         dst = Presentation()
-        imported = dst.import_slide(src.slides[0])
+        imported = _import(src.slides[0].part, dst.part)
 
         notes_part = imported.notes_slide.part
         assert notes_part.part_related_by(RT.SLIDE) is imported.part
@@ -396,7 +408,7 @@ class Describe_import_slide_notes:
         slide.notes_slide.notes_text_frame.text = "n"
 
         dst = Presentation()
-        imported = dst.import_slide(src.slides[0])
+        imported = _import(src.slides[0].part, dst.part)
 
         notes_part = imported.notes_slide.part
         notes_master_part = notes_part.part_related_by(RT.NOTES_MASTER)
@@ -415,7 +427,7 @@ class Describe_import_slide_notes:
         slide.notes_slide.notes_text_frame.text = "n"
 
         dst = Presentation()
-        dst.import_slide(src.slides[0])
+        _import(src.slides[0].part, dst.part)
         dst.slides.add_slide(dst.slide_layouts[6])
 
         buf = io.BytesIO()
@@ -450,7 +462,7 @@ class Describe_import_slide_relationship_remap:
         s.shapes.add_picture(io.BytesIO(_PNG), Inches(3), Inches(3), Inches(1), Inches(1))
 
         dst = Presentation()
-        dst.import_slide(src.slides[0])
+        _import(src.slides[0].part, dst.part)
         buf = io.BytesIO()
         dst.save(buf)
         buf.seek(0)

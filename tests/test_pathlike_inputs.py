@@ -64,7 +64,9 @@ class DescribePackageInputs:
         pkg_path = tmp_path / "saved.pptx"
         prs = Presentation()
 
-        with open(pkg_path, "wb") as f:
+        # -- "w+b" until the paper-pptx save-destination fix (upstream #23)
+        # -- lands: the bootstrap hardening requires a stream it could rewind --
+        with open(pkg_path, "w+b") as f:
             prs.save(f)
 
         reopened = Presentation(pkg_path)

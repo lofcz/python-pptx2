@@ -6,9 +6,15 @@ import uuid
 from typing import TYPE_CHECKING, Callable, cast
 
 from pptx2.oxml.ns import nsmap, qn
-from pptx2.oxml.simpletypes import ST_SlideId, ST_SlideSizeCoordinate, XsdString
+from pptx2.oxml.simpletypes import (
+    ST_SlideId,
+    ST_SlideSizeCoordinate,
+    XsdString,
+    XsdUnsignedInt,
+)
 from pptx2.oxml.xmlchemy import (
     BaseOxmlElement,
+    OptionalAttribute,
     OxmlElement,
     RequiredAttribute,
     ZeroOrMore,
@@ -32,28 +38,24 @@ class CT_Presentation(BaseOxmlElement):
     get_or_add_embeddedFontLst: Callable[[], BaseOxmlElement]
     get_or_add_extLst: Callable[[], BaseOxmlElement]
 
-    sldMasterIdLst: CT_SlideMasterIdList | None = (
-        ZeroOrOne(  # pyright: ignore[reportAssignmentType]
-            "p:sldMasterIdLst",
-            successors=(
-                "p:notesMasterIdLst",
-                "p:handoutMasterIdLst",
-                "p:sldIdLst",
-                "p:sldSz",
-                "p:notesSz",
-            ),
-        )
-    )
-    notesMasterIdLst: CT_NotesMasterIdList | None = (
-        ZeroOrOne(  # pyright: ignore[reportAssignmentType]
+    sldMasterIdLst: CT_SlideMasterIdList | None = ZeroOrOne(  # pyright: ignore[reportAssignmentType]
+        "p:sldMasterIdLst",
+        successors=(
             "p:notesMasterIdLst",
-            successors=(
-                "p:handoutMasterIdLst",
-                "p:sldIdLst",
-                "p:sldSz",
-                "p:notesSz",
-            ),
-        )
+            "p:handoutMasterIdLst",
+            "p:sldIdLst",
+            "p:sldSz",
+            "p:notesSz",
+        ),
+    )
+    notesMasterIdLst: CT_NotesMasterIdList | None = ZeroOrOne(  # pyright: ignore[reportAssignmentType]
+        "p:notesMasterIdLst",
+        successors=(
+            "p:handoutMasterIdLst",
+            "p:sldIdLst",
+            "p:sldSz",
+            "p:notesSz",
+        ),
     )
     sldIdLst: CT_SlideIdList | None = ZeroOrOne(  # pyright: ignore[reportAssignmentType]
         "p:sldIdLst", successors=("p:sldSz", "p:notesSz")
@@ -207,6 +209,10 @@ class CT_SlideMasterIdListEntry(BaseOxmlElement):
     """
 
     rId: str = RequiredAttribute("r:id", XsdString)  # pyright: ignore[reportAssignmentType]
+    #: document-unique master id, schema minimum 2147483648 (paper-pptx addition)
+    id: int | None = OptionalAttribute(  # pyright: ignore[reportAssignmentType]
+        "id", XsdUnsignedInt
+    )
 
 
 class CT_NotesMasterIdList(BaseOxmlElement):
@@ -218,10 +224,8 @@ class CT_NotesMasterIdList(BaseOxmlElement):
 
     get_or_add_notesMasterId: Callable[[], CT_NotesMasterIdListEntry]
 
-    notesMasterId: CT_NotesMasterIdListEntry | None = (
-        ZeroOrOne(  # pyright: ignore[reportAssignmentType]
-            "p:notesMasterId"
-        )
+    notesMasterId: CT_NotesMasterIdListEntry | None = ZeroOrOne(  # pyright: ignore[reportAssignmentType]
+        "p:notesMasterId"
     )
 
     def add_notesMasterId(self, rId: str) -> CT_NotesMasterIdListEntry:
@@ -302,10 +306,8 @@ class CT_Section(BaseOxmlElement):
     name: str = RequiredAttribute("name", XsdString)  # pyright: ignore[reportAssignmentType]
     id: str = RequiredAttribute("id", XsdString)  # pyright: ignore[reportAssignmentType]
 
-    sldIdLst: CT_SectionSlideIdList | None = (
-        ZeroOrOne(  # pyright: ignore[reportAssignmentType]
-            "p14:sldIdLst"
-        )
+    sldIdLst: CT_SectionSlideIdList | None = ZeroOrOne(  # pyright: ignore[reportAssignmentType]
+        "p14:sldIdLst"
     )
 
     @property

@@ -22,12 +22,16 @@ from pptx2.oxml.simpletypes import (
     ST_Percentage,
     ST_PositiveCoordinate32,
     ST_TextAutonumberScheme,
+    ST_TextBulletSizePercent,
     ST_TextBulletStartAtNum,
     ST_TextCapsType,
     ST_TextColumnCount,
     ST_TextFontScalePercentOrPercentString,
     ST_TextFontSize,
+    ST_TextIndent,
     ST_TextIndentLevelType,
+    ST_TextLineSpaceReductionPercentOrPercentString,
+    ST_TextMargin,
     ST_TextPoint,
     ST_TextSpacingPercentOrPercentString,
     ST_TextSpacingPoint,
@@ -234,6 +238,15 @@ class CT_TextListStyle(BaseOxmlElement):
         "a:lvl1pPr", successors=_lvl_tag_seq[1:]
     )
     del _lvl_tag_seq
+
+    def pPr_for_lvl(self, level: int) -> CT_TextParagraphProperties | None:
+        """Return the `a:lvl{level+1}pPr` child for 0-based indent `level`, or |None|.
+
+        paper-pptx addition. Read-only helper for the effective-style inheritance walk.
+        """
+        if not 0 <= level <= 8:
+            raise ValueError("level must be in range 0..8, got %r" % (level,))
+        return self.find(qn("a:lvl%dpPr" % (level + 1)))
 
 
 class CT_TextBodyProperties(BaseOxmlElement):
@@ -530,6 +543,9 @@ class CT_TextNormalAutofit(BaseOxmlElement):
     fontScale = OptionalAttribute(
         "fontScale", ST_TextFontScalePercentOrPercentString, default=100.0
     )
+    lnSpcReduction = OptionalAttribute(  # pyright: ignore[reportAssignmentType]
+        "lnSpcReduction", ST_TextLineSpaceReductionPercentOrPercentString, default=0.0
+    )
 
 
 class CT_TextParagraph(BaseOxmlElement):
@@ -556,9 +572,31 @@ class CT_TextParagraph(BaseOxmlElement):
         """Return a newly appended `a:br` element."""
         return self._add_br()
 
-    def add_fld(self) -> CT_TextField:
-        """Return a newly appended `a:fld` element carrying a fresh GUID `id` attribute."""
-        return self._add_fld()
+    def add_fld(
+        self, id_str: str | None = None, field_type: str | None = None, cached_text: str = ""
+    ) -> CT_TextField:
+        """Return a newly appended `a:fld` element.
+
+        With no arguments, the field carries a fresh GUID `id` attribute (python-pptx
+        behavior). With `id_str`/`field_type` (paper-pptx behavior), the field is built
+        with those attributes and cached `a:t` text; content children (`a:r`/`a:br`/`a:fld`)
+        precede `a:endParaRPr` per the schema.
+        """
+        if id_str is None:
+            return self._add_fld()
+        fld = self.makeelement(qn("a:fld"), {})
+        fld.set("id", id_str)
+        if field_type is not None:
+            fld.set("type", field_type)
+        t = fld.makeelement(qn("a:t"), {})
+        t.text = cached_text
+        fld.append(t)
+        endParaRPr = self.find(qn("a:endParaRPr"))
+        if endParaRPr is not None:
+            endParaRPr.addprevious(fld)
+        else:
+            self.append(fld)
+        return cast(CT_TextField, fld)
 
     def add_r(self, text: str | None = None) -> CT_RegularTextRun:
         """Return a newly appended `a:r` element."""
@@ -626,12 +664,22 @@ class CT_TextParagraphProperties(BaseOxmlElement):
     get_or_add_defRPr: Callable[[], CT_TextCharacterProperties]
     get_or_add_buAutoNum: Callable[[], CT_TextAutonumberBullet]
     get_or_add_tabLst: Callable[[], CT_TextTabStopList]
+    buNone: BaseOxmlElement | None
+    buChar: CT_TextCharBullet | None
+    get_or_change_to_buNone: Callable[[], BaseOxmlElement]
+    get_or_change_to_buAutoNum: Callable[[], CT_TextAutonumberBullet]
+    get_or_change_to_buChar: Callable[[], CT_TextCharBullet]
+    get_or_add_buFont: Callable[[], CT_TextFont]
+    get_or_add_buSzPct: Callable[[], CT_TextBulletSizePercent]
     _add_lnSpc: Callable[[], CT_TextSpacing]
     _add_spcAft: Callable[[], CT_TextSpacing]
     _add_spcBef: Callable[[], CT_TextSpacing]
     _remove_lnSpc: Callable[[], None]
     _remove_spcAft: Callable[[], None]
     _remove_spcBef: Callable[[], None]
+    _remove_eg_bullet: Callable[[], None]
+    _remove_buFont: Callable[[], None]
+    _remove_buSzPct: Callable[[], None]
 
     _tag_seq = (
         "a:lnSpc",
@@ -661,6 +709,16 @@ class CT_TextParagraphProperties(BaseOxmlElement):
     spcAft: CT_TextSpacing | None = ZeroOrOne(  # pyright: ignore[reportAssignmentType]
         "a:spcAft", successors=_tag_seq[3:]
     )
+    buSzPct: CT_TextBulletSizePercent | None = ZeroOrOne(  # pyright: ignore[reportAssignmentType]
+        "a:buSzPct", successors=_tag_seq[7:]
+    )
+    buFont: CT_TextFont | None = ZeroOrOne(  # pyright: ignore[reportAssignmentType]
+        "a:buFont", successors=_tag_seq[10:]
+    )
+    eg_bullet = ZeroOrOneChoice(
+        (Choice("a:buNone"), Choice("a:buAutoNum"), Choice("a:buChar")),
+        successors=_tag_seq[14:],
+    )
     buAutoNum: CT_TextAutonumberBullet | None = ZeroOrOne(  # pyright: ignore[reportAssignmentType]
         "a:buAutoNum", successors=_tag_seq[12:]
     )
@@ -676,6 +734,12 @@ class CT_TextParagraphProperties(BaseOxmlElement):
     algn: PP_PARAGRAPH_ALIGNMENT | None = OptionalAttribute("algn", PP_PARAGRAPH_ALIGNMENT)  # pyright: ignore[reportAssignmentType]
     rtl: bool | None = OptionalAttribute(  # pyright: ignore[reportAssignmentType]
         "rtl", XsdBoolean
+    )
+    marL: Length | None = OptionalAttribute(  # pyright: ignore[reportAssignmentType]
+        "marL", ST_TextMargin
+    )
+    indent: Length | None = OptionalAttribute(  # pyright: ignore[reportAssignmentType]
+        "indent", ST_TextIndent
     )
     del _tag_seq
 
@@ -760,6 +824,22 @@ class CT_TextAutonumberBullet(BaseOxmlElement):
     )
     startAt: int | None = OptionalAttribute(  # pyright: ignore[reportAssignmentType]
         "startAt", ST_TextBulletStartAtNum
+    )
+
+
+class CT_TextBulletSizePercent(BaseOxmlElement):
+    """`a:buSzPct` element, bullet size as a fraction of the paragraph's text size."""
+
+    val: float = RequiredAttribute(  # pyright: ignore[reportAssignmentType]
+        "val", ST_TextBulletSizePercent
+    )
+
+
+class CT_TextCharBullet(BaseOxmlElement):
+    """`a:buChar` element, specifying the character to use as a paragraph's bullet."""
+
+    char: str = RequiredAttribute(  # pyright: ignore[reportAssignmentType]
+        "char", XsdString
     )
 
 

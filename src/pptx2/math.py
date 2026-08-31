@@ -140,7 +140,12 @@ def prepare_slide_xml_for_math(xml: bytes) -> bytes:
     PowerPoint requires ``xmlns:m``, ``xmlns:a14``, ``xmlns:mc`` and
     ``mc:Ignorable="a14"`` on the slide (MS-PPTX §2.2.8). Bare ``m:oMath``
     without ``a14:m`` is stripped on open.
+
+    A no-op (byte-identical return) when the slide carries no math markup:
+    round-tripping a math-free deck must not dirty its slide XML.
     """
+    if b"<m:oMath" not in xml and b"<a14:m" not in xml:
+        return xml
     match = _SLD_OPEN_RE.match(xml.decode("utf-8"))
     if match is None:
         return xml

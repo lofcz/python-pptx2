@@ -15,6 +15,47 @@ can sit beside both ``python-pptx`` (``pptx``) and ``power-pptx``
 .. _`scanny/python-pptx`: https://github.com/scanny/python-pptx
 
 
+Unreleased
+++++++++++
+
+Merged
+......
+
+* **Ported the paper-pptx agent-first structure editor** (bootstrap
+  commit 700b5f1f from ``paper-instruments/paper-pptx``, a fork of
+  python-pptx 1.0.2). python-pptx2 gains paper-pptx's whole editing,
+  inspection, and safety surface, import-renamed from ``pptx`` to
+  ``pptx2``:
+
+  - ``pptx2.inspect`` — effective values with provenance
+    (``effective_font()``, ``effective_paragraph_format()``,
+    ``effective_shape_format()``), visibility-complete ``inspect_text()``
+    and a deterministic ``inspect_deck()`` manifest.
+  - ``pptx2.edit`` / ``pptx2.diff`` — ``replace_text()`` that preserves
+    untouched run formatting, and ``diff_decks()`` structural diffing.
+  - ``pptx2.compose`` — paper-pptx's validating
+    ``import_slide(dest, source, slide, mode=...)`` / ``append_deck()``
+    returning |ImportReport| (the older part-level engine remains at
+    ``pptx2._slide_importer``); ``Presentation.import_slide`` now takes
+    the paper-pptx signature.
+  - ``pptx2.scrub`` (``Presentation.scrub()``), ``pptx2.hf``
+    (``Presentation.apply_footers()`` / ``Slide.apply_footers()`` /
+    ``header_footers`` flags), ``pptx2.rebind``
+    (``Slide.rebind_layout()``), ``pptx2.slideops``,
+    ``pptx2._transaction`` / ``_ownership`` / ``_zipguard`` /
+    ``errors``, the ``paper_pptx_doctor`` CLI, and the full
+    ``tests/paper`` contract suite.
+  - Slide ops: ``Slides.clone/delete/move/reorder`` (``move`` and
+    ``reorder`` merged with the existing python-pptx2 int/Slice APIs),
+    ``SlideShapes.add_copy/delete/move`` and strict ``*_by_name``
+    addressing, ``Table.insert_row/insert_column/delete_row/delete_column``
+    with merge guards, ``Picture.replace_image()``,
+    ``Chart.replace_data_safe()``, ``TextFrame.normalize_autofit()``,
+    ``_Run.effective_font()``, ``_Paragraph.bullet`` (``BulletFormat``),
+    notes-text read/replace that never creates a notes slide, and an
+    atomic, deterministic (epoch-stamped) package ``save()``.
+
+
 2.20.0 (2026-08-30)
 +++++++++++++++++++
 

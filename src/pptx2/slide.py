@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import copy
 from contextlib import contextmanager
+from dataclasses import dataclass
 from typing import TYPE_CHECKING, Iterator, Sequence, cast
 
 from pptx2.dml.fill import FillFormat
@@ -12,6 +14,8 @@ from pptx2.enum.presentation import (
     P159_TRANSITION_NAMES,
 )
 from pptx2.enum.shapes import PP_PLACEHOLDER
+from pptx2.errors import TargetNotFoundError, UnsupportedStructureError
+from pptx2.opc.constants import RELATIONSHIP_TYPE as RT
 from pptx2.oxml.ns import qn
 from pptx2.shapes.shapetree import (
     LayoutPlaceholders,
@@ -26,7 +30,80 @@ from pptx2.shapes.shapetree import (
 from pptx2.shared import ElementProxy, ParentedElementProxy, PartElementProxy
 from pptx2.util import lazyproperty
 
+
+def _relationship_references(root, rId: str) -> bool:
+    """Return whether any relationship-qualified XML attribute contains `rId`."""
+    return any(
+        value == rId
+        and name.startswith("{http://schemas.openxmlformats.org/officeDocument/2006/relationships}")
+        for element in root.iter()
+        for name, value in element.attrib.items()
+    )
+
+
+def _require_slide_enrolled(slide: "Slide", *, argument: str = "slide") -> None:
+    """Refuse a detached slide proxy before it can mutate unreachable XML."""
+    package = slide.part.package
+    presentation_part = package.presentation_part
+    matches = []
+    for sldId in presentation_part._element.sldIdLst.sldId_lst:
+        try:
+            rel = presentation_part.rels[sldId.rId]
+            if not rel.is_external and rel.reltype == RT.SLIDE and rel.target_part is slide.part:
+                matches.append(sldId)
+        except (AssertionError, KeyError, ValueError):
+            continue
+    if len(matches) != 1 or slide._element is not slide.part._element:
+        raise TargetNotFoundError("%s is stale or no longer enrolled" % argument)
+
+
+def _require_layout_enrolled(layout: "SlideLayout", *, argument: str = "slide_layout") -> None:
+    """Refuse a detached layout proxy before it can be selected as a target."""
+    from pptx2.parts.slide import SlideMasterPart
+
+    package = layout.part.package
+    matches = []
+    for part in package.iter_parts():
+        if not isinstance(part, SlideMasterPart):
+            continue
+        id_list = part._element.sldLayoutIdLst
+        if id_list is None:
+            continue
+        for entry in id_list.sldLayoutId_lst:
+            try:
+                rel = part.rels[entry.rId]
+                if (
+                    not rel.is_external
+                    and rel.reltype == RT.SLIDE_LAYOUT
+                    and rel.target_part is layout.part
+                ):
+                    matches.append((part, entry))
+            except (AssertionError, KeyError, ValueError):
+                continue
+    if len(matches) != 1 or layout._element is not layout.part._element:
+        raise TargetNotFoundError("%s is stale or no longer enrolled" % argument)
+
+
+def _inbound_relationships(package, target_part):
+    """Return every reachable internal relationship targeting `target_part`."""
+    inbound = []
+    owners = [package] + list(package.iter_parts())
+    for owner in owners:
+        relationships = package._rels if owner is package else owner.rels
+        for rId, rel in relationships.items():
+            if rel.is_external:
+                continue
+            try:
+                if rel.target_part is target_part:
+                    inbound.append((owner, rId, rel))
+            except (AssertionError, ValueError):
+                continue
+    return tuple(inbound)
+
+
 if TYPE_CHECKING:
+    from datetime import datetime
+
     from pptx2.animation import SlideAnimations
     from pptx2.lint import SlideLintReport
     from pptx2.oxml.presentation import CT_SlideIdList, CT_SlideMasterIdList
@@ -40,6 +117,7 @@ if TYPE_CHECKING:
     from pptx2.parts.presentation import PresentationPart
     from pptx2.parts.slide import SlideLayoutPart, SlideMasterPart, SlidePart
     from pptx2.presentation import Presentation
+    from pptx2.rebind import RebindReport
     from pptx2.shapes.placeholder import LayoutPlaceholder, MasterPlaceholder
     from pptx2.shapes.shapetree import NotesSlidePlaceholder
     from pptx2.smart_art import SmartArtCollection
@@ -221,9 +299,7 @@ class SlideTransition(object):
             self.clear()
             return
         if not isinstance(value, MSO_TRANSITION_TYPE):
-            raise TypeError(
-                "kind must be a MSO_TRANSITION_TYPE member or None, got %r" % (value,)
-            )
+            raise TypeError("kind must be a MSO_TRANSITION_TYPE member or None, got %r" % (value,))
         transition = self._sld.get_or_add_transition()
         # remove any pre-existing kind child
         existing = transition.kind_element
@@ -424,14 +500,9 @@ class Slide(_BaseSlide):
         already appear as a ``lint_group`` tag on this slide.
         """
         if not shapes:
-            raise ValueError(
-                "lint_group_overlaps requires at least one shape; got 0"
-            )
+            raise ValueError("lint_group_overlaps requires at least one shape; got 0")
         if name is None:
-            existing = {
-                getattr(s, "lint_group", None)
-                for s in self.shapes
-            } - {None, ""}
+            existing = {getattr(s, "lint_group", None) for s in self.shapes} - {None, ""}
             n = 1
             while f"design-group-{n}" in existing:
                 n += 1
@@ -523,6 +594,67 @@ class Slide(_BaseSlide):
             min_severity=min_severity,
         )
 
+    def apply_footers(
+        self,
+        *,
+        footer: str | None = None,
+        slide_number: bool = False,
+        date_format: str | None = None,
+        fixed_date: str | None = None,
+        now: "datetime | None" = None,
+    ) -> None:
+        """Apply the complete footer state to this slide only (the dialog's "Apply").
+
+        paper-pptx addition. Same parameters, mechanism, and refusals as
+        :meth:`.Presentation.apply_footers`, restricted to this slide — the per-slide
+        override path (e.g. removing just this slide's footer while the rest of the deck
+        keeps it). Each call sets this slide's full three-element state.
+        """
+        from pptx2.hf import apply_slide_footers
+
+        apply_slide_footers(
+            self,
+            footer=footer,
+            slide_number=slide_number,
+            date_format=date_format,
+            fixed_date=fixed_date,
+            now=now,
+        )
+
+    def rebind_layout(
+        self,
+        target_layout: "SlideLayout",
+        *,
+        placeholder_map="auto",
+        orphan_policy: str = "refuse",
+    ) -> "RebindReport":
+        """Move this slide to `target_layout`; return the required |RebindReport|.
+
+        paper-pptx addition — the template-migration *primitive* (bulk-migration
+        workflows are left to the caller). Placeholders reconcile against the
+        target layout: auto-matching binds by exact type+idx, then same type, then
+        interchangeable type family (title/ctrTitle; body/object/subTitle); pass
+        `placeholder_map={source_idx: target_idx | None}` to override any of it (None
+        force-orphans a source). Source placeholders with no destination follow
+        `orphan_policy`: "refuse" (default; typed, atomic) or "bake" — convert to a free
+        shape with inherited geometry materialized and each run's *resolved* effective
+        formatting written locally, so the text keeps its look.
+
+        The report is not optional: the effective-value resolver runs before and after,
+        and every run whose resolved values changed appears with its before/after payloads
+        — a rebind never shifts appearance silently. Same-package only (cross-package
+        composition is `import_slide`'s job); slides carrying `mc:AlternateContent`
+        refuse (shapes inside are invisible to reconciliation).
+        """
+        from pptx2.rebind import rebind_layout
+
+        return rebind_layout(
+            self,
+            target_layout,
+            placeholder_map=placeholder_map,
+            orphan_policy=orphan_policy,
+        )
+
     @property
     def follow_master_background(self):
         """|True| if this slide inherits the slide master background.
@@ -594,6 +726,84 @@ class Slide(_BaseSlide):
         """Sequence of placeholder shapes in this slide."""
         return SlidePlaceholders(self._element.spTree, self)
 
+    def read_notes_text(self) -> str:
+        """Return the text of this slide's existing speaker notes.
+
+        paper-pptx addition. Unlike :attr:`notes_slide`, this NEVER creates a notes slide:
+        a slide with no notes part raises |UnsupportedStructureError| (as does a notes slide
+        with no body placeholder). Returns "" for an empty existing notes body.
+        """
+        return self._existing_notes_text_frame().text
+
+    def replace_notes_text(self, text: str) -> None:
+        """Replace the text of this slide's existing speaker notes with `text`.
+
+        paper-pptx addition. Only the notes *body* placeholder is touched — slide-number and
+        other notes placeholders are preserved untouched. The first paragraph's properties
+        and its first run's character formatting are kept and applied to the replacement
+        text; `"\\n"` in `text` starts a new paragraph. Never creates a notes slide: a slide
+        with no notes part raises |UnsupportedStructureError| before anything changes
+        (creating the notes part graph is intentionally not supported).
+        """
+        if not isinstance(text, str):
+            raise ValueError("text must be a str, got %r" % type(text).__name__)
+        try:
+            text.encode("utf-8")  # -- lone surrogates would explode mid-mutation otherwise
+        except UnicodeEncodeError:
+            raise ValueError("text contains characters not encodable in XML: %r" % (text,))
+        text_frame = self._existing_notes_text_frame()  # -- full validation before mutation
+
+        txBody = text_frame._txBody
+        paragraphs = txBody.p_lst
+        first_p = paragraphs[0]
+        first_r = first_p.find(qn("a:r"))
+        rPr_template = None
+        if first_r is not None:
+            rPr = first_r.find(qn("a:rPr"))
+            if rPr is not None:
+                rPr_template = copy.deepcopy(rPr)
+
+        # -- keep the first a:p element (preserving its a:pPr); drop the rest --
+        for surplus_p in paragraphs[1:]:
+            txBody.remove(surplus_p)
+        for content in first_p.content_children:
+            first_p.remove(content)
+        pPr_template = first_p.find(qn("a:pPr"))
+
+        lines = text.split("\n")
+        for index, line in enumerate(lines):
+            if index == 0:
+                p = first_p
+            else:
+                p = txBody.add_p()
+                if pPr_template is not None:
+                    p.insert(0, copy.deepcopy(pPr_template))
+            if line == "":
+                continue  # -- an empty line is an empty paragraph
+            r = p.add_r()
+            if rPr_template is not None:
+                r.insert(0, copy.deepcopy(rPr_template))
+            r.text = line
+
+    def _existing_notes_text_frame(self) -> TextFrame:
+        """Return the body-placeholder text frame of this slide's EXISTING notes slide.
+
+        Raises |UnsupportedStructureError| (never creates anything) when the slide has no
+        notes part or its notes slide has no body placeholder.
+        """
+        if not self.has_notes_slide:
+            raise UnsupportedStructureError(
+                "slide %d has no notes slide; creating one is out of scope for this API"
+                " (use notes_slide if you explicitly want creation)" % self.slide_id
+            )
+        notes_slide = self.part.part_related_by(RT.NOTES_SLIDE).notes_slide
+        text_frame = notes_slide.notes_text_frame
+        if text_frame is None:
+            raise UnsupportedStructureError(
+                "notes slide of slide %d has no body placeholder to hold notes text" % self.slide_id
+            )
+        return text_frame
+
     @lazyproperty
     def shapes(self) -> SlideShapes:
         """Sequence of shape objects appearing on this slide."""
@@ -627,10 +837,7 @@ class Slide(_BaseSlide):
             except Exception:
                 continue
             if not include_decorative:
-                if (
-                    int(box.width) >= threshold_w
-                    and int(box.height) >= threshold_h
-                ):
+                if int(box.width) >= threshold_w and int(box.height) >= threshold_h:
                     continue
             union_box = box if union_box is None else union_box.union(box)
         return union_box
@@ -677,18 +884,13 @@ class Slide(_BaseSlide):
         for c in free:
             if merged:
                 last = merged[-1]
-                if (
-                    int(last.top) == int(c.top)
-                    and int(last.right) == int(c.left)
-                ):
+                if int(last.top) == int(c.top) and int(last.right) == int(c.left):
                     merged[-1] = last.union(c)
                     continue
             merged.append(c)
 
         candidates = [
-            m for m in merged
-            if int(m.width) >= int(min_width)
-            and int(m.height) >= int(min_height)
+            m for m in merged if int(m.width) >= int(min_width) and int(m.height) >= int(min_height)
         ]
         if not candidates:
             return None
@@ -706,9 +908,7 @@ class Slide(_BaseSlide):
                     f"got {type(near).__name__}"
                 )
             tx, ty = int(target.cx), int(target.cy)
-            candidates.sort(
-                key=lambda b: (int(b.cx) - tx) ** 2 + (int(b.cy) - ty) ** 2
-            )
+            candidates.sort(key=lambda b: (int(b.cx) - tx) ** 2 + (int(b.cy) - ty) ** 2)
             return candidates[0]
         candidates.sort(key=lambda b: -b.area)
         return candidates[0]
@@ -838,15 +1038,21 @@ class Slide(_BaseSlide):
             return
         if value == "dark":
             self.set_clr_map_override(
-                bg1="dk1", tx1="lt1", bg2="dk2", tx2="lt2",
-                accent1="accent1", accent2="accent2", accent3="accent3",
-                accent4="accent4", accent5="accent5", accent6="accent6",
-                hlink="hlink", folHlink="folHlink",
+                bg1="dk1",
+                tx1="lt1",
+                bg2="dk2",
+                tx2="lt2",
+                accent1="accent1",
+                accent2="accent2",
+                accent3="accent3",
+                accent4="accent4",
+                accent5="accent5",
+                accent6="accent6",
+                hlink="hlink",
+                folHlink="folHlink",
             )
             return
-        raise ValueError(
-            f"color_variant must be 'light', 'dark', or None; got {value!r}"
-        )
+        raise ValueError(f"color_variant must be 'light', 'dark', or None; got {value!r}")
 
     def set_clr_map_override(self, *, masterClrMapping: bool = False, **mapping: str) -> None:
         """Set this slide's ``<p:clrMapOvr>`` element directly.
@@ -887,6 +1093,25 @@ class Slide(_BaseSlide):
         assigned.
         """
         return SlideTransition(self._element)
+
+
+@dataclass(frozen=True)
+class SlideClonePolicy:
+    """Relationship policy for `Slides.clone` (paper-pptx addition).
+
+    Defaults encode the production-proven policy: charts (with their embedded workbooks and
+    style parts) and speaker notes are deep-copied so clone and original can never
+    cross-contaminate; image/media parts are shared deliberately.
+
+    - `deep_copy_charts`: must be True to clone a slide bearing charts; False refuses
+      (`RelationshipPolicyError`) rather than share an editable chart part between slides.
+    - `deep_copy_notes`: False drops the notes slide from the clone (original unaffected).
+    - `share_media`: False deep-copies image/media parts instead of sharing them.
+    """
+
+    deep_copy_charts: bool = True
+    deep_copy_notes: bool = True
+    share_media: bool = True
 
 
 class Slides(ParentedElementProxy):
@@ -959,6 +1184,212 @@ class Slides(ParentedElementProxy):
         for section_elm in sectionLst.section_lst:
             section_elm.remove_sldId(slide_id)
 
+    def clone(
+        self,
+        source: Slide | int,
+        *,
+        after: Slide | int | None = None,
+        policy: SlideClonePolicy | None = None,
+    ) -> Slide:
+        """Return a new slide that is a policy-governed deep copy of `source`.
+
+        paper-pptx addition. The clone's relationship graph follows `policy` (default
+        |SlideClonePolicy|): layout shared; charts deep-copied WITH their embedded workbooks
+        and style parts; notes deep-copied and re-linked to the clone; image/media shared;
+        external (hyperlink) relationships copied. A slide bearing any other relationship
+        type (OLE objects, controls, SmartArt, comments, …) refuses with
+        |RelationshipPolicyError| before anything changes.
+
+        The clone is inserted directly after `source`, or after the slide given by `after`.
+        `source`/`after` accept a |Slide| or a 0-based index; a |Slide| from another
+        presentation raises |TargetNotFoundError|.
+        """
+        from pptx2._transaction import PackageTransaction
+        from pptx2.slideops import clone_slide_part, enroll_clone_in_section
+
+        if policy is None:
+            policy = SlideClonePolicy()
+        if not isinstance(policy, SlideClonePolicy):
+            raise ValueError("policy must be a SlideClonePolicy, got %r" % (policy,))
+        source_slide = self._resolve_slide(source)
+        anchor_slide = source_slide if after is None else self._resolve_slide(after)
+        anchor_index = self.index(anchor_slide)
+
+        source_slide_id = source_slide.slide_id
+        with PackageTransaction(self.part.package, self, source_slide, anchor_slide):
+            new_part = clone_slide_part(source_slide.part, policy)
+            rId = self.part.relate_to(new_part, RT.SLIDE)
+            self._sldIdLst.add_sldId(rId)
+            sldId = self._sldIdLst[-1]
+            self._sldIdLst.remove(sldId)
+            self._sldIdLst.insert(anchor_index + 1, sldId)
+            # -- enroll the copy in the source's section, right after it (custom shows are
+            # -- deliberately not extended: a copy is not part of a curated show)
+            enroll_clone_in_section(self._sldIdLst.getparent(), source_slide_id, sldId.id)
+            cloned_slide = new_part.slide
+        return cloned_slide
+
+    def delete(self, slide: Slide | int) -> None:
+        """Remove `slide` from this presentation.
+
+        paper-pptx addition. Removes the slide's `p:sldId` entry and the presentation's
+        relationship to the slide part; parts then unreachable through the relationship
+        graph (the slide, and e.g. its charts and notes if unshared) are never serialized
+        again — orphans structurally cannot reach disk. Deleting the last slide is allowed.
+        """
+        from pptx2._transaction import PackageTransaction
+        from pptx2.slideops import remove_slide_from_id_lists
+
+        target = self._resolve_slide(slide)
+        for sldId in self._sldIdLst.sldId_lst:
+            if sldId.id == target.slide_id:
+                slide_id, rId = sldId.id, sldId.rId
+                notes_owners = {
+                    rel.target_part
+                    for rel in target.part.rels.values()
+                    if not rel.is_external and rel.reltype == RT.NOTES_SLIDE
+                }
+                for notes_part in notes_owners:
+                    shared_notes = [
+                        (owner, notes_rId)
+                        for owner, notes_rId, _ in _inbound_relationships(
+                            self.part.package, notes_part
+                        )
+                        if owner is not target.part
+                    ]
+                    if shared_notes:
+                        raise UnsupportedStructureError(
+                            "slide deletion refused: its notes part is shared by another "
+                            "reachable package part"
+                        )
+                aliases = [
+                    (owner, alias_rId)
+                    for owner, alias_rId, _ in _inbound_relationships(
+                        self.part.package, target.part
+                    )
+                    if not ((owner is self.part and alias_rId == rId) or owner in notes_owners)
+                ]
+                if aliases:
+                    raise UnsupportedStructureError(
+                        "slide deletion refused: slide part has additional inbound "
+                        "relationship aliases"
+                    )
+                with PackageTransaction(self.part.package, self, target):
+                    self._sldIdLst.remove(sldId)
+                    # -- sections (by slide id) and custom shows (by rId) reference slides
+                    # -- outside the rels graph; purge those entries too
+                    remove_slide_from_id_lists(self._sldIdLst.getparent(), slide_id, rId)
+                    if _relationship_references(self.part._element, rId):
+                        raise UnsupportedStructureError(
+                            "slide deletion refused: relationship %s remains referenced" % rId
+                        )
+                    self.part.drop_rel(rId)
+                return
+
+    def move(self, slide: "Slide | int", to_index: int) -> None:
+        """Relocate `slide` to `to_index`, shifting the rest (paper-pptx hardened).
+
+        `slide` may be a |Slide| object belonging to this collection or its
+        zero-based index into it (negative indices count from the end, Python
+        style). `to_index` is a zero-based position, likewise accepting
+        negative offsets. PowerPoint slide order follows the order of `p:sldId`
+        children in `p:sldIdLst`, so this detaches the corresponding element
+        and re-inserts it at the new position::
+
+            prs.slides.move(0, 2)       # send the first slide to position 2
+            prs.slides.move(slide, 0)   # send a Slide object to the front
+
+        Raises |IndexError| if either index is out of range and |ValueError|
+        when `slide` is neither a |Slide| nor an int.
+        """
+        from pptx2._transaction import PackageTransaction
+
+        if isinstance(slide, Slide):
+            _require_slide_enrolled(slide)
+            current_index = self.index(slide)
+            target = slide
+        else:
+            if isinstance(slide, bool) or not isinstance(slide, int):
+                raise ValueError("expected a Slide or int index, got %r" % (slide,))
+            target = self[slide]  # -- IndexError on out of range; negatives allowed
+            _require_slide_enrolled(target)
+            current_index = self._normalized_index(slide, len(self._sldIdLst))
+        if isinstance(to_index, bool) or not isinstance(to_index, int):
+            raise ValueError("to_index must be an int, got %r" % (to_index,))
+        to_index = self._normalized_index(to_index, len(self._sldIdLst))
+
+        sldId = self._sldIdLst.sldId_lst[current_index]
+        with PackageTransaction(self.part.package, self, target):
+            self._sldIdLst.remove(sldId)
+            # -- insert resolves against the post-removal order (lxml insert
+            # -- tolerates an index one past the end, appending instead) --
+            self._sldIdLst.insert(to_index, sldId)
+
+    def reorder(self, new_order: "Sequence[int | Slide]") -> None:
+        """Rearrange the slides into the permutation given by `new_order`.
+
+        `new_order` is a full permutation of the collection, expressed either as
+        zero-based indices into the *current* order or as the |Slide| objects
+        themselves (the two forms may not be mixed). After the call, the slide
+        that was at ``new_order[0]`` becomes the first slide, and so on::
+
+            prs.slides.reorder([2, 0, 1])           # by index
+            prs.slides.reorder([s2, s0, s1])        # by Slide object
+
+        Raises |ValueError| if `new_order` is not a permutation of exactly the
+        slides in this collection (wrong length, duplicates, or unknown items).
+        """
+        from pptx2._transaction import PackageTransaction
+
+        count = len(self._sldIdLst)
+        order = list(new_order)
+        if len(order) != count:
+            raise ValueError(
+                "new_order must contain exactly %d items, got %d" % (count, len(order))
+            )
+
+        sldId_lst = self._sldIdLst.sldId_lst
+        indices: list[int] = []
+        for item in order:
+            if isinstance(item, Slide):
+                indices.append(self.index(item))
+            elif isinstance(item, bool) or not isinstance(item, int):
+                raise ValueError("new_order items must be ints or Slide objects, got %r" % (item,))
+            elif not 0 <= item < count:
+                raise ValueError("new_order must be a permutation of the slides in this collection")
+            else:
+                indices.append(item)
+
+        if sorted(indices) != list(range(count)):
+            raise ValueError("new_order must be a permutation of the slides in this collection")
+
+        ordered_sldIds = [sldId_lst[i] for i in indices]
+        with PackageTransaction(self.part.package, self):
+            for sldId in ordered_sldIds:
+                self._sldIdLst.remove(sldId)
+            for sldId in ordered_sldIds:
+                self._sldIdLst.append(sldId)
+
+    def _resolve_slide(self, value: Slide | int) -> Slide:
+        """Return the |Slide| in this collection for `value` (a Slide or 0-based index).
+
+        An int resolves with normal indexed-access semantics (|IndexError| when out of
+        range); a |Slide| not belonging to this presentation raises |TargetNotFoundError|.
+        """
+        if isinstance(value, int) and not isinstance(value, bool):
+            slide = self[value]
+            _require_slide_enrolled(slide)
+            return slide
+        if isinstance(value, Slide):
+            for slide in self:
+                if slide == value:
+                    _require_slide_enrolled(value)
+                    return slide
+            raise TargetNotFoundError(
+                "slide with id %d is not in this presentation's slide collection" % value.slide_id
+            )
+        raise ValueError("expected a Slide or int index, got %r" % (value,))
+
     def get(self, slide_id: int, default: Slide | None = None) -> Slide | None:
         """Return the slide identified by int `slide_id` in this presentation.
 
@@ -978,31 +1409,6 @@ class Slides(ParentedElementProxy):
             if this_slide == slide:
                 return idx
         raise ValueError("%s is not in slide collection" % slide)
-
-    def move(self, old_index: int, new_index: int) -> None:
-        """Relocate the slide at `old_index` to `new_index`, shifting the rest.
-
-        Both indices are zero-based and must be in range. PowerPoint slide order
-        follows the order of `p:sldId` children in `p:sldIdLst`, so this simply
-        detaches the corresponding element and re-inserts it at the new
-        position::
-
-            prs.slides.move(0, 2)   # send the first slide to position 2
-
-        Raises |IndexError| if either index is out of range.
-        """
-        count = len(self._sldIdLst)
-        old_index = self._normalized_index(old_index, count)
-        new_index = self._normalized_index(new_index, count)
-        sldId_lst = self._sldIdLst.sldId_lst
-        sldId = sldId_lst[old_index]
-        self._sldIdLst.remove(sldId)
-        # -- recompute the insertion reference against the post-removal order --
-        remaining = self._sldIdLst.sldId_lst
-        if new_index >= len(remaining):
-            self._sldIdLst.append(sldId)
-        else:
-            remaining[new_index].addprevious(sldId)
 
     def remove(self, slide: "Slide | int") -> None:
         """Remove `slide` from this collection, deleting it from the presentation.
@@ -1042,44 +1448,6 @@ class Slides(ParentedElementProxy):
         self.part.drop_rel(rId)
         self._remove_from_sections(slide_id)
 
-    def reorder(self, new_order: "Sequence[int | Slide]") -> None:
-        """Rearrange the slides into the permutation given by `new_order`.
-
-        `new_order` is a full permutation of the collection, expressed either as
-        zero-based indices into the *current* order or as the |Slide| objects
-        themselves (the two forms may not be mixed). After the call, the slide
-        that was at ``new_order[0]`` becomes the first slide, and so on::
-
-            prs.slides.reorder([2, 0, 1])           # by index
-            prs.slides.reorder([s2, s0, s1])        # by Slide object
-
-        Raises |ValueError| if `new_order` is not a permutation of exactly the
-        slides in this collection (wrong length, duplicates, or unknown items).
-        """
-        count = len(self._sldIdLst)
-        order = list(new_order)
-        if len(order) != count:
-            raise ValueError(
-                "new_order must contain exactly %d items, got %d" % (count, len(order))
-            )
-
-        sldId_lst = self._sldIdLst.sldId_lst
-        indices: list[int] = []
-        for item in order:
-            if isinstance(item, Slide):
-                indices.append(self.index(item))
-            else:
-                indices.append(self._normalized_index(int(item), count))
-
-        if sorted(indices) != list(range(count)):
-            raise ValueError("new_order must be a permutation of the slides in this collection")
-
-        ordered_sldIds = [sldId_lst[i] for i in indices]
-        for sldId in ordered_sldIds:
-            self._sldIdLst.remove(sldId)
-        for sldId in ordered_sldIds:
-            self._sldIdLst.append(sldId)
-
     @staticmethod
     def _normalized_index(idx: int, count: int) -> int:
         """Return `idx` resolved against `count`, supporting negative indexing.
@@ -1094,6 +1462,65 @@ class Slides(ParentedElementProxy):
         return idx
 
 
+class HeaderFooters(object):
+    """Header/footer placeholder visibility flags of a layout or master (paper-pptx addition).
+
+    Wraps the `p:hf` element. Each property is tri-state: |True|/|False| when the attribute
+    is explicit, |None| when it is absent — meaning "inherit" (a layout inherits from its
+    master; the schema default is visible). Assigning |None| removes the attribute.
+    """
+
+    def __init__(self, owner):
+        super(HeaderFooters, self).__init__()
+        self._owner = owner
+        self._element = owner._element
+
+    @property
+    def slide_number_visible(self) -> bool | None:
+        """Visibility of the slide-number placeholder (`p:hf/@sldNum`)."""
+        hf = self._element.hf
+        return hf.sldNum if hf is not None else None
+
+    @slide_number_visible.setter
+    def slide_number_visible(self, value: bool | None):
+        self._set_flag("sldNum", value)
+
+    @property
+    def footer_visible(self) -> bool | None:
+        """Visibility of the footer placeholder (`p:hf/@ftr`)."""
+        hf = self._element.hf
+        return hf.ftr if hf is not None else None
+
+    @footer_visible.setter
+    def footer_visible(self, value: bool | None):
+        self._set_flag("ftr", value)
+
+    @property
+    def date_visible(self) -> bool | None:
+        """Visibility of the date placeholder (`p:hf/@dt`)."""
+        hf = self._element.hf
+        return hf.dt if hf is not None else None
+
+    @date_visible.setter
+    def date_visible(self, value: bool | None):
+        self._set_flag("dt", value)
+
+    def _set_flag(self, attr_name: str, value: "bool | None") -> None:
+        from pptx2._ownership import require_element_attached
+        from pptx2._transaction import PackageTransaction
+
+        require_element_attached(self._element, self._owner.part, argument="header/footer flags")
+        if not isinstance(value, bool) and value is not None:
+            raise ValueError("visibility must be True, False, or None, got %r" % (value,))
+        with PackageTransaction(self._owner.part.package, self, self._owner):
+            if value is None:
+                hf = self._element.hf
+                if hf is not None:
+                    setattr(hf, attr_name, None)
+                return
+            setattr(self._element.get_or_add_hf(), attr_name, value)
+
+
 class SlideLayout(_BaseSlide):
     """Slide layout object.
 
@@ -1101,6 +1528,11 @@ class SlideLayout(_BaseSlide):
     """
 
     part: SlideLayoutPart  # pyright: ignore[reportIncompatibleMethodOverride]
+
+    @property
+    def header_footers(self) -> HeaderFooters:
+        """|HeaderFooters| flags for this layout (paper-pptx addition)."""
+        return HeaderFooters(self)
 
     def iter_cloneable_placeholders(self) -> Iterator[LayoutPlaceholder]:
         """Generate layout-placeholders on this slide-layout that should be cloned to a new slide.
@@ -1233,9 +1665,26 @@ class SlideLayouts(ParentedElementProxy):
         Raises ValueError when `slide_layout` is in use; a slide layout which is the basis for one
         or more slides cannot be removed.
         """
-        # ---raise if layout is in use---
+        from pptx2._transaction import PackageTransaction
+
+        # Preserve the established error contract before attachment checks.
         if slide_layout.used_by_slides:
             raise ValueError("cannot remove slide-layout in use by one or more slides")
+
+        # Upstream supports isolated collection proxies in its unit-level API contract.
+        # A real presentation always supplies a parent and takes the hardened path below.
+        if self._parent is None:
+            target_idx = self.index(slide_layout)
+            target_sldLayoutId = self._sldLayoutIdLst.sldLayoutId_lst[target_idx]
+            self._sldLayoutIdLst.remove(target_sldLayoutId)
+            slide_layout.slide_master.part.drop_rel(target_sldLayoutId.rId)
+            return
+
+        if not isinstance(slide_layout, SlideLayout):
+            raise ValueError("slide_layout must be a SlideLayout, got %r" % (slide_layout,))
+        if slide_layout.part.package is not self.part.package:
+            raise TargetNotFoundError("slide_layout belongs to a different presentation")
+        _require_layout_enrolled(slide_layout)
 
         # ---target layout is identified by its index in this collection---
         target_idx = self.index(slide_layout)
@@ -1243,12 +1692,27 @@ class SlideLayouts(ParentedElementProxy):
         # --remove layout from p:sldLayoutIds of its master
         # --this stops layout from showing up, but doesn't remove it from package
         target_sldLayoutId = self._sldLayoutIdLst.sldLayoutId_lst[target_idx]
-        self._sldLayoutIdLst.remove(target_sldLayoutId)
+        rId = target_sldLayoutId.rId
+        aliases = [
+            (owner, alias_rId)
+            for owner, alias_rId, _ in _inbound_relationships(self.part.package, slide_layout.part)
+            if owner is not self.part or alias_rId != rId
+        ]
+        if aliases:
+            raise UnsupportedStructureError(
+                "slide-layout removal refused: layout part has additional inbound "
+                "relationship aliases"
+            )
 
-        # --drop relationship from master to layout
-        # --this removes layout from package, along with everything (only) it refers to,
-        # --including images (not used elsewhere) and hyperlinks
-        slide_layout.slide_master.part.drop_rel(target_sldLayoutId.rId)
+        with PackageTransaction(self.part.package, self, slide_layout):
+            self._sldLayoutIdLst.remove(target_sldLayoutId)
+            if _relationship_references(self.part._element, rId):
+                raise UnsupportedStructureError(
+                    "slide-layout removal refused: relationship %s remains referenced" % rId
+                )
+            # --drop relationship from master to layout
+            # --this removes layout from package, along with everything (only) it refers to
+            self.part.drop_rel(rId)
 
     def _non_colliding_name(self, base: str) -> str:
         """Return `base`, or `base N` for the smallest N making it unique in this collection."""
@@ -1269,6 +1733,11 @@ class SlideMaster(_BaseMaster):
     """
 
     _element: CT_SlideMaster  # pyright: ignore[reportIncompatibleVariableOverride]
+
+    @property
+    def header_footers(self) -> HeaderFooters:
+        """|HeaderFooters| flags for this master (paper-pptx addition)."""
+        return HeaderFooters(self)
 
     @lazyproperty
     def slide_layouts(self) -> SlideLayouts:

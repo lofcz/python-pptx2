@@ -18,7 +18,7 @@ class Describe_compose_package:
         assert compose.from_spec is from_spec
 
     def it_reexports_import_slide(self):
-        from pptx2._slide_importer import import_slide
+        from pptx2.compose.deck_compose import import_slide
 
         assert compose.import_slide is import_slide
 
@@ -29,7 +29,12 @@ class Describe_compose_package:
 
     def it_advertises_all_four_in__all__(self):
         assert set(compose.__all__) == {
-            "from_spec", "from_yaml", "import_slide", "apply_template"
+            "from_spec",
+            "from_yaml",
+            "import_slide",
+            "apply_template",
+            "append_deck",
+            "ImportReport",
         }
 
     def it_can_drive_from_spec_end_to_end(self):

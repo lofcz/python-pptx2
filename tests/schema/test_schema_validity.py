@@ -15,6 +15,13 @@ import pytest
 from pptx2 import Presentation
 from pptx2.util import Inches, Pt
 
+
+def _low_level_import(prs, src_slide):
+    """Import via the part-level engine; returns the new |Slide|."""
+    from pptx2._slide_importer import import_slide
+
+    return import_slide(src_slide.part, prs.part)
+
 from .oxml_schema_validator import (
     assert_schema_valid,
     iter_schema_violations,
@@ -697,7 +704,7 @@ class DescribeGeneratedDeckSchemaValidity:
         ss.shapes.add_picture(io.BytesIO(png), Inches(3), Inches(3), Inches(1), Inches(1))
 
         dst = Presentation()
-        dst.import_slide(src.slides[0])
+        _low_level_import(dst, src.slides[0])
         assert_schema_valid(_saved(dst))
 
     def it_validates_custom_properties_against_the_ooxml_schema(self):
