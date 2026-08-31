@@ -445,6 +445,13 @@ def patch_save(original_path: str, document, out_path: str) -> PackageDiff:
     `original_path` is written with the ORIGINAL bytes, so unrelated parts never churn.
     Returns the residual |PackageDiff| between `original_path` and `out_path`.
 
+    Not interchangeable with |Presentation.save|, which is also atomic on a path:
+    atomicity is how the bytes land, narrowness is which bytes get written. `save()`
+    re-serializes every part, so even an unchanged part gets new bytes; `patch_save`
+    restores the original bytes for every part that is semantically identical.
+
+    Symlinked destinations are resolved, so the file a link names is the file replaced.
+
     Writes are deterministic — entry order is `[Content_Types].xml`, `_rels/.rels`, then all
     remaining members sorted; every entry timestamp is fixed to 1980-01-01 — and atomic: the
     package is built in a temp file in `out_path`'s directory and moved into place with
@@ -511,7 +518,9 @@ def _atomic_write_bytes(data: bytes, out_path: str) -> None:
 
 def _atomic_write(write, out_path: str) -> None:
     """Run `write(file_handle)` against a temp file, then move it into place atomically."""
-    destination = _os.path.abspath(str(out_path))
+    # -- realpath, not abspath: abspath normalizes but does not resolve symlinks, so the
+    # -- replace below would land on the link and leave the file it names untouched
+    destination = _os.path.realpath(str(out_path))
     out_dir = _os.path.dirname(destination)
     existing_mode = (
         _stat.S_IMODE(_os.stat(destination).st_mode) if _os.path.exists(destination) else None
@@ -528,7 +537,7 @@ def _atomic_write(write, out_path: str) -> None:
             active_umask = _os.umask(0)
             _os.umask(active_umask)
             _os.chmod(temp_path, 0o666 & ~active_umask)
-        _os.replace(temp_path, str(out_path))
+        _os.replace(temp_path, destination)
     except BaseException:
         if _os.path.exists(temp_path):
             _os.unlink(temp_path)

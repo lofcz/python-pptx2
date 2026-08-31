@@ -190,6 +190,13 @@ class Presentation(PartElementProxy):
         package: those edits have not been validated yet and may still roll back, so
         writing them out would publish a package the block is not prepared to stand
         behind. Save once the block has closed.
+
+        A file-path destination is written atomically, resolving symlinks, so a failure
+        part-way through leaves any existing file untouched. A file-like destination is
+        written straight through once the whole package has serialized successfully. See
+        :meth:`pptx2.opc.package.OpcPackage.save` for the write contract, and
+        :func:`pptx2.package.patch_save` for the narrow-save alternative that restores
+        the original bytes of every part that did not change.
         """
         from pptx2._transaction import package_has_open_transaction
         from pptx2.errors import BoundaryViolationError
