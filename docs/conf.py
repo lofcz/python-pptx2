@@ -206,6 +206,8 @@ rst_epilog = """
 .. |SmartArtCollection| replace:: :class:`.SmartArtCollection`
 .. |Table| replace:: :class:`Table`
 .. |TextFrame| replace:: :class:`.TextFrame`
+.. |BulletFormat| replace:: :class:`.BulletFormat`
+.. |EffectiveBullet| replace:: :class:`.EffectiveBullet`
 .. |Theme| replace:: :class:`.Theme`
 .. |ThreeDFormat| replace:: :class:`.ThreeDFormat`
 .. |TickLabels| replace:: :class:`.TickLabels`
