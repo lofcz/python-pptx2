@@ -131,7 +131,6 @@ API Documentation
    api/hf
    api/package
    api/rebind
-   api/scrub
 
 
 Contributor Guide

@@ -38,13 +38,14 @@ Merged
     returning |ImportReport| (the older part-level engine remains at
     ``pptx2._slide_importer``); ``Presentation.import_slide`` now takes
     the paper-pptx signature.
-  - ``pptx2.scrub`` (``Presentation.scrub()``), ``pptx2.hf``
-    (``Presentation.apply_footers()`` / ``Slide.apply_footers()`` /
-    ``header_footers`` flags), ``pptx2.rebind``
+  - ``pptx2.hf`` (``Presentation.apply_footers()`` / ``Slide.apply_footers()``
+    / ``header_footers`` flags), ``pptx2.rebind``
     (``Slide.rebind_layout()``), ``pptx2.slideops``,
     ``pptx2._transaction`` / ``_ownership`` / ``_zipguard`` /
     ``errors``, the ``paper_pptx_doctor`` CLI, and the full
-    ``tests/paper`` contract suite.
+    ``tests/paper`` contract suite. (The bootstrap's ``pptx2.scrub``
+    module was removed again by ported commit #14, matching upstream
+    paper-pptx.)
   - Slide ops: ``Slides.clone/delete/move/reorder`` (``move`` and
     ``reorder`` merged with the existing python-pptx2 int/Slice APIs),
     ``SlideShapes.add_copy/delete/move`` and strict ``*_by_name``
