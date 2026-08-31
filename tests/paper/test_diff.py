@@ -25,6 +25,8 @@ from . import corpus
 V1 = "self_generated/lineage_v1.pptx"
 V2 = "self_generated/lineage_v2.pptx"
 REORDER = "self_generated/lineage_reorder.pptx"
+WALNUT_CHART_NOTES = "other_producers/walnut_chart_notes_absolute_rels.pptx"
+WALNUT_SHARED_MEDIA = "other_producers/walnut_shared_media_absolute_rels.pptx"
 
 NONCORRUPT_RELPATHS = [
     r for r in corpus.iter_fixture_relpaths() if not corpus.is_corrupt_fixture(r)
@@ -41,6 +43,15 @@ def _path(relpath):
 @pytest.mark.parametrize("relpath", NONCORRUPT_RELPATHS)
 def test_self_diff_is_empty_across_entire_corpus(relpath):
     report = diff_decks(_path(relpath), _path(relpath), detail="text")
+    assert report.is_empty, report.to_dict()
+
+
+@pytest.mark.parametrize("relpath", [WALNUT_CHART_NOTES, WALNUT_SHARED_MEDIA])
+def test_deck_diff_ignores_walnut_serialization_only_package_rewrites(relpath, tmp_path):
+    serialized = tmp_path / "ordinary-save.pptx"
+    Presentation(_path(relpath)).save(str(serialized))
+
+    report = diff_decks(_path(relpath), str(serialized), detail="full")
     assert report.is_empty, report.to_dict()
 
 
@@ -271,6 +282,53 @@ def test_package_changes_use_original_package_members(tmp_path, source_kind):
 
     report = diff_decks(source, changed_source)
     assert [delta.partname for delta in report.package_changes] == ["/[Content_Types].xml"]
+
+
+def _deck_with_directory_records(tmp_path):
+    """Copy a fixture, prefixing ZIP folder records that `save()` cannot reproduce.
+
+    Three records, one of them nested, so a predicate keying on a top-level prefix
+    cannot satisfy the assertions by accident.
+    """
+    target = tmp_path / "directory-records.pptx"
+    source = corpus.fixture_path("self_generated/minimal_clean.pptx")
+    with zipfile.ZipFile(source) as incoming, zipfile.ZipFile(target, "w") as outgoing:
+        for name in ("docProps/", "ppt/", "ppt/slides/"):
+            record = zipfile.ZipInfo(name)
+            record.external_attr = (0o040755 << 16) | 0x10
+            outgoing.writestr(record, b"")
+        for info in incoming.infolist():
+            outgoing.writestr(info, incoming.read(info.filename))
+    return str(target)
+
+
+def test_directory_record_deck_gets_one_verdict_however_it_is_named(tmp_path):
+    """A folder-record deck read exactly and read serialized must agree, and be empty.
+
+    Folder records exist on disk and can never appear in a serialization, so comparing
+    the disk side against the other side's rendering reported three removals that
+    described the mismatched comparison rather than any difference in the document.
+    """
+    deck = _deck_with_directory_records(tmp_path)
+
+    from_disk = diff_decks(deck, deck)
+    from_proxy = diff_decks(deck, Presentation(deck))
+
+    assert from_disk.is_empty == from_proxy.is_empty
+    assert from_disk.is_empty, from_disk.to_dict()
+    assert from_proxy.is_empty, from_proxy.to_dict()
+
+
+def test_control_deck_gets_one_verdict_however_it_is_named():
+    """The same agreement on a deck with no folder records, which held before the fix."""
+    deck = _path("self_generated/minimal_clean.pptx")
+
+    from_disk = diff_decks(deck, deck)
+    from_proxy = diff_decks(deck, Presentation(deck))
+
+    assert from_disk.is_empty == from_proxy.is_empty
+    assert from_disk.is_empty, from_disk.to_dict()
+    assert from_proxy.is_empty, from_proxy.to_dict()
 
 
 def test_seekable_stream_positions_survive_success_and_failure():
