@@ -170,8 +170,7 @@ class OpcPackage(_RelatableMixin):
 
     def _save_stream_atomically(self, stream: IO[bytes], parts: tuple[Part, ...]) -> None:
         """Stage output and restore a seekable destination if publishing fails."""
-        from pptx2._zipguard import MAX_COMPRESSED_BYTES
-        from pptx2.errors import PackageLimitError, UnsupportedStructureError
+        from pptx2.errors import UnsupportedStructureError
 
         with tempfile.SpooledTemporaryFile(max_size=8 * 1024 * 1024, mode="w+b") as staged:
             PackageWriter.write(staged, self._rels, parts)
@@ -182,10 +181,6 @@ class OpcPackage(_RelatableMixin):
                 original_position = stream.tell()
                 stream.seek(0, os.SEEK_END)
                 original_size = stream.tell()
-                if original_size > MAX_COMPRESSED_BYTES:
-                    raise PackageLimitError(
-                        "existing package destination stream exceeds the compressed package limit"
-                    )
                 stream.seek(0)
                 original = stream.read(original_size)
                 if not isinstance(original, bytes) or len(original) != original_size:
@@ -203,8 +198,13 @@ class OpcPackage(_RelatableMixin):
                             "package stream setup failed and the original position could not "
                             "be restored"
                         ) from restore_error
-                if isinstance(setup_error, PackageLimitError):
-                    raise
+                if isinstance(setup_error, (AttributeError, OSError, TypeError, ValueError)):
+                    raise UnsupportedStructureError(
+                        "saving to a stream requires readable, seekable, truncatable "
+                        "binary I/O (%s)"
+                        % setup_error
+                    ) from setup_error
+                raise
                 if isinstance(setup_error, (AttributeError, OSError, TypeError, ValueError)):
                     raise UnsupportedStructureError(
                         "saving to a stream requires readable, seekable, truncatable "
