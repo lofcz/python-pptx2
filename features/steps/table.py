@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from behave import given, then, when
-from helpers import test_pptx
+from helpers import saved_pptx_path, test_pptx
 
 from pptx2 import Presentation
 from pptx2.enum.text import MSO_ANCHOR  # noqa # pyright: ignore[reportUnusedImport]
@@ -16,6 +16,8 @@ from pptx2.util import Inches
 @given("a 2x2 Table object as table")
 def given_a_2x2_Table_object_as_table(context):
     prs = Presentation(test_pptx("shp-shapes"))
+    # ---prs is stashed so a later "I save the presentation" step can save it---
+    context.prs = prs
     context.table_ = prs.slides[0].shapes[3].table
 
 
@@ -155,6 +157,26 @@ def when_I_call_origin_cell_merge_other_cell(context):
 @when("I call origin_cell.extend_merge(other_cell)")
 def when_I_call_origin_cell_extend_merge_other_cell(context):
     context.origin_cell.extend_merge(context.other_cell)
+
+
+@when("I add a row to the table")
+def when_I_add_a_row_to_the_table(context):
+    context.table_.rows.add_row()
+
+
+@when("I add a column to the table")
+def when_I_add_a_column_to_the_table(context):
+    context.table_.columns.add_column()
+
+
+@when("I remove the second row of the table")
+def when_I_remove_the_second_row_of_the_table(context):
+    context.table_.rows.remove(1)
+
+
+@when("I remove the second column of the table")
+def when_I_remove_the_second_column_of_the_table(context):
+    context.table_.columns.remove(1)
 
 
 # then ====================================================
@@ -301,6 +323,24 @@ def then_table_rows_is_a_type_object(context, type_name):
     actual = type(context.table_.rows).__name__
     expected = type_name
     assert actual == expected, "table.rows is a %s object" % actual
+
+
+@then("the saved table has {int_lit} rows")
+@then("the saved table has {int_lit} row")
+def then_the_saved_table_has_n_rows(context, int_lit):
+    table = Presentation(saved_pptx_path).slides[0].shapes[3].table
+    actual = len(table.rows)
+    expected = int(int_lit)
+    assert actual == expected, "the saved table has %s rows" % actual
+
+
+@then("the saved table has {int_lit} columns")
+@then("the saved table has {int_lit} column")
+def then_the_saved_table_has_n_columns(context, int_lit):
+    table = Presentation(saved_pptx_path).slides[0].shapes[3].table
+    actual = len(table.columns)
+    expected = int(int_lit)
+    assert actual == expected, "the saved table has %s columns" % actual
 
 
 @then("table.vert_banding is {bool_lit}")
