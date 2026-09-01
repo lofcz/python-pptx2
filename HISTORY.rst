@@ -56,6 +56,42 @@ Merged
     notes-text read/replace that never creates a notes slide, and an
     atomic, deterministic (epoch-stamped) package ``save()``.
 
+* Follow-up paper-pptx fixes ported in sequence (their commit ids in
+  ours): zipguard keeps only structural checks and drops numeric
+  resource ceilings (#15); the inspect group-depth guard is gone (#19);
+  the bootstrap's ``scrub`` module was removed again (#14);
+  ``effective_paragraph_format`` resolves *inherited* bullets with
+  provenance, and deck diff reports bullet typeface/size changes (#16,
+  #27); ``Presentation.batch()`` validates once per block and
+  ``save()`` refuses inside it, slide-partname allocation and
+  duplicate-partname writes are fixed (#17); packages with leading
+  bytes are refused (#21); ``save()`` accepts every upstream
+  destination (write-only handles, unseekable sinks), writing at the
+  caller's cursor and resolving symlinks for path destinations (#23);
+  untyped ZIP members refuse while unreferenced parts are accepted
+  (#24); ZIP directory entries are accepted (#25); relationship
+  refusals are retyped with remedies (#26); ``patch_save`` treats
+  semantically equivalent OPC registries (other producers' absolute
+  rels, content-type fallbacks) as unchanged (#36); table expansion is
+  composable — ``insert_row/insert_column(copy_format_from=...)`` and
+  ``_Cell.extend_merge()`` (#37); text edits, layout selection,
+  placeholder reconciliation, section selection, and deck-diff
+  alignment all match by stable *identity*, refusing ambiguity instead
+  of guessing (#40–#46, #38 docs).
+
+* The low-level slide-import engine keeps its part-level API at
+  ``pptx2._slide_importer`` with the ``merge_master=`` knobs; the
+  public ``Presentation.import_slide`` /
+  ``pptx2.compose.import_slide`` now take the paper-pptx
+  ``(source_prs, slide, mode=...)`` signature returning
+  ``ImportReport``.
+
+* A zip-timestamp fix that benefits every save: package entries are
+  stamped with the 1980 zip epoch, so saving the same package state
+  twice produces byte-identical files, and the math-namespace
+  enrichment of slide XML only happens when a slide actually carries
+  equation markup (math-free decks round-trip byte-identically).
+
 
 2.20.0 (2026-08-30)
 +++++++++++++++++++

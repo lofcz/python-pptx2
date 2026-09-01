@@ -173,7 +173,8 @@ collections. Read just the file you need — they're self-contained.
 | `references/effects.md` | **The canonical fills-and-effects reference.** Shadow (including `shadow.clear()`), glow, soft edges, blur, reflection, alpha-tinted colors, gradient fills (linear / radial / rectangular / shape), line ends/caps/joins/compound. Other files link here rather than repeat it. **Phase 3 + Phase 6.** |
 | `references/animations.md` | `Entrance` / `Exit` / `Emphasis` presets, triggers, by-paragraph reveal, sequencing context manager, motion paths. **Phase 5.** |
 | `references/transitions.md` | Per-slide and deck-wide transitions including Morph and other `p14:` extensions. **Phase 4.** |
-| `references/compose.md` | `from_spec` (JSON authoring with built-in lint), `import_slide`, `apply_template`. **Phase 2 + Phase 7.** |
+| `references/compose.md` | `from_spec` (JSON authoring with built-in lint), `import_slide` / `append_deck` (paper-pptx validating engine + the low-level part engine), `apply_template`. **Phase 2 + Phase 7 + paper-pptx.** |
+| `references/editing.md` | **Changing existing decks safely** (paper-pptx): `inspect_text` / `effective_font` with provenance, `replace_text`, `diff_decks`, `Slides.clone/delete/move`, `shapes.*_by_name`, table surgery (`insert_row` / `extend_merge`), `replace_image`, `replace_data_safe`, `normalize_autofit`, `Presentation.batch()`, typed refusals. |
 | `references/theme.md` | Reading + writing the theme palette and fonts; `theme.apply(...)`; theme-aware color resolution via `pptx2.inherit.resolve_color`. **Phase 6 + Phase 7.** |
 | `references/picture-effects.md` | Picture transparency / brightness / contrast / recolor (grayscale / sepia / washout / duotone) and SVG embedding. **Phase 6.** |
 | `references/charts.md` | Chart palettes, quick layouts, per-series gradient/pattern fills, plus the inherited chart API. **Phase 10.** |

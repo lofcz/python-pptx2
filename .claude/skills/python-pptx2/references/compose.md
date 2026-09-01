@@ -153,23 +153,55 @@ per slide. Both mistakes raise a `ValueError` locating the bad entry as
 
 ```python
 from pptx2 import Presentation
-from pptx2.compose import import_slide, apply_template
+from pptx2.compose import import_slide, append_deck, apply_template
 ```
 
-### Importing a slide
+### Importing a slide (paper-pptx validating API)
 
 ```python
 src = Presentation("source.pptx")
 dst = Presentation("destination.pptx")
 
-# Clone src.slides[3] into dst, including its layout reference.
-import_slide(dst, src.slides[3], merge_master="dedupe")
+# mode is required — choose consciously:
+report = dst.import_slide(src, src.slides[3], mode="keep_appearance")
+```
+
+Three modes:
+
+- `"keep_appearance"` — transplant the source layout/master/theme chain,
+  deduplicated by content fingerprint (ten slides from one source share
+  one master). The slide looks exactly as it did.
+- `"adopt_theme"` — rebind to the closest destination layout (unique
+  exact name, then unique exact non-custom type) so the slide takes the
+  destination theme; every run whose resolved values changed appears in
+  `report.run_shifts`.
+- `"bake"` — freeze resolvable effective values into explicit local
+  properties, drop furniture placeholders, attach to a destination
+  layout. Stable look without importing masters.
+
+Extras: `position=`, `notes=True`, `section="Name"` /
+`section_id="{GUID}"` (unique match or refused), `target_layout=`,
+`placeholder_map={source_idx: target_idx | None}`. Returns an
+`ImportReport`; the source presentation is never mutated; refusals
+(`RelationshipPolicyError`, `AmbiguousTargetError`,
+`TargetNotFoundError`, `UnsupportedStructureError`) leave the
+destination byte-identical. `append_deck(dst, src, mode=...)` validates
+the whole source deck before the first write.
+
+### Importing a slide (low-level engine)
+
+```python
+from pptx2._slide_importer import import_slide as import_slide_part
+
+# part-level engine behind template cloning; keeps the old
+# merge_master="dedupe" | "clone" knobs and returns the new Slide
+new_slide = import_slide_part(src.slides[3].part, dst.part)
 ```
 
 Image-rename collisions, layout references, and master/theme parts are
 handled automatically. Two strategies for masters:
 
-- `merge_master="dedupe"` (default-ish, recommended) reuses an
+- `merge_master="dedupe"` (default, recommended) reuses an
   equivalent master in the destination if one matches.
 - `merge_master="clone"` always brings a fresh copy of the source
   master alongside.
@@ -192,7 +224,7 @@ script:
 
 ```python
 from pptx2 import Presentation
-from pptx2.compose import import_slide, apply_template, from_spec
+from pptx2.compose import apply_template, from_spec
 
 # 1. Generate the body slides from data
 body = from_spec({
@@ -205,7 +237,7 @@ body = from_spec({
 # 2. Open the cover deck and append the body slides
 deck = Presentation("cover.pptx")
 for slide in body.slides:
-    import_slide(deck, slide, merge_master="dedupe")
+    deck.import_slide(body, slide, mode="keep_appearance")
 
 # 3. Re-skin everything against the latest brand template
 apply_template(deck, "brand-2026.potx")

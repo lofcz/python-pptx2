@@ -1,4 +1,8 @@
-"""Out-of-band installation diagnostics for the frozen ``pptx2`` import."""
+"""Out-of-band installation diagnostics for the ``pptx2`` import.
+
+Retargeted from paper-pptx's doctor to the python-pptx2 distribution
+and its ``__version__`` sentinel.
+"""
 
 from __future__ import annotations
 
@@ -30,7 +34,7 @@ def _hash(data: bytes) -> str:
     return f"sha256={encoded}"
 
 
-def _paper_distribution(tmp_path, data: bytes = b"paper bytes") -> _Distribution:
+def _pptx2_distribution(tmp_path, data: bytes = b"pptx2 bytes") -> _Distribution:
     package = tmp_path / "pptx2"
     package.mkdir()
     module = package / "__init__.py"
@@ -43,9 +47,9 @@ def _paper_distribution(tmp_path, data: bytes = b"paper bytes") -> _Distribution
     return _Distribution(tmp_path, record)
 
 
-def _install_lookup(monkeypatch, paper=None, upstream=None) -> None:
+def _install_lookup(monkeypatch, dist=None) -> None:
     def lookup(name: str):
-        found = {"paper-pptx": paper, "python-pptx": upstream}[name]
+        found = {"python-pptx2": dist}[name]
         if found is None:
             raise doctor.PackageNotFoundError(name)
         return found
@@ -55,43 +59,34 @@ def _install_lookup(monkeypatch, paper=None, upstream=None) -> None:
 
 class DescribePaperPptxDoctor:
     def it_accepts_a_clean_install(self, monkeypatch, tmp_path):
-        paper = _paper_distribution(tmp_path)
-        _install_lookup(monkeypatch, paper=paper)
+        dist = _pptx2_distribution(tmp_path)
+        _install_lookup(monkeypatch, dist=dist)
         monkeypatch.setattr(
             doctor.importlib,
             "import_module",
-            lambda _name: SimpleNamespace(__paper_version__="0.1.1"),
+            lambda _name: SimpleNamespace(__version__="0.1.1"),
         )
 
         assert doctor.verify_install() == "0.1.1"
 
-    def it_refuses_missing_paper_distribution_metadata(self, monkeypatch):
+    def it_refuses_missing_distribution_metadata(self, monkeypatch):
         _install_lookup(monkeypatch)
 
         with pytest.raises(doctor.DoctorError, match="metadata is missing"):
             doctor.verify_install()
 
-    def it_refuses_when_both_distributions_are_installed(
-        self, monkeypatch, tmp_path
-    ):
-        paper = _paper_distribution(tmp_path)
-        _install_lookup(monkeypatch, paper=paper, upstream=object())
-
-        with pytest.raises(doctor.DoctorError, match="both installed"):
-            doctor.verify_install()
-
     def it_refuses_a_missing_recorded_pptx_file(self, monkeypatch, tmp_path):
-        paper = _paper_distribution(tmp_path)
+        dist = _pptx2_distribution(tmp_path)
         (tmp_path / "pptx2" / "__init__.py").unlink()
-        _install_lookup(monkeypatch, paper=paper)
+        _install_lookup(monkeypatch, dist=dist)
 
         with pytest.raises(doctor.DoctorError, match="file is missing"):
             doctor.verify_install()
 
     def it_refuses_a_hash_mismatch(self, monkeypatch, tmp_path):
-        paper = _paper_distribution(tmp_path)
-        (tmp_path / "pptx2" / "__init__.py").write_bytes(b"upstream bytes")
-        _install_lookup(monkeypatch, paper=paper)
+        dist = _pptx2_distribution(tmp_path)
+        (tmp_path / "pptx2" / "__init__.py").write_bytes(b"tampered bytes")
+        _install_lookup(monkeypatch, dist=dist)
 
         with pytest.raises(doctor.DoctorError, match="hash mismatch"):
             doctor.verify_install()
@@ -103,14 +98,12 @@ class DescribePaperPptxDoctor:
     def it_refuses_a_missing_or_wrong_sentinel(
         self, monkeypatch, tmp_path, sentinel, message
     ):
-        paper = _paper_distribution(tmp_path)
-        _install_lookup(monkeypatch, paper=paper)
+        dist = _pptx2_distribution(tmp_path)
+        _install_lookup(monkeypatch, dist=dist)
         imported = SimpleNamespace()
         if sentinel is not None:
-            imported.__paper_version__ = sentinel
-        monkeypatch.setattr(
-            doctor.importlib, "import_module", lambda _name: imported
-        )
+            imported.__version__ = sentinel
+        monkeypatch.setattr(doctor.importlib, "import_module", lambda _name: imported)
 
         with pytest.raises(doctor.DoctorError, match=message):
             doctor.verify_install()
@@ -124,5 +117,4 @@ class DescribePaperPptxDoctor:
 
         assert doctor.main() == 1
         stderr = capsys.readouterr().err
-        assert "uninstall -y python-pptx paper-pptx" in stderr
-        assert "--force-reinstall paper-pptx" in stderr
+        assert "--force-reinstall python-pptx2" in stderr
