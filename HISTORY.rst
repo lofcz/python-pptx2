@@ -15,8 +15,19 @@ can sit beside both ``python-pptx`` (``pptx``) and ``power-pptx``
 .. _`scanny/python-pptx`: https://github.com/scanny/python-pptx
 
 
-Unreleased
-++++++++++
+3.0.0 (2026-09-01)
+++++++++++++++++++
+
+Backward-incompatible
+.....................
+
+* ``Presentation.import_slide`` and ``pptx2.compose.import_slide`` now
+  take the paper-pptx validating signature —
+  ``import_slide(source_prs, slide, *, mode, ...)`` returning
+  ``ImportReport``. The previous part-level engine (including its
+  ``merge_master=`` knobs) remains available unchanged at
+  ``pptx2._slide_importer.import_slide``, and the old deck-integration
+  tests exercise it directly.
 
 Merged
 ......
