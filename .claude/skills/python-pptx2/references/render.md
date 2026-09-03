@@ -5,6 +5,26 @@ This is for review tooling, dashboards, and CI artifacts — it does not
 require Microsoft PowerPoint or an Office license, but `soffice` must
 be on `$PATH` (or you can point at a custom binary).
 
+## The contact sheet: one image of the whole deck (v3.1)
+
+The quickest way to *look at* a generated deck — and the one to reach for
+when a vision model is doing the looking — is a single PNG with every
+slide tiled in reading order and numbered:
+
+```python
+prs.render_contact_sheet("preview.png")                    # 3 columns, 640px thumbs
+prs.render_contact_sheet("preview.png", cols=4, thumb_width=480)
+prs.render_contact_sheet("detail.png", slides=[2, 5], cols=2, thumb_width=900)
+
+from pptx2.render import render_contact_sheet              # module-level twin
+render_contact_sheet(prs, "preview.png", gap=24, background="#F3F4F6", label=True)
+```
+
+A 12-slide deck at `cols=4, thumb_width=480` is ~2000 × 850 px — small
+enough for one look, large enough to catch a clipped title, a shrunken
+list, a stripe poking out of a rounded card, an empty half-slide or an
+off-palette colour. Render, fix, render once more.
+
 ## Convenience methods
 
 ```python

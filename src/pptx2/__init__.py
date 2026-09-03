@@ -9,6 +9,14 @@ import pptx2.exc as exceptions
 from pptx2.api import Presentation
 from pptx2.audit import AuditReport, audit
 from pptx2.geometry import BBox
+from pptx2.design.blocks import (
+    Card,
+    FittedPicture,
+    add_bullets,
+    add_card,
+    add_picture_fit,
+)
+from pptx2.design.palettes import PALETTES, Palette, palette
 from pptx2.design.components import (
     ArticleCard,
     Gauge,
@@ -57,7 +65,7 @@ from pptx2.parts.slide import (
 if TYPE_CHECKING:
     from pptx2.opc.package import Part
 
-__version__ = "3.0.0"
+__version__ = "3.1.0"
 
 sys.modules["pptx2.exceptions"] = exceptions
 del sys
@@ -91,6 +99,16 @@ __all__ = [
     "StatusPill",
     "StatStrip",
     "ArticleCard",
+    # Everyday slide blocks (hex-driven; no token setup required).
+    "add_card",
+    "add_bullets",
+    "add_picture_fit",
+    "Card",
+    "FittedPicture",
+    # Curated colour sets.
+    "Palette",
+    "PALETTES",
+    "palette",
 ]
 
 content_type_to_part_class_map: dict[str, type[Part]] = {

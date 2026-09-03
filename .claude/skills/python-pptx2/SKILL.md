@@ -28,6 +28,27 @@ issues:
 generating decks from any dynamic input. It's the reason this skill
 exists.
 
+## The second headline: decks that look designed
+
+Physically correct is the floor. When a deck will be *seen* — a lesson,
+a talk, a pitch — **read `references/slide-design.md`** before writing
+slides. It gives you the working vocabulary of a designed deck and the
+helpers that implement it:
+
+- one **palette** (`PALETTES["slate"]` → `P.paper / P.ink / P.accent /
+  P.surface / P.muted`; `P.dark()` for title and section slides),
+- one **grid** (`TITLE` band + `BODY` region; `BODY.columns(n, gap=…)`),
+- a **type scale** (title 32, body 20–24, card body 16–18, caption 12),
+- **surfaces done well** — `add_card` is one tinted rounded rectangle with
+  padded text inside, nothing attached to it,
+- real **bullets** with hanging indents (`add_bullets`), pictures that
+  keep their aspect (`add_picture_fit`), palette-driven diagrams and
+  tables,
+- a catalog of **slide archetypes** (title, section, statement, bullets +
+  picture, three cards, process, comparison, quote, question, summary),
+- and a **visual check**: `prs.render_contact_sheet("preview.png")` — one
+  PNG of every slide, looked at once before shipping.
+
 The whole upstream 1.0.2 API still works — the rest of this skill
 focuses on the post-fork additions because they're what's most often
 missed by snippets pulled from the wider internet.
@@ -39,13 +60,15 @@ The 25 calls that cover ~90% of deck-generation tasks. Reach for
 working set:
 
 ```python
-from pptx2 import Presentation, BBox, audit
+from pptx2 import Presentation, BBox, audit, PALETTES
+from pptx2 import add_card, add_bullets, add_picture_fit
 from pptx2.diagrams import horizontal_pipeline, hub_and_spoke, cycle
 from pptx2.enum.shapes import MSO_SHAPE
 from pptx2.util import Inches, Pt
 
 # --- open / save ---
 prs = Presentation()                       # new blank deck
+prs.slide_width, prs.slide_height = Inches(13.333), Inches(7.5)   # 16:9
 prs = Presentation("file.pptx")            # open existing
 prs.save("out.pptx")
 
@@ -53,19 +76,33 @@ prs.save("out.pptx")
 slide = prs.slides.add_slide(prs.slide_layouts[5])   # Title Only
 slide = prs.slides.add_slide(prs.slide_layouts[6])   # Blank
 
+# --- one palette for the whole deck ---
+P = PALETTES["slate"]                      # .paper .surface .line .ink .muted .accent .accent_soft
+D = P.dark()                               # same hues on dark paper — title / section slides
+slide.background.fill.solid(); slide.background.fill.fore_color.rgb = P.paper
+
 # --- geometry (BBox is splattable into add_*) ---
 bb = BBox.from_inches(1, 2, 8, 4)
-left, right = bb.split_h([1, 1], gap=Inches(0.2))
+left, right = bb.split_h([7, 5], gap=Inches(0.6))
 inner = bb.inset(all=Inches(0.2))
 
 # --- n-up rows/grids: never hand-compute (avail - (n-1)*gap) / n ---
-for cell in bb.columns(3, gap=Pt(16)):     # equal columns; .rows(n) too
-    slide.shapes.add_shape(MSO_SHAPE.ROUNDED_RECTANGLE, *cell)
+for cell in bb.columns(3, gap=Inches(0.5)):   # equal columns; .rows(n) too
+    add_card(slide, cell, title="Step", body="What happens here.",
+             fill=P.surface, title_color=P.ink, body_color=P.ink)
 
 # --- text (one call) ---
 slide.shapes.add_text(bb, text="Hello",
                       size_pt=24, bold=True,
-                      color="#0B5CFF", align="center")
+                      color=P.ink, align="center")
+
+# --- real bullets (hanging indent, spacing, fitted to the box) ---
+add_bullets(slide, left, items=["First point", "Second point"],
+            size_pt=22, color=P.ink)               # numbered=True for 1. 2. 3.
+
+# --- picture that keeps its aspect ---
+add_picture_fit(slide, "photo.jpg", right, mode="contain",   # or "cover" to fill + crop
+                caption="Source: Wikimedia", caption_color=P.muted)
 
 # --- native equation from LaTeX (pip install "python-pptx2[math]") ---
 slide.shapes.add_equation(bb, latex=r"\frac{a}{b}", size_pt=28)
@@ -76,10 +113,11 @@ para.add_math(r"e^{i\pi}+1=0")
 slide.shapes.add_shape(MSO_SHAPE.RECTANGLE, *bb) \
     .fill_hex("#FFFFFF").line_hex("#0D0D0D", weight_pt=1.25)
 
-# --- flat card: no theme drop-shadow, radius in points ---
+# --- hand-rolled flat surface (add_card does all of this for you) ---
 card = slide.shapes.add_shape(MSO_SHAPE.ROUNDED_RECTANGLE, *inner)
+card.fill_hex(P.surface); card.line.fill.background()
 card.shadow.clear()                        # kills the inherited effectRef too
-card.corner_radius = Pt(6)                 # not adjustments[0]
+card.corner_radius = Pt(10)                # not adjustments[0]
 
 # --- arrow with proper triangular head + auto edge routing ---
 start_shape = slide.shapes.add_shape(MSO_SHAPE.RECTANGLE, *left)
@@ -109,9 +147,10 @@ size = tf.fit_text(font_family="Inter", max_size=24)
 slide.tidy()                               # lints + safe auto-fixes
 
 # --- tell the linter an overlap is deliberate (widest -> narrowest) ---
-slide.lint_group_overlaps(card, accent, label)   # one visual cluster
+slide.lint_group_overlaps(photo, band, title)    # one visual cluster (hero image)
 badge.allow_overlap_with(card)                   # exactly this one pair
 card.layer, badge.layer_above = "card", "card"   # also asserts z-order
+with slide.design_group("hero"): ...             # tags everything created inside
 
 # --- validate at save time (off by default) ---
 prs.lint_on_save = "raise"                 # or "warn"; raises before writing
@@ -119,7 +158,10 @@ prs.lint_on_save = "raise"                 # or "warn"; raises before writing
 # --- whole-deck audit (markdown summary) ---
 print(audit(prs).markdown())
 
-# --- render thumbnails ---
+# --- LOOK at the deck: one PNG with every slide, numbered ---
+prs.render_contact_sheet("preview.png", cols=4, thumb_width=480)
+
+# --- or per-slide thumbnails ---
 from pptx2.render import render_slides
 render_slides(prs, slides=[0, 1, 2], out_dir="thumbs",
               name_template="slide-{:02d}.png")
@@ -165,6 +207,7 @@ collections. Read just the file you need — they're self-contained.
 | File | What it covers |
 |---|---|
 | `references/space-aware-authoring.md` | **READ THIS FIRST.** Pre-flight measurement (`fit_text`, `TextFitter.best_fit_font_size`), `auto_size` flags, the linter, and a robust layout pattern. **Phase 2 + Phase 6 text-fit estimator.** |
+| `references/slide-design.md` | **READ THIS WHEN THE DECK WILL BE SEEN.** Grid and margins, type scale, one-palette colour (`PALETTES`, `.dark()`), surfaces done well (`add_card`), lists (`add_bullets`), pictures (`add_picture_fit`), tables/diagrams/charts styling, deliberate vs accidental overlaps, a 12-archetype slide catalog with runnable code, and the visual check (`render_contact_sheet`). **v3.1.** |
 | `references/geometry-and-arrows.md` | `BBox` value object (`columns`/`rows`/`split_h`/`grid`), `add_text` / `add_arrow` / `fill_hex` / `line_hex` convenience, `set_text_preserving_format`, `Picture.replace_with`, `Slide.tidy()`, diagram recipes (`horizontal_pipeline`, `hub_and_spoke`, `cycle`, `decision_tree`, `comparison_columns`), `audit(prs)`. **v2.8.** |
 | `references/lint.md` | Detail on `slide.lint()`, issue types, `auto_fix`, and the `from_spec(..., lint="raise")` hook. **Phase 2.** |
 | `references/design.md` | `DesignTokens`, `shape.style` facade, `Grid` / `Stack` layout primitives (geometry-safe placement), slide recipes (`title_slide`, `bullet_slide`, `kpi_slide`, `quote_slide`, `image_hero_slide`), starter pack. **Phase 9.** |
@@ -203,8 +246,13 @@ from pptx2 import (
     add_svg_figure,    add_html_figure,
     FigureBackendUnavailable,
     MathBackendUnavailable,
-    # Shape-level building blocks (token-driven; return small
-    # dataclasses exposing constituent shapes for further tweaks).
+    # Everyday slide blocks (hex-driven, no token setup). Each returns the
+    # shapes it made and tags them as one lint group.
+    add_card, add_bullets, add_picture_fit,
+    Card, FittedPicture,
+    # Curated colour sets: PALETTES["slate"], palette("linen"), P.dark().
+    PALETTES, Palette, palette,
+    # Dashboard-style components (token-driven).
     add_kpi_card, add_progress_bar,
     KpiCard,      ProgressBar,
 )
@@ -230,12 +278,21 @@ from pptx2 import (
 6. **Prefer recipes for whole-slide layouts** when the user wants a
    "good enough" pitch deck; drop down to direct `add_shape` /
    `add_textbox` only when the recipes don't fit.
-7. **Save once at the end** — build the deck in memory, then call
-   `prs.save(...)`. Don't open and re-save inside loops.
-8. **For released-version constraints**: pin `python-pptx2>=2.8.0`
-   when generating requirements files — that's the minimum that
-   ships the `BBox`, `add_text`, `add_arrow`, `diagrams`, and
-   `audit` surface used in this skill.
+7. **One palette, one accent.** Pick `PALETTES[...]` (or build a
+   `Palette`) once and take every colour from its roles. The accent goes
+   on the single most important thing on a slide.
+8. **Surfaces are `add_card`, lists are `add_bullets`, pictures are
+   `add_picture_fit`.** They encode the padding, indents, fitting and
+   lint-grouping that hand-rolled versions tend to miss, and the card's
+   silhouette stays one clean rounded rectangle.
+9. **Look before you ship.** `prs.render_contact_sheet("preview.png")`
+   once after `tidy()`, fix what you see, render once more.
+10. **Save once at the end** — build the deck in memory, then call
+    `prs.save(...)`. Don't open and re-save inside loops.
+11. **For released-version constraints**: pin `python-pptx2>=3.1.0`
+    when generating requirements files — that's the minimum that
+    ships `add_card` / `add_bullets` / `add_picture_fit`, `PALETTES`
+    and `render_contact_sheet` used in this skill.
 
 ## A space-aware mini-template
 
@@ -279,6 +336,19 @@ prs.save("out.pptx")
 
 These changes ship after v2.5 and are easy to miss:
 
+- **`add_card` / `add_bullets` / `add_picture_fit`** (v3.1, package
+  root) — the everyday blocks of a content slide, hex-driven. `add_card`
+  is one flat rounded surface with padded, fitted title/body (body may be
+  a list → bullets); `add_bullets` writes real `a:buChar` / `a:buAutoNum`
+  bullets with hanging indents, spacing and fit-to-box; `add_picture_fit`
+  letter-boxes (`contain`) or crops (`cover`) a picture into a box with an
+  optional caption. All three tag their shapes as one lint group.
+- **`PALETTES` / `Palette` / `palette()`** (v3.1) — curated colour sets
+  with named roles (`paper`, `surface`, `line`, `ink`, `muted`, `accent`,
+  `accent_soft`, `accent_ink`) that pass contrast checks; `P.dark()`
+  derives a dark variant for title / section slides.
+- **`prs.render_contact_sheet("preview.png")`** (v3.1) — every slide
+  tiled into one numbered PNG for a single visual check.
 - **`Chart.recolour(palette)`** is the recommended single entry
   point — auto-dispatches per chart type (per-point on pie /
   doughnut, per-series otherwise). `apply_palette` warns and
@@ -364,6 +434,23 @@ Flagging them up front saves the trial-and-error round.
   cursor for card rows or stat grids. `bb.columns(n, gap=Pt(16))` (and
   `bb.rows(...)`, `bb.grid(cols, rows)`, `Grid.from_box(bb, cols=...)`)
   return exact, drift-free boxes.
+- **Don't** hand-roll a `card()` helper that draws a rounded rectangle
+  and then a second thin rectangle on its edge, a badge in its corner, or
+  a rail down the side of the slide. Those extra shapes are what make
+  generated decks look generated (and they trip `ShapeCollision` for a
+  reason — a square stripe pokes out of a rounded corner). A card is
+  `add_card(...)`: one surface, padded text, done. Emphasis is the
+  fill tint (`P.accent_soft`) or the title weight.
+- **Don't** write bullets as `"•  " + text` in a plain paragraph. That
+  bullet does not hang, wrapped lines run under it, and the list
+  misaligns. `add_bullets(slide, bb, items=[...])` writes real bullets.
+- **Don't** draw `add_picture(path, left, top, width, height)` with both
+  dimensions from a box — that stretches the photo.
+  `add_picture_fit(slide, path, bb, mode="contain"|"cover")` keeps the
+  aspect.
+- **Don't** pick colours ad hoc per slide (a teal here, a navy there, an
+  orange badge). Choose one `Palette` and take every colour from its
+  roles; one accent per slide.
 - **Don't** try to remove a shadow by assigning `None` to
   `shadow.blur_radius` / `distance`, or by `shadow.inherit = False`.
   Neither touches the theme effect style, so the shadow is still
@@ -441,9 +528,11 @@ skill, these paths are useful for source-of-truth lookup:
 - `src/pptx2/dml/effect.py`, `src/pptx2/dml/picture.py`,
   `src/pptx2/dml/line.py` — Phase 3/6 visual effects, picture filters,
   line-end formatting.
-- `src/pptx2/design/` — `tokens`, `style`, `layout`, `recipes`.
+- `src/pptx2/design/` — `tokens`, `style`, `layout`, `recipes`,
+  `components`, `blocks` (`add_card` / `add_bullets` / `add_picture_fit`),
+  `palettes` (`PALETTES`, `Palette`).
 - `src/pptx2/chart/palettes.py`, `src/pptx2/chart/quick_layouts.py`.
-- `src/pptx2/render.py` — slide-thumbnail renderer.
+- `src/pptx2/render.py` — slide-thumbnail renderer + `render_contact_sheet`.
 - `src/pptx2/smart_art.py`, `src/pptx2/_svg.py`.
 - `examples/starter_pack/` — three example token sets and a build script.
 

@@ -576,6 +576,105 @@ def render_slides(
     return renamed
 
 
+def render_contact_sheet(
+    prs: "_Presentation",
+    out_path: Union[str, os.PathLike[str]],
+    *,
+    cols: int = 3,
+    thumb_width: int = 640,
+    gap: int = 24,
+    background: str = "#F3F4F6",
+    label: bool = True,
+    slides: Optional[Sequence[int]] = None,
+    soffice_bin: Optional[str] = None,
+    timeout: int = DEFAULT_TIMEOUT_SECONDS,
+    dpi: int = 110,
+) -> Path:
+    """Render every slide and tile the thumbnails into ONE PNG.
+
+    A contact sheet is the fastest way to *look at* a generated deck:
+    one image, every slide in reading order, numbered, small enough to
+    inspect in a single glance (or a single vision-model call) yet large
+    enough to catch a clipped title, an empty half-slide, a stripe that
+    pokes out of a rounded card, or a picture that swallowed the text.
+
+    ``cols`` thumbnails per row, each ``thumb_width`` pixels wide (height
+    follows the slide aspect), separated by ``gap`` pixels on
+    ``background``. ``label=True`` prints the 1-based slide number in the
+    top-left corner of each tile.
+
+    Requires LibreOffice (``soffice``) like the other renderers and Pillow
+    for the montage. Returns the path written.
+    """
+    from PIL import Image, ImageDraw
+
+    if cols < 1:
+        raise ValueError("cols must be >= 1")
+    if thumb_width < 32:
+        raise ValueError("thumb_width must be >= 32 pixels")
+
+    work_dir = Path(tempfile.mkdtemp(prefix="pptx-sheet-"))
+    try:
+        paths = render_slide_thumbnails(
+            prs,
+            out_dir=work_dir,
+            slide_indexes=slides,
+            soffice_bin=soffice_bin,
+            timeout=timeout,
+            strategy="auto",
+            dpi=dpi,
+        )
+        if not paths:
+            raise ThumbnailRendererError("render_contact_sheet: no slides were rendered")
+
+        thumbs: List["Image.Image"] = []
+        for p in paths:
+            with Image.open(p) as im:  # type: ignore[arg-type]
+                im = im.convert("RGB")
+                ratio = thumb_width / float(im.width)
+                thumbs.append(
+                    im.resize(
+                        (thumb_width, max(1, int(round(im.height * ratio)))),
+                        Image.LANCZOS,
+                    )
+                )
+
+        thumb_h = max(t.height for t in thumbs)
+        n = len(thumbs)
+        rows = (n + cols - 1) // cols
+        sheet_w = gap + cols * (thumb_width + gap)
+        sheet_h = gap + rows * (thumb_h + gap)
+        sheet = Image.new("RGB", (sheet_w, sheet_h), background)
+        draw = ImageDraw.Draw(sheet)
+
+        indexes = list(slides) if slides is not None else list(range(n))
+        for i, thumb in enumerate(thumbs):
+            r, c = divmod(i, cols)
+            x = gap + c * (thumb_width + gap)
+            y = gap + r * (thumb_h + gap)
+            # Thin neutral frame so a white slide edge is visible on the sheet.
+            draw.rectangle(
+                (x - 1, y - 1, x + thumb.width, y + thumb.height), outline="#9CA3AF"
+            )
+            sheet.paste(thumb, (x, y))
+            if label:
+                tag = str(indexes[i] + 1)
+                pad = 6
+                # Default bitmap font — always available, no font lookup.
+                tw, th = draw.textbbox((0, 0), tag)[2:]
+                draw.rectangle(
+                    (x, y, x + tw + 2 * pad, y + th + 2 * pad), fill="#111827"
+                )
+                draw.text((x + pad, y + pad), tag, fill="#FFFFFF")
+
+        out = Path(out_path)
+        out.parent.mkdir(parents=True, exist_ok=True)
+        sheet.save(out, format="PNG", optimize=True)
+        return out
+    finally:
+        shutil.rmtree(work_dir, ignore_errors=True)
+
+
 def _presentation_for(slide: "_Slide") -> "_Presentation":
     """Walk back from a Slide to its owning Presentation.
 

@@ -225,6 +225,18 @@ class Presentation(PartElementProxy):
 
         return render_slide_thumbnails(self, **kwargs)
 
+    def render_contact_sheet(self, out_path, **kwargs):
+        """Render every slide and tile the thumbnails into one PNG at `out_path`.
+
+        Thin wrapper around :func:`pptx2.render.render_contact_sheet` — the
+        one-image way to eyeball a whole generated deck. Forwards `cols`,
+        `thumb_width`, `gap`, `label`, `slides`, `soffice_bin`, `timeout`
+        and `dpi`. Requires ``soffice`` (LibreOffice) on PATH.
+        """
+        from pptx2.render import render_contact_sheet
+
+        return render_contact_sheet(self, out_path, **kwargs)
+
     @property
     def slide_height(self) -> Length | None:
         """Height of slides in this presentation, in English Metric Units (EMU).

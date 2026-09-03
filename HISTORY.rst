@@ -15,6 +15,59 @@ can sit beside both ``python-pptx`` (``pptx``) and ``power-pptx``
 .. _`scanny/python-pptx`: https://github.com/scanny/python-pptx
 
 
+3.1.0 (2026-09-03)
+++++++++++++++++++
+
+Slide-design layer: the everyday blocks a content slide is made of, a
+set of curated palettes, a one-image visual check, and a design guide
+that leads generated decks toward calm, consistent layouts.
+
+Added
+.....
+
+* ``pptx2.design.blocks`` (re-exported at the package root):
+
+  * ``add_card(slide, bbox, title=, body=, fill=, line=, pad_pt=, ...)``
+    — one flat rounded surface (``shadow.clear()``, real
+    ``corner_radius``, tint *or* hairline outline) with a padded, fitted
+    title and body. ``body`` may be a list, rendered as bullets
+    (``numbered=True`` for a numbered list). Returns ``Card`` with
+    ``card`` / ``title_box`` / ``body_box`` and ``inner`` (the padded
+    content ``BBox``).
+  * ``add_bullets(slide, bbox, items=, size_pt=, numbered=, gap_pt=, ...)``
+    — real ``a:buChar`` / ``a:buAutoNum`` bullets with a hanging indent
+    that scales with the type size, item spacing, and fit-to-box that
+    never drops below ``min_size_pt``. Numbering continues across items.
+  * ``add_picture_fit(slide, image, bbox, mode="contain"|"cover", align=,
+    caption=, ...)`` — places a picture inside a box without distortion,
+    letter-boxed or cropped symmetrically to fill, with an optional
+    caption. Returns ``FittedPicture`` with the occupied ``frame``.
+
+  All three tag their shapes with one ``lint_group``.
+
+* ``pptx2.design.palettes`` (re-exported at the package root):
+  ``Palette`` with named roles (``paper``, ``surface``, ``line``, ``ink``,
+  ``muted``, ``accent``, ``accent_soft``, ``accent_ink``), ``PALETTES``
+  (``slate``, ``linen``, ``forest``, ``plum``, ``ember``, ``navy``,
+  ``graphite``) that pass WCAG AA contrast for their intended pairings,
+  ``palette(name)``, and ``Palette.dark()`` for title / section slides.
+
+* ``pptx2.render.render_contact_sheet(prs, out_path, cols=, thumb_width=,
+  ...)`` and ``Presentation.render_contact_sheet(...)`` — every slide
+  rendered and tiled into a single numbered PNG.
+
+Skill
+.....
+
+* New ``references/slide-design.md``: grid and margins, type scale,
+  one-palette colour, surfaces done well, whitespace, pictures, tables /
+  diagrams / charts, deliberate vs accidental overlaps, a twelve-archetype
+  slide catalog with runnable code, and the visual check.
+* ``SKILL.md`` cheat sheet, house rules and anti-patterns updated for the
+  blocks, palettes and contact sheet; ``design.md`` and ``render.md``
+  cross-reference them.
+
+
 3.0.0 (2026-09-01)
 ++++++++++++++++++
 

@@ -4,6 +4,41 @@ The `pptx2.design` package turns the low-level API into something where
 the *default* output looks good. Nothing here adds new XML — it's all
 built on top of the foundations from earlier phases.
 
+> For *how to lay out a slide that looks designed* — grid, type scale,
+> one-palette colour, cards, pictures, overlaps, archetypes and the visual
+> check — read `slide-design.md`. This file documents the token-driven
+> machinery (`DesignTokens`, `Grid`/`Stack`, recipes, components).
+
+## Everyday blocks and palettes (v3.1)
+
+For content slides driven by plain hex colours (no token setup), the
+package root exports three blocks and a set of curated palettes:
+
+```python
+from pptx2 import PALETTES, add_card, add_bullets, add_picture_fit
+
+P = PALETTES["linen"]          # paper · surface · line · ink · muted · accent · accent_soft · accent_ink
+D = P.dark()                   # the same hues on dark paper
+
+card = add_card(slide, cell, title="1 · Zachycení",
+                body="Chlorofyl pohltí světelnou energii.",    # or a list → bullets
+                fill=P.surface, title_color=P.ink, body_color=P.ink,
+                title_size_pt=22, body_size_pt=18, pad_pt=22)
+card.inner                     # padded content BBox — drop an equation or picture in it
+
+add_bullets(slide, left, items=["…", "…"], size_pt=22, color=P.ink, numbered=False)
+
+pic = add_picture_fit(slide, "photo.jpg", right, mode="contain",   # or "cover"
+                      caption="Zdroj: Wikimedia", caption_color=P.muted)
+pic.frame                      # the BBox the picture finally occupies
+```
+
+`add_card` draws one flat rounded surface (`shadow.clear()`, real
+`corner_radius`, tint *or* hairline) with fitted text inside the
+padding; `add_bullets` writes real `a:buChar` / `a:buAutoNum` bullets with
+hanging indents and item spacing; `add_picture_fit` keeps the picture's
+aspect. All three tag their shapes with one `lint_group`.
+
 ## Design tokens
 
 `DesignTokens` is a source-agnostic container for brand tokens:
