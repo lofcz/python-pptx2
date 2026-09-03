@@ -324,6 +324,17 @@ def _render_via_pdf(
             pass
 
 
+def _pdf_splitter_available() -> bool:
+    """True when the PDF→PNG step can run (Poppler's pdftoppm or pypdfium2)."""
+    if shutil.which("pdftoppm") is not None:
+        return True
+    try:
+        import pypdfium2  # type: ignore[import-not-found]  # noqa: F401
+    except ImportError:
+        return False
+    return True
+
+
 def _pdf_to_pngs(pdf_path: Path, out_dir: Path, *, dpi: int) -> List[Path]:
     """Split a PDF into one PNG per page in *out_dir* and return the paths.
 
@@ -615,13 +626,18 @@ def render_contact_sheet(
 
     work_dir = Path(tempfile.mkdtemp(prefix="pptx-sheet-"))
     try:
+        # Stock LibreOffice 7+ writes only the first slide through the PNG
+        # filter, so for a multi-slide deck "auto" pays for a wasted soffice
+        # start before falling back to PDF. Go straight to PDF whenever a
+        # page splitter is available; "auto" remains the portable fallback.
+        strategy = "pdf" if _pdf_splitter_available() else "auto"
         paths = render_slide_thumbnails(
             prs,
             out_dir=work_dir,
             slide_indexes=slides,
             soffice_bin=soffice_bin,
             timeout=timeout,
-            strategy="auto",
+            strategy=strategy,
             dpi=dpi,
         )
         if not paths:

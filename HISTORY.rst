@@ -15,6 +15,18 @@ can sit beside both ``python-pptx`` (``pptx``) and ``power-pptx``
 .. _`scanny/python-pptx`: https://github.com/scanny/python-pptx
 
 
+3.1.1 (2026-09-03)
+++++++++++++++++++
+
+Changed
+
+- ``render_contact_sheet`` goes straight to the PDF export when a page
+  splitter (``pdftoppm`` or ``pypdfium2``) is available, instead of first
+  paying for a ``--convert-to png`` run that stock LibreOffice 7+ answers
+  with a single slide. Roughly halves the wall-clock of a visual check on
+  a multi-slide deck; ``"auto"`` remains the portable fallback.
+
+
 3.1.0 (2026-09-03)
 ++++++++++++++++++
 
