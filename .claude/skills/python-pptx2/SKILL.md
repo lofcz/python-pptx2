@@ -38,14 +38,22 @@ helpers that implement it:
 - one **palette** (`PALETTES["slate"]` → `P.paper / P.ink / P.accent /
   P.surface / P.muted`; `P.dark()` for title and section slides),
 - one **grid** (`TITLE` band + `BODY` region; `BODY.columns(n, gap=…)`),
-- a **type scale** (title 32, body 20–24, card body 16–18, caption 12),
+- a **type scale** read from the back row (title 32–36, body 22–26, card
+  body 18–20, caption 14 — nothing under 14 pt),
 - **surfaces done well** — `add_card` is one tinted rounded rectangle with
   padded text inside, nothing attached to it,
 - real **bullets** with hanging indents (`add_bullets`), pictures that
-  keep their aspect (`add_picture_fit`), palette-driven diagrams and
+  keep their aspect (`add_picture_fit`), **code listings** the editor
+  recognises as code blocks (`add_code`), palette-driven diagrams and
   tables,
-- a catalog of **slide archetypes** (title, section, statement, bullets +
-  picture, three cards, process, comparison, quote, question, summary),
+- a catalog of **slide archetypes** (title, section, statement, big
+  number, bullets + picture, three cards, process, comparison, quote,
+  full-bleed photo, question, summary) — planned as a sequence before
+  slide 2, consecutive slides never sharing one, dense alternating with
+  light,
+- a **visual per slide** chosen for its content: a photo for a real
+  thing, a chart for numbers, a diagram for a process, a table for a
+  comparison, typeset math for formulas,
 - and a **visual check**: `prs.render_contact_sheet("preview.png")` — one
   PNG of every slide, looked at once before shipping.
 
@@ -61,7 +69,7 @@ working set:
 
 ```python
 from pptx2 import Presentation, BBox, audit, PALETTES
-from pptx2 import add_card, add_bullets, add_picture_fit
+from pptx2 import add_card, add_bullets, add_picture_fit, add_code
 from pptx2.diagrams import horizontal_pipeline, hub_and_spoke, cycle
 from pptx2.enum.shapes import MSO_SHAPE
 from pptx2.util import Inches, Pt
@@ -103,6 +111,12 @@ add_bullets(slide, left, items=["First point", "Second point"],
 # --- picture that keeps its aspect ---
 add_picture_fit(slide, "photo.jpg", right, mode="contain",   # or "cover" to fill + crop
                 caption="Source: Wikimedia", caption_color=P.muted)
+
+# --- source code: monospace listing, never a plain text box ---
+add_code(slide, right, code='for i in range(3):\n    print(i)', language="python",
+         size_pt=18)                               # theme="github-dark" | "github-light" | …; line_numbers=True
+# the shape is named fika:code:<lang>:<theme>:<0|1> — editors with a native
+# code block (Fika) turn it into a highlighted, editable element on import
 
 # --- native equation from LaTeX (pip install "python-pptx2[math]") ---
 slide.shapes.add_equation(bb, latex=r"\frac{a}{b}", size_pt=28)

@@ -14,6 +14,11 @@ driven by plain hex colours and points so a script needs no token setup:
 * :func:`add_picture_fit` — a picture placed *inside* a box, either
   letter-boxed (``mode="contain"``) or cropped to fill (``mode="cover"``),
   centred, with an optional caption underneath.
+* :func:`add_code` — a source listing: monospace, one paragraph per line,
+  no wrapping, on a rounded editor-coloured surface. The shape is *named*
+  ``fika:code:<language>:<theme>:<0|1>`` so an editor that has a native
+  code block (Fika) restores a syntax-highlighted element from it instead
+  of a plain text box; PowerPoint just sees a tidy monospace box.
 
 Every block tags the shapes it stacks with ``lint_group`` so the linter
 treats a card and the text on it as one deliberate cluster, and every
@@ -36,11 +41,14 @@ if TYPE_CHECKING:
     from pptx2.slide import Slide
 
 __all__ = (
+    "CODE_THEMES",
     "Card",
     "FittedPicture",
     "add_card",
     "add_bullets",
+    "add_code",
     "add_picture_fit",
+    "code_shape_name",
 )
 
 
@@ -99,7 +107,7 @@ def add_bullets(
     align: str = "left",
     anchor: str = "top",
     margin_pt: float = 0.0,
-    min_size_pt: float = 12.0,
+    min_size_pt: float = 18.0,
 ) -> "Shape":
     """Add a bulleted (or numbered) list that fits its box.
 
@@ -199,7 +207,7 @@ def add_card(
     align: str = "left",
     anchor: str = "top",
     title_gap_pt: float = 6.0,
-    body_min_size_pt: float = 12.0,
+    body_min_size_pt: float = 16.0,
     numbered: bool = False,
 ) -> Card:
     """Add a card: one surface, padded title and body, nothing else.
@@ -260,7 +268,7 @@ def add_card(
         run.font.size = Pt(title_size_pt)
         run.font.bold = True
         run.font.color.rgb = coerce_color(title_color)
-        _fit(tf, font=font, max_pt=title_size_pt, min_pt=max(12.0, title_size_pt * 0.7), bold=True)
+        _fit(tf, font=font, max_pt=title_size_pt, min_pt=max(18.0, title_size_pt * 0.7), bold=True)
         cursor_top += title_h + int(Pt(title_gap_pt))
         remaining = int(inner.bottom) - cursor_top
 
@@ -431,3 +439,154 @@ def add_picture_fit(
 
     _tag([picture, caption_box], f"picture@{int(bb.left)},{int(bb.top)}")
     return FittedPicture(picture=picture, caption_box=caption_box, frame=frame)
+
+
+# ----------------------------------------------------------------------------- code
+
+CODE_SHAPE_NAME_PREFIX = "fika:code"
+
+#: Editor themes a listing can be painted in: ``theme -> (background, foreground)``.
+#: The ids are Shiki's, so the tag round-trips into the editor's highlighter;
+#: PowerPoint only sees the two flat colours.
+CODE_THEMES: dict[str, tuple[str, str]] = {
+    "github-dark": ("#24292E", "#E1E4E8"),
+    "github-light": ("#FFFFFF", "#24292E"),
+    "one-dark-pro": ("#282C34", "#ABB2BF"),
+    "one-light": ("#FAFAFA", "#383A42"),
+    "dracula": ("#282A36", "#F8F8F2"),
+    "monokai": ("#272822", "#F8F8F2"),
+    "nord": ("#2E3440", "#D8DEE9"),
+    "tokyo-night": ("#1A1B26", "#A9B1D6"),
+    "night-owl": ("#011627", "#D6DEEB"),
+    "catppuccin-mocha": ("#1E1E2E", "#CDD6F4"),
+    "catppuccin-latte": ("#EFF1F5", "#4C4F69"),
+    "vitesse-dark": ("#121212", "#DBD7CA"),
+    "vitesse-light": ("#FFFFFF", "#393A34"),
+    "min-dark": ("#1F1F1F", "#B392F0"),
+    "min-light": ("#FFFFFF", "#24292E"),
+}
+
+_CODE_LANGUAGE_ALIASES = {
+    "js": "javascript",
+    "ts": "typescript",
+    "py": "python",
+    "sh": "bash",
+    "shell": "bash",
+    "zsh": "bash",
+    "yml": "yaml",
+    "md": "markdown",
+    "c++": "cpp",
+    "c#": "csharp",
+    "cs": "csharp",
+    "text": "plaintext",
+    "txt": "plaintext",
+    "plain": "plaintext",
+}
+
+
+def _code_language(language: str) -> str:
+    key = (language or "plaintext").strip().lower()
+    return _CODE_LANGUAGE_ALIASES.get(key, key) or "plaintext"
+
+
+def code_shape_name(language: str, theme: str = "github-dark", line_numbers: bool = False) -> str:
+    """The shape name that marks a text box as a code block for the editor.
+
+    ``fika:code:<language>:<theme>:<0|1>`` — the same tag Fika writes when it
+    exports one of its native code elements, so a deck authored here and a
+    deck exported from the editor import identically.
+    """
+    lang = _code_language(language)
+    if ":" in lang or ":" in theme:
+        raise ValueError("language and theme must not contain ':'")
+    return f"{CODE_SHAPE_NAME_PREFIX}:{lang}:{theme}:{1 if line_numbers else 0}"
+
+
+def add_code(
+    slide: "Slide",
+    *bbox_or_positional,
+    code: str,
+    language: str = "plaintext",
+    theme: str = "github-dark",
+    size_pt: float = 16.0,
+    line_numbers: bool = False,
+    font: str = "Consolas",
+    pad_pt: float = 12.0,
+    radius_pt: float = 10.0,
+    line_spacing: float = 1.2,
+    tab_width: int = 4,
+    min_size_pt: float = 12.0,
+) -> "Shape":
+    """Add a source-code listing that the editor recognises as a code block.
+
+    ``code`` is written verbatim — one paragraph per line, leading spaces and
+    blank lines kept, tabs expanded to ``tab_width`` spaces, never wrapped —
+    in a monospace ``font`` on a rounded surface coloured after ``theme``
+    (a key of :data:`CODE_THEMES`; unknown names fall back to a dark
+    surface). ``language`` is a Shiki id or common alias (``py``, ``cs``,
+    ``c#``, ``ts`` …). When the listing is taller than the box the type
+    shrinks, never below ``min_size_pt`` — beyond that, split the listing
+    across slides instead of squeezing it.
+
+    The shape is named with :func:`code_shape_name`; an editor with native
+    code blocks (Fika) turns it into a highlighted, editable code element
+    on import. PowerPoint shows a plain monospace box in the theme colours.
+
+    Returns the :class:`Shape`.
+    """
+    from pptx2._color import coerce_color
+    from pptx2.enum.text import MSO_ANCHOR, MSO_AUTO_SIZE, PP_ALIGN
+
+    bb = _as_bbox(bbox_or_positional)
+    lines = code.replace("\r\n", "\n").replace("\r", "\n").expandtabs(tab_width).split("\n")
+    while lines and not lines[-1].strip():
+        lines.pop()
+    while lines and not lines[0].strip():
+        lines.pop(0)
+    if not lines:
+        raise ValueError("code must not be empty")
+
+    bg_hex, fg_hex = CODE_THEMES.get(theme, CODE_THEMES["github-dark"])
+    bg, fg = coerce_color(bg_hex), coerce_color(fg_hex)
+
+    box = slide.shapes.add_shape(MSO_SHAPE.ROUNDED_RECTANGLE, *bb)
+    box.name = code_shape_name(language, theme, line_numbers)
+    box.fill.solid()
+    box.fill.fore_color.rgb = bg
+    box.line.fill.background()
+    box.shadow.clear()
+    short_edge = min(int(bb.width), int(bb.height))
+    box.corner_radius = Emu(min(int(Pt(radius_pt)), short_edge // 2))
+
+    tf = box.text_frame
+    tf.word_wrap = False
+    tf.vertical_anchor = MSO_ANCHOR.TOP
+    pad = Pt(pad_pt)
+    tf.margin_left = tf.margin_right = tf.margin_top = tf.margin_bottom = pad
+
+    width = len(str(len(lines)))
+    for i, line in enumerate(lines):
+        para = tf.paragraphs[0] if i == 0 else tf.add_paragraph()
+        para.alignment = PP_ALIGN.LEFT
+        para.line_spacing = float(line_spacing)
+        text = f"{i + 1:>{width}}  {line}" if line_numbers else line
+        run = para.add_run()
+        run.text = text if text else " "
+        run.font.name = font
+        run.font.size = Pt(size_pt)
+        run.font.color.rgb = fg
+
+    # Fit by height only: a listing must never wrap, so shrink the type until
+    # every line has room, then let PowerPoint clip the rest rather than reflow.
+    avail_h = int(bb.height) - 2 * int(pad)
+    per_line = size_pt * 1.2 * line_spacing
+    needed_h = int(Pt(per_line * len(lines)))
+    if needed_h > avail_h > 0:
+        fitted = max(min_size_pt, size_pt * avail_h / needed_h)
+        for para in tf.paragraphs:
+            for run in para.runs:
+                run.font.size = Pt(fitted)
+    tf.auto_size = MSO_AUTO_SIZE.NONE
+
+    _tag([box], f"code@{int(bb.left)},{int(bb.top)}")
+    return box

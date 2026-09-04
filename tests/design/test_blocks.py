@@ -7,9 +7,18 @@ import io
 import pytest
 from PIL import Image
 
-from pptx2 import BBox, Presentation, add_bullets, add_card, add_picture_fit
+from pptx2 import (
+    CODE_THEMES,
+    BBox,
+    Presentation,
+    add_bullets,
+    add_card,
+    add_code,
+    add_picture_fit,
+    code_shape_name,
+)
 from pptx2.design.blocks import Card, FittedPicture
-from pptx2.enum.text import PP_BULLET_TYPE
+from pptx2.enum.text import MSO_AUTO_SIZE, PP_BULLET_TYPE
 from pptx2.util import Inches, Pt
 
 
@@ -178,3 +187,48 @@ class DescribeAddPictureFit:
     def it_rejects_unknown_modes(self, slide):
         with pytest.raises(ValueError):
             add_picture_fit(slide, _png(10, 10), BBox.from_inches(1, 1, 2, 2), mode="stretch")
+
+
+class DescribeAddCode:
+    SNIPPET = 'if (x < 2)\n{\n\n\treturn "a";\n}\n'
+
+    def it_names_the_shape_with_the_editor_code_tag(self, slide):
+        box = add_code(
+            slide, BBox.from_inches(1, 1, 6, 3), code="print(1)", language="py", theme="dracula"
+        )
+        assert box.name == "fika:code:python:dracula:0"
+        assert code_shape_name("c#", "github-dark", True) == "fika:code:csharp:github-dark:1"
+
+    def it_writes_one_paragraph_per_line_verbatim(self, slide):
+        box = add_code(slide, BBox.from_inches(1, 1, 6, 3), code=self.SNIPPET, language="csharp")
+        paras = box.text_frame.paragraphs
+        # Tabs expand, blank lines survive (as a single space so the run exists),
+        # the trailing newline does not add a line.
+        assert [p.text for p in paras] == ["if (x < 2)", "{", " ", '    return "a";', "}"]
+        assert box.text_frame.word_wrap is False
+        assert box.text_frame.auto_size is MSO_AUTO_SIZE.NONE
+        assert all(r.font.name == "Consolas" for p in paras for r in p.runs)
+
+    def it_paints_the_theme_colours(self, slide):
+        box = add_code(slide, BBox.from_inches(1, 1, 6, 3), code="x = 1", theme="github-light")
+        bg, fg = CODE_THEMES["github-light"]
+        assert str(box.fill.fore_color.rgb) == bg.lstrip("#")
+        assert str(box.text_frame.paragraphs[0].runs[0].font.color.rgb) == fg.lstrip("#")
+
+    def it_prefixes_line_numbers_when_asked(self, slide):
+        code = "\n".join(f"line {i}" for i in range(1, 12))
+        box = add_code(slide, BBox.from_inches(1, 1, 6, 5), code=code, line_numbers=True)
+        paras = box.text_frame.paragraphs
+        assert paras[0].text == " 1  line 1"
+        assert paras[10].text == "11  line 11"
+        assert box.name.endswith(":1")
+
+    def it_shrinks_the_type_to_the_box_but_not_below_the_floor(self, slide):
+        code = "\n".join("x" for _ in range(40))
+        box = add_code(slide, BBox.from_inches(1, 1, 6, 2), code=code, size_pt=18, min_size_pt=12)
+        sizes = {r.font.size for p in box.text_frame.paragraphs for r in p.runs}
+        assert sizes == {Pt(12)}
+
+    def it_rejects_an_empty_listing(self, slide):
+        with pytest.raises(ValueError):
+            add_code(slide, BBox.from_inches(1, 1, 4, 2), code="\n\n  \n")

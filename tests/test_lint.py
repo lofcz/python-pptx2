@@ -398,13 +398,13 @@ class DescribeMinFontSize:
         issues = [i for i in slide.lint().issues if isinstance(i, MinFontSize)]
         assert len(issues) == 1
         assert issues[0].pt == 7.0
-        assert issues[0].threshold_pt == 9.0
+        assert issues[0].threshold_pt == 12.0
 
     def it_does_not_flag_at_threshold(self):
         _, slide = _new_blank_slide()
         tb = slide.shapes.add_textbox(Inches(1), Inches(1), Inches(2), Inches(1))
         tb.text_frame.paragraphs[0].text = "fine"
-        tb.text_frame.paragraphs[0].runs[0].font.size = Pt(9)
+        tb.text_frame.paragraphs[0].runs[0].font.size = Pt(12)
         assert [i for i in slide.lint().issues if isinstance(i, MinFontSize)] == []
 
     def it_skips_shapes_without_text(self):

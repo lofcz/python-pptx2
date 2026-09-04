@@ -33,9 +33,33 @@ Before drawing anything, write down for each slide:
 - **Archetype** — pick one from the catalog in §10. Reusing a handful of
   archetypes is what makes a deck feel consistent.
 
-A deck of 8–12 slides typically needs 4–5 distinct archetypes. Alternate
-dense and light slides: after a table or a three-card slide, give the
-audience a statement or a full-bleed picture.
+Write the archetype sequence down before you write slide 2 (a comment at
+the top of `main.py` is enough): a deck of 8–12 slides needs at least
+five distinct archetypes, consecutive slides never share one, and no
+archetype appears more than three times. Alternate dense and light
+slides: after a table or a three-card slide, give the audience a
+statement, a big number or a full-bleed picture. A deck whose content
+slides are all "title + bullets" (or all "title + three cards") is not a
+designed deck, however clean each slide is — rebuild it.
+
+Plan the pictures at the same time. A hero photo on the title (or on the
+most visual slide) plus a picture on roughly every third content slide
+is the baseline for a classroom deck; fetch them before writing the
+script so the layout is built around them rather than patched later.
+
+### Who is in the room
+
+Fix the audience before the first slide: nationality and language
+(Czech, Slovak, Polish, …), school level and age, subject. Everything
+downstream follows from it — the language and its native typography
+(diacritics, „quotation marks“, decimal comma, local dates and
+currency), the examples, names, places, institutions and curriculum
+terms the students recognise (Czech: RVP/ŠVP, Kč, Praha, Karel IV.;
+Slovak: ŠVP, Bratislava, Štúr; Polish: podstawa programowa, zł, Kraków,
+Kopernik), the vocabulary pitched to the age group. Titles are claims
+("Led je lehčí než voda"), not labels ("Hustota"); every bullet carries a
+concrete fact, number, example or question. A slide that would fit any
+school in any country is not finished.
 
 ## 2. Canvas, margins, grid
 
@@ -77,14 +101,20 @@ default sans is) is a fine choice; the design comes from *scale* and
 
 | Role | Size | Weight | Notes |
 |---|---|---|---|
-| Hero title (title / section slide) | 44–54 pt | bold | 1–2 lines |
+| Hero title (title / section slide) | 48–60 pt | bold | 1–2 lines |
 | Statement (the one-sentence slide) | 36–44 pt | bold | ≤ 20 words, centred or left |
-| Slide title | 30–36 pt | bold | one line; sentence case |
-| Body / bullets | 20–24 pt | regular | ≤ 6 items, ≤ 12 words each |
-| Card title | 20–24 pt | bold | |
-| Card body | 16–18 pt | regular | 2–4 lines |
-| Table cells | 16–20 pt | header bold | |
-| Caption / source / footer | 12–14 pt | regular or italic, `muted` | |
+| Big number | 96–120 pt | bold, `accent` | one figure + a 24 pt explanation |
+| Slide title | 32–36 pt (never below 28) | bold | one line; sentence case |
+| Body / bullets | 22–26 pt (never below 20) | regular | ≤ 6 items, ≤ 12 words each |
+| Card title | 22–24 pt | bold | |
+| Card body | 18–20 pt (never below 18) | regular | 2–4 lines |
+| Table cells | 18–20 pt | header bold | |
+| Caption / source / footer | 14 pt | regular or italic, `muted` | |
+
+Nothing on a slide is under 14 pt: a projected slide is read from the
+back of a room, and a font that only fits by going smaller is a sign of
+too much text, not of a small box. Cut words or split the slide; never
+solve density with a smaller size.
 
 Rules that make type look intentional:
 
@@ -99,8 +129,9 @@ Rules that make type look intentional:
 - **Hierarchy by size and weight, not by colour.** Reserve colour for the
   one thing on the slide that should pop (§4).
 - **Fit, then check**: `add_bullets` and `add_card` shrink text to the box
-  and never below 12 pt. If they had to shrink, there is too much text —
-  split the slide.
+  and never below 18 pt (bullets) / 16 pt (card body). If they had to
+  shrink, there is too much text — split the slide. `audit()` reports a
+  `MinFontSize` warning for any run under 12 pt.
 
 ```python
 slide.shapes.add_text(TITLE, text="Co rostlina potřebuje",
@@ -181,9 +212,33 @@ c = add_card(slide, right_col, fill=P.surface)
 slide.shapes.add_equation(c.inner, latex=r"6\,CO_2 + 6\,H_2O \rightarrow C_6H_{12}O_6 + 6\,O_2", size_pt=28)
 ```
 
+### Code listings
+
+Source code is `add_code`, never a text box with a monospace font: it
+writes one paragraph per line, verbatim, unwrapped, in a monospace face
+on a rounded editor-coloured surface, and *names the shape*
+`fika:code:<language>:<theme>:<0|1>`. An editor with a native code block
+(Fika) turns that shape into a syntax-highlighted, editable code element
+on import; PowerPoint shows a clean monospace box. A listing is a visual
+— it takes a column or the body, 18–20 pt, at most ~12 lines; longer
+code is split across slides, explained beside it, not shrunk.
+
+```python
+left, right = BODY.split_h([5, 7], gap=Inches(0.6))
+add_bullets(s, left, items=["if – když platí podmínka", "else – jinak"], size_pt=22, color=P.ink)
+add_code(s, right, code='if (odpoved == "ano")\n{\n    Console.WriteLine("Skvělé!");\n}',
+         language="csharp", theme="github-dark", size_pt=18)
+```
+
 ## 6. Whitespace and alignment
 
-- 30–40 % of a content slide is empty. That is the design working.
+- Air lives in the margins and gutters — not in a half-empty body. Content
+  fills `BODY`: a row of cards spans its full width *and* height
+  (`BODY.columns(n)`), two columns split it evenly, a picture takes its
+  whole column. Never hand-size a few 3 in boxes and float them in an
+  11.7 in area. When the content is short, use fewer, larger elements
+  (two big cards, one big number, a statement) rather than small ones
+  with dead space around them.
 - **One left edge.** Title, bullets, cards and pictures share the `0.8 in`
   margin (or a grid line derived from it). Right edges align to the
   mirror margin.

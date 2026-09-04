@@ -8,15 +8,16 @@ from typing import TYPE_CHECKING
 import pptx2.exc as exceptions
 from pptx2.api import Presentation
 from pptx2.audit import AuditReport, audit
-from pptx2.geometry import BBox
 from pptx2.design.blocks import (
+    CODE_THEMES,
     Card,
     FittedPicture,
     add_bullets,
     add_card,
+    add_code,
     add_picture_fit,
+    code_shape_name,
 )
-from pptx2.design.palettes import PALETTES, Palette, palette
 from pptx2.design.components import (
     ArticleCard,
     Gauge,
@@ -38,6 +39,8 @@ from pptx2.design.figures import (
     add_plotly_figure,
     add_svg_figure,
 )
+from pptx2.design.palettes import PALETTES, Palette, palette
+from pptx2.geometry import BBox
 from pptx2.math import MathBackendUnavailable
 from pptx2.opc.constants import CONTENT_TYPE as CT
 from pptx2.opc.package import PartFactory
@@ -65,7 +68,7 @@ from pptx2.parts.slide import (
 if TYPE_CHECKING:
     from pptx2.opc.package import Part
 
-__version__ = "3.1.1"
+__version__ = "3.2.0"
 
 sys.modules["pptx2.exceptions"] = exceptions
 del sys
@@ -103,6 +106,9 @@ __all__ = [
     "add_card",
     "add_bullets",
     "add_picture_fit",
+    "add_code",
+    "code_shape_name",
+    "CODE_THEMES",
     "Card",
     "FittedPicture",
     # Curated colour sets.

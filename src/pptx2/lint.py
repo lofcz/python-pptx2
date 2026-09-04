@@ -293,7 +293,7 @@ class MinFontSize(LintIssue):
     """A text run uses a font size below the configured legibility threshold."""
 
     pt: float = 0.0
-    threshold_pt: float = 9.0
+    threshold_pt: float = 12.0
 
     def __init__(self, shape: BaseShape, pt: float, threshold_pt: float):
         super().__init__(
@@ -1819,10 +1819,11 @@ def _check_collisions(
 
 
 # ---------------------------------------------------------------------------
-# Min font size — flag any run below the legibility threshold (default 9pt).
+# Min font size — flag any run below the legibility threshold (default 12pt:
+# projected slides are read from the back of a room, not from a desk).
 # ---------------------------------------------------------------------------
 
-_DEFAULT_MIN_FONT_PT = 9.0
+_DEFAULT_MIN_FONT_PT = 12.0
 _PT_TO_EMU = 12700
 
 

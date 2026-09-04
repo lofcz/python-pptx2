@@ -15,6 +15,22 @@ can sit beside both ``python-pptx`` (``pptx``) and ``power-pptx``
 .. _`scanny/python-pptx`: https://github.com/scanny/python-pptx
 
 
+3.2.0 (2026-09-04)
+++++++++++++++++++
+
+Added
+.....
+
+* ``add_code`` (``pptx2.design.blocks``, re-exported at the package root):
+  a source-code listing — monospace, one paragraph per line, verbatim and
+  unwrapped, on a rounded surface coloured after a Shiki theme
+  (``CODE_THEMES``), with optional line numbers and a height-only shrink
+  that never goes below the audit's legibility floor. The shape is named
+  ``fika:code:<language>:<theme>:<0|1>`` (``code_shape_name``) so an
+  editor with a native code block (Fika) restores a highlighted, editable
+  code element on import; PowerPoint sees a plain monospace box.
+
+
 3.1.1 (2026-09-03)
 ++++++++++++++++++
 
